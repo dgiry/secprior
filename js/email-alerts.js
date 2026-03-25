@@ -47,7 +47,8 @@ const AlertManager = (() => {
     batchSize:       5,
     lastSentAt:      0,
     lastDigestAt:    0,          // timestamp du dernier digest envoyé
-    digestHour:      "08:00"     // heure locale d'envoi du digest (format HH:MM)
+    digestHour:      "08:00",    // heure locale d'envoi du digest (format HH:MM)
+    digestWeekday:   1           // jour d'envoi du weekly_digest (0=dim … 6=sam, défaut lundi)
   };
 
   // ── Persistance des paramètres ────────────────────────────────────────────
@@ -133,8 +134,11 @@ const AlertManager = (() => {
     const last = settings.lastDigestAt || 0;
 
     if (settings.mode === "weekly_digest") {
-      // Dû si l'heure est passée ET le dernier envoi remonte à plus de 6 jours
-      return last < todaySlot.getTime() - 6 * 24 * 3600_000;
+      // Vérifier que c'est bien le jour configuré (0=dim … 6=sam)
+      const weekday = settings.digestWeekday ?? 1;
+      if (now.getDay() !== weekday) return false;
+      // Bon jour + heure passée + pas encore envoyé sur ce créneau hebdo
+      return last < todaySlot.getTime();
     }
     // daily_digest : dû si l'heure est passée ET pas encore envoyé depuis le slot du jour
     return last < todaySlot.getTime();

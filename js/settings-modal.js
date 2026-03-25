@@ -67,7 +67,8 @@ const SettingsModal = (() => {
     _val("alert-mailto-email", s.recipientEmail);
 
     _val("alert-mode", s.mode || "immediate");
-    _val("alert-digest-hour", s.digestHour || "08:00");
+    _val("alert-digest-hour",    s.digestHour    || "08:00");
+    _val("alert-digest-weekday", s.digestWeekday ?? 1);
     _updateModeHint(s.mode || "immediate");
 
     const radio = document.querySelector(`input[name="alert-channel"][value="${s.channel}"]`);
@@ -108,7 +109,8 @@ const SettingsModal = (() => {
       threshold:       _val("alert-threshold") || "high",
       cooldownMs:      cooldown,
       batchSize:       batch,
-      digestHour:      _val("alert-digest-hour") || "08:00"
+      digestHour:      _val("alert-digest-hour")    || "08:00",
+      digestWeekday:   parseInt(_val("alert-digest-weekday") ?? "1")
     };
 
     AlertManager.saveSettings(settings);
@@ -511,23 +513,26 @@ const SettingsModal = (() => {
     const hint = document.getElementById("alert-mode-hint");
     if (hint) hint.textContent = MODE_HINTS[mode] || "";
 
-    const flushBtn   = document.getElementById("btn-flush-digest");
-    const countEl    = document.getElementById("digest-queue-count");
-    const hourGroup  = document.getElementById("digest-hour-group");
-    const hourHint   = document.getElementById("digest-hour-hint");
-    const isDigest   = mode === "daily_digest" || mode === "weekly_digest";
+    const flushBtn      = document.getElementById("btn-flush-digest");
+    const countEl       = document.getElementById("digest-queue-count");
+    const hourGroup     = document.getElementById("digest-hour-group");
+    const weekdayGroup  = document.getElementById("digest-weekday-group");
+    const hourHint      = document.getElementById("digest-hour-hint");
+    const isDigest      = mode === "daily_digest" || mode === "weekly_digest";
+    const isWeekly      = mode === "weekly_digest";
 
-    if (flushBtn)   flushBtn.style.display  = isDigest ? "inline-flex" : "none";
-    if (hourGroup)  hourGroup.style.display = isDigest ? "block" : "none";
+    if (flushBtn)     flushBtn.style.display    = isDigest ? "inline-flex" : "none";
+    if (hourGroup)    hourGroup.style.display   = isDigest ? "block"       : "none";
+    if (weekdayGroup) weekdayGroup.style.display = isWeekly ? "block"      : "none";
 
     if (countEl && isDigest) {
       const n = AlertManager.getDigestCount();
       countEl.textContent = n > 0 ? ` (${n} en attente)` : "";
     }
-    // Mettre à jour le hint sous l'heure selon le mode
+    // Hint contextuel selon le mode
     if (hourHint) {
-      hourHint.textContent = mode === "weekly_digest"
-        ? "Le briefing hebdomadaire sera envoyé une fois par semaine à cette heure."
+      hourHint.textContent = isWeekly
+        ? "Le briefing sera envoyé une fois par semaine, le jour et à l'heure configurés."
         : "Le briefing quotidien sera envoyé chaque jour à cette heure.";
     }
   }

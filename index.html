@@ -396,7 +396,22 @@
             </label>
             <input type="time" id="alert-digest-hour" class="settings-input"
                    value="08:00" style="width:130px">
-            <p class="settings-hint" id="digest-hour-hint" style="margin-top:4px"></p>
+            <!-- Jour d'envoi — visible seulement pour weekly_digest -->
+            <div id="digest-weekday-group" style="display:none;margin-top:10px">
+              <label class="settings-label" style="font-size:12px;margin-bottom:4px">
+                📅 Jour d'envoi hebdomadaire
+              </label>
+              <select id="alert-digest-weekday" class="select-filter" style="width:100%">
+                <option value="1">Lundi</option>
+                <option value="2">Mardi</option>
+                <option value="3">Mercredi</option>
+                <option value="4">Jeudi</option>
+                <option value="5">Vendredi</option>
+                <option value="6">Samedi</option>
+                <option value="0">Dimanche</option>
+              </select>
+            </div>
+            <p class="settings-hint" id="digest-hour-hint" style="margin-top:6px"></p>
           </div>
         </div>
 
