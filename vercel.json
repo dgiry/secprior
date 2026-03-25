@@ -4,8 +4,17 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 30
+    },
+    "api/scheduled-digest.js": {
+      "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/scheduled-digest",
+      "schedule": "0 7 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -21,6 +30,7 @@
     { "source": "/api/nvd",         "destination": "/api/nvd" },
     { "source": "/api/epss",        "destination": "/api/epss" },
     { "source": "/api/kev",         "destination": "/api/kev" },
-    { "source": "/api/send-alert",  "destination": "/api/send-alert" }
+    { "source": "/api/send-alert",        "destination": "/api/send-alert" },
+    { "source": "/api/scheduled-digest", "destination": "/api/scheduled-digest" }
   ]
 }
