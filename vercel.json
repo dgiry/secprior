@@ -1,8 +1,6 @@
 {
   "version": 2,
   "name": "cyberveille-pro",
-  "buildCommand": null,
-  "outputDirectory": ".",
   "functions": {
     "api/*.js": {
       "runtime": "nodejs20.x",
@@ -15,19 +13,15 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' api.first.org services.nvd.nist.gov www.cisa.gov api.resend.com api.sendgrid.com hooks.slack.com; img-src 'self' data:; font-src 'self'"
-        }
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
   ],
   "rewrites": [
     { "source": "/api/fetch-feeds", "destination": "/api/fetch-feeds" },
-    { "source": "/api/nvd",          "destination": "/api/nvd" },
-    { "source": "/api/epss",         "destination": "/api/epss" },
-    { "source": "/api/kev",          "destination": "/api/kev" },
-    { "source": "/api/send-alert",   "destination": "/api/send-alert" }
+    { "source": "/api/nvd",         "destination": "/api/nvd" },
+    { "source": "/api/epss",        "destination": "/api/epss" },
+    { "source": "/api/kev",         "destination": "/api/kev" },
+    { "source": "/api/send-alert",  "destination": "/api/send-alert" }
   ]
 }
