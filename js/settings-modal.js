@@ -67,6 +67,7 @@ const SettingsModal = (() => {
     _val("alert-mailto-email", s.recipientEmail);
 
     _val("alert-mode", s.mode || "immediate");
+    _val("alert-digest-hour", s.digestHour || "08:00");
     _updateModeHint(s.mode || "immediate");
 
     const radio = document.querySelector(`input[name="alert-channel"][value="${s.channel}"]`);
@@ -106,7 +107,8 @@ const SettingsModal = (() => {
       recipientEmail,
       threshold:       _val("alert-threshold") || "high",
       cooldownMs:      cooldown,
-      batchSize:       batch
+      batchSize:       batch,
+      digestHour:      _val("alert-digest-hour") || "08:00"
     };
 
     AlertManager.saveSettings(settings);
@@ -501,8 +503,8 @@ const SettingsModal = (() => {
   const MODE_HINTS = {
     immediate:      "Chaque alerte est envoyée immédiatement, dans la limite du cooldown configuré.",
     urgent_only:    "Seuls les articles KEV actif ou EPSS ≥ 70 % déclenchent une alerte, sans cooldown.",
-    daily_digest:   "Les alertes sont accumulées et envoyées en un seul email par jour.",
-    weekly_digest:  "Les alertes sont accumulées et envoyées en un seul email par semaine."
+    daily_digest:   "Les alertes sont accumulées et envoyées chaque jour à l'heure configurée.",
+    weekly_digest:  "Les alertes sont accumulées et envoyées chaque semaine à l'heure configurée."
   };
 
   function _updateModeHint(mode) {
@@ -511,11 +513,22 @@ const SettingsModal = (() => {
 
     const flushBtn   = document.getElementById("btn-flush-digest");
     const countEl    = document.getElementById("digest-queue-count");
+    const hourGroup  = document.getElementById("digest-hour-group");
+    const hourHint   = document.getElementById("digest-hour-hint");
     const isDigest   = mode === "daily_digest" || mode === "weekly_digest";
-    if (flushBtn) flushBtn.style.display = isDigest ? "inline-flex" : "none";
+
+    if (flushBtn)   flushBtn.style.display  = isDigest ? "inline-flex" : "none";
+    if (hourGroup)  hourGroup.style.display = isDigest ? "block" : "none";
+
     if (countEl && isDigest) {
       const n = AlertManager.getDigestCount();
       countEl.textContent = n > 0 ? ` (${n} en attente)` : "";
+    }
+    // Mettre à jour le hint sous l'heure selon le mode
+    if (hourHint) {
+      hourHint.textContent = mode === "weekly_digest"
+        ? "Le briefing hebdomadaire sera envoyé une fois par semaine à cette heure."
+        : "Le briefing quotidien sera envoyé chaque jour à cette heure.";
     }
   }
 

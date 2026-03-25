@@ -389,6 +389,15 @@
             📤 Envoyer le digest maintenant
             <span id="digest-queue-count"></span>
           </button>
+          <!-- Heure d'envoi — visible seulement pour daily/weekly digest -->
+          <div id="digest-hour-group" style="display:none;margin-top:12px">
+            <label class="settings-label" style="font-size:12px;margin-bottom:4px">
+              🕐 Heure d'envoi du briefing
+            </label>
+            <input type="time" id="alert-digest-hour" class="settings-input"
+                   value="08:00" style="width:130px">
+            <p class="settings-hint" id="digest-hour-hint" style="margin-top:4px"></p>
+          </div>
         </div>
 
         <!-- Seuil & cooldown -->

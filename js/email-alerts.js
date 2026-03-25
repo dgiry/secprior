@@ -46,7 +46,8 @@ const AlertManager = (() => {
     cooldownMs:      30 * 60_000,
     batchSize:       5,
     lastSentAt:      0,
-    lastDigestAt:    0           // timestamp du dernier digest envoyé
+    lastDigestAt:    0,          // timestamp du dernier digest envoyé
+    digestHour:      "08:00"     // heure locale d'envoi du digest (format HH:MM)
   };
 
   // ── Persistance des paramètres ────────────────────────────────────────────
@@ -112,13 +113,31 @@ const AlertManager = (() => {
     try { localStorage.removeItem(DIGEST_KEY); } catch {}
   }
 
-  /** Retourne true si le digest est dû (daily = 24h, weekly = 7j). */
+  /**
+   * Retourne true si le digest est dû selon l'heure fixe configurée.
+   * - daily_digest  : vrai si l'heure locale >= digestHour ET pas encore envoyé aujourd'hui.
+   * - weekly_digest : même logique + au moins 6 jours depuis le dernier envoi.
+   * Remplace l'ancienne logique purement basée sur un intervalle de 24h/7j.
+   */
   function _digestDue(settings) {
-    const elapsed  = Date.now() - (settings.lastDigestAt || 0);
-    const interval = settings.mode === "weekly_digest"
-      ? 7 * 24 * 3600_000
-      : 24 * 3600_000;
-    return elapsed >= interval;
+    const [h, m]   = (settings.digestHour || "08:00").split(":").map(Number);
+    const now      = new Date();
+
+    // Heure de déclenchement prévue aujourd'hui
+    const todaySlot = new Date(now);
+    todaySlot.setHours(h, m, 0, 0);
+
+    // Pas encore l'heure configurée → jamais dû
+    if (now < todaySlot) return false;
+
+    const last = settings.lastDigestAt || 0;
+
+    if (settings.mode === "weekly_digest") {
+      // Dû si l'heure est passée ET le dernier envoi remonte à plus de 6 jours
+      return last < todaySlot.getTime() - 6 * 24 * 3600_000;
+    }
+    // daily_digest : dû si l'heure est passée ET pas encore envoyé depuis le slot du jour
+    return last < todaySlot.getTime();
   }
 
   /** true si l'article est urgent : KEV actif, EPSS ≥ 70 %, ou score ≥ 80. */
