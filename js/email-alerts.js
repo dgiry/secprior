@@ -189,6 +189,219 @@ const AlertManager = (() => {
       </div>`;
   }
 
+  // ── Sélection & analyse des articles pour le briefing ────────────────────
+
+  /**
+   * Sélectionne les 3–5 articles les plus critiques de la file.
+   * Priorité : KEV actif > EPSS élevé > score > trending.
+   */
+  function _selectTopArticles(queue, max = 5) {
+    const scored = queue.map(a => {
+      let p = 0;
+      if (a.isKEV)                                           p += 1000;
+      if (a.epssScore !== null && a.epssScore >= 0.70)       p += 500 + Math.round(a.epssScore * 100);
+      else if (a.epssScore !== null && a.epssScore >= 0.40)  p += 200 + Math.round(a.epssScore * 100);
+      if (a.score !== undefined)                             p += a.score * 5;
+      if (a.isTrending)                                      p += 50;
+      return { ...a, _p: p };
+    });
+    scored.sort((a, b) => b._p - a._p);
+    // Retourner au moins 3, au plus `max`
+    return scored.slice(0, Math.max(3, Math.min(max, scored.length)));
+  }
+
+  /**
+   * Génère une phrase expliquant pourquoi l'article est important.
+   */
+  function _whyImportant(a) {
+    const r = [];
+    if (a.isKEV)
+      r.push("activement exploitée dans la nature (CISA KEV)");
+    if (a.epssScore !== null && a.epssScore >= 0.70)
+      r.push(`probabilité d'exploitation très élevée (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    else if (a.epssScore !== null && a.epssScore >= 0.40)
+      r.push(`risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    if (a.score >= 90)      r.push("score de criticité maximal");
+    else if (a.score >= 80) r.push("score de criticité très élevé");
+    if (a.isTrending)       r.push("en tendance sur les plateformes de threat intel");
+    if (a.cveIds?.length)   r.push(`CVE : ${a.cveIds.slice(0, 2).join(", ")}`);
+    if (r.length === 0)
+      return a.criticality === "high"
+        ? "Classé haute criticité par l'analyse automatique."
+        : "Identifié comme menace potentielle.";
+    return "Cette menace est " + r.join(", ") + ".";
+  }
+
+  /** Retourne les produits/secteurs touchés depuis les tags ou la source. */
+  function _affectedProducts(a) {
+    return a.tags?.length ? a.tags.slice(0, 4).join(" · ") : a.sourceName;
+  }
+
+  /**
+   * Génère une liste de watchpoints immédiats selon le profil de la menace.
+   */
+  function _watchpoints(a) {
+    const pts = [];
+    if (a.isKEV)             pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
+    if (a.epssScore >= 0.70) pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
+    if (a.criticality === "high") pts.push("Vérifier l'exposition de vos actifs concernés");
+    if (a.isTrending)        pts.push("Consulter les IoCs publiés par la communauté threat intel");
+    if (a.cveIds?.length)    pts.push(`Vérifier le statut de patch pour ${a.cveIds[0]}`);
+    if (pts.length === 0)    pts.push("Surveiller l'évolution et appliquer les recommandations du fournisseur");
+    return pts;
+  }
+
+  // ── Formatage HTML du briefing ────────────────────────────────────────────
+
+  /**
+   * Génère l'email HTML complet du briefing matinal.
+   * `top` = 3–5 articles prioritaires détaillés.
+   * `rest` = autres alertes en format compact.
+   */
+  function _formatBriefingHTML(top, rest, label) {
+    const now = new Date().toLocaleDateString("fr-FR",
+      { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const total    = top.length + rest.length;
+    const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
+    const highCount= [...top, ...rest].filter(a => a.criticality === "high").length;
+
+    // Résumé exécutif
+    let exec = `${total} menace(s) détectée(s) durant cette période`;
+    if (kevCount > 0) exec += `, dont ${kevCount} vulnérabilité(s) KEV activement exploitée(s)`;
+    if (highCount > 0) exec += `. ${highCount} alerte(s) haute criticité nécessitent votre attention`;
+    exec += ".";
+
+    // Cartes top alertes
+    const topHTML = top.map(a => {
+      const color = a.criticality === "high" ? "#f85149" : "#f0883e";
+      const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const meta  = [
+        a.isKEV              ? "🚨 KEV ACTIF"                                          : "",
+        a.epssScore !== null ? `EPSS ${Math.round(a.epssScore * 100)} %`               : "",
+        a.score !== undefined ? `Score ${a.score}`                                      : ""
+      ].filter(Boolean).join(" · ");
+      const pts  = _watchpoints(a).map(p =>
+        `<li style="margin:4px 0;color:#e6edf3">${p}</li>`).join("");
+
+      return `
+        <div style="border:1px solid ${color};border-radius:8px;padding:16px;margin-bottom:16px;background:#161b22">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="color:${color};font-weight:700;font-size:13px">${badge}</span>
+            ${meta ? `<span style="color:#8b949e;font-size:12px">${meta}</span>` : ""}
+            <span style="color:#8b949e;font-size:12px;margin-left:auto">${a.sourceName}</span>
+          </div>
+          <h3 style="margin:0 0 8px;font-size:15px;line-height:1.4">
+            <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
+          </h3>
+          <p style="margin:0 0 8px;font-size:12px;color:#8b949e">🏷️ ${_affectedProducts(a)}</p>
+          <p style="margin:0 0 12px;font-size:13px;color:#cdd9e5;background:#0d1117;
+                    padding:10px;border-radius:4px;border-left:3px solid ${color}">
+            📌 <strong>Pourquoi c'est important :</strong> ${_whyImportant(a)}
+          </p>
+          <div style="font-size:12px">
+            <p style="margin:0 0 6px;color:#8b949e;font-weight:600;text-transform:uppercase;
+                      letter-spacing:.5px">⚡ Watchpoints immédiats</p>
+            <ul style="margin:0;padding-left:16px">${pts}</ul>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Tableau compact des autres alertes
+    const restHTML = rest.length === 0 ? "" : `
+      <h3 style="color:#8b949e;font-size:13px;font-weight:600;text-transform:uppercase;
+                 letter-spacing:.5px;margin:24px 0 12px">📋 Autres alertes (${rest.length})</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace">
+        <tbody>
+          ${rest.map(a => {
+            const c = a.criticality === "high" ? "#f85149" : "#f0883e";
+            const b = a.criticality === "high" ? "🔴" : "🟠";
+            return `<tr>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${b} ${a.criticality.toUpperCase()}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e;white-space:nowrap">${a.sourceName}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d">
+                <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>`;
+
+    return `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+                  background:#0d1117;color:#e6edf3;padding:24px;border-radius:10px;max-width:680px;margin:0 auto">
+        <!-- En-tête -->
+        <div style="border-bottom:1px solid #30363d;padding-bottom:16px;margin-bottom:20px">
+          <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Briefing Cybersécurité — ${now}</h1>
+          <p style="margin:0;color:#8b949e;font-size:13px">CyberVeille Pro · Digest ${label}</p>
+        </div>
+        <!-- Résumé exécutif -->
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:14px;margin-bottom:24px">
+          <p style="margin:0 0 4px;color:#8b949e;font-size:11px;font-weight:600;
+                    text-transform:uppercase;letter-spacing:.5px">RÉSUMÉ EXÉCUTIF</p>
+          <p style="margin:0;font-size:14px;color:#cdd9e5">${exec}</p>
+        </div>
+        <!-- Top alertes -->
+        <h2 style="font-size:15px;font-weight:700;color:#e6edf3;margin:0 0 16px;
+                   text-transform:uppercase;letter-spacing:.5px">🎯 Top ${top.length} Alertes Prioritaires</h2>
+        ${topHTML}
+        <!-- Autres alertes -->
+        ${restHTML}
+        <!-- Pied de page -->
+        <div style="border-top:1px solid #30363d;margin-top:24px;padding-top:16px;text-align:center">
+          <p style="margin:0;color:#8b949e;font-size:11px">
+            CyberVeille Pro · ${new Date().toLocaleString("fr-FR")} ·
+            <a href="https://technocspace.com" style="color:#58a6ff">Ouvrir l'app</a>
+          </p>
+        </div>
+      </div>`;
+  }
+
+  // ── Formatage texte brut du briefing ─────────────────────────────────────
+
+  /** Version texte brut du briefing (fallback clients email sans HTML). */
+  function _formatBriefingText(top, rest, label) {
+    const now    = new Date().toLocaleDateString("fr-FR",
+      { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const total    = top.length + rest.length;
+    const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
+    const sep60  = "=".repeat(60);
+
+    let t = `☀️ BRIEFING CYBERSÉCURITÉ — ${now.toUpperCase()}\n`;
+    t += `CyberVeille Pro · Digest ${label}\n${sep60}\n\n`;
+
+    t += "RÉSUMÉ EXÉCUTIF\n" + "-".repeat(30) + "\n";
+    t += `${total} menace(s) détectée(s)`;
+    if (kevCount > 0) t += `, dont ${kevCount} KEV activement exploitée(s)`;
+    t += ".\n\n";
+
+    t += `🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep60}\n\n`;
+    top.forEach((a, i) => {
+      const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const kev   = a.isKEV ? " | 🚨 KEV ACTIF" : "";
+      const epss  = a.epssScore !== null
+        ? ` | EPSS ${Math.round(a.epssScore * 100)} %` : "";
+      t += `${i + 1}. ${badge}${kev}${epss}\n`;
+      t += `   ${a.title}\n`;
+      t += `   Source : ${a.sourceName} — ${_affectedProducts(a)}\n`;
+      t += `   Lien   : ${a.link}\n`;
+      t += `   ► ${_whyImportant(a)}\n`;
+      _watchpoints(a).forEach(p => { t += `   • ${p}\n`; });
+      t += "\n";
+    });
+
+    if (rest.length > 0) {
+      t += `📋 AUTRES ALERTES (${rest.length})\n${"-".repeat(60)}\n`;
+      rest.forEach(a => {
+        const b = a.criticality === "high" ? "🔴" : "🟠";
+        t += `${b} [${a.sourceName}] ${a.title}\n   ${a.link}\n`;
+      });
+      t += "\n";
+    }
+
+    t += `${sep60}\nGénéré par CyberVeille Pro le ${new Date().toLocaleString("fr-FR")}\n`;
+    return t;
+  }
+
   // ── Envoi digest (toute la file, puis nettoyage) ──────────────────────────
 
   async function _sendDigest(settings) {
@@ -198,33 +411,29 @@ const AlertManager = (() => {
       return;
     }
 
-    const label    = settings.mode === "weekly_digest" ? "hebdomadaire" : "quotidien";
-    const articles = queue.slice(0, settings.batchSize * 4); // digest = 4x le batch normal
-    const subject  = `📋 CyberVeille Pro — Digest ${label} (${articles.length} alertes)`;
+    const label = settings.mode === "weekly_digest" ? "hebdomadaire" : "quotidien";
 
-    // Réutiliser le HTML existant avec un en-tête adapté
-    const html = formatAlertHTML(articles).replace(
-      "🛡️ CyberVeille Pro — Alerte Cybersécurité",
-      `📋 CyberVeille Pro — Digest ${label}`
-    ).replace(
-      `${articles.length} nouvelle(s) alerte(s) détectée(s)`,
-      `${articles.length} alerte(s) accumulée(s) — période ${label}`
-    );
-    const text = `Digest ${label} CyberVeille Pro\n\n` + formatAlertBody(articles);
+    // Sélectionner les top articles et le reste pour le briefing
+    const top    = _selectTopArticles(queue, 5);
+    const topIds = new Set(top.map(a => a.id));
+    const rest   = queue.filter(a => !topIds.has(a.id));
+    const total  = top.length + rest.length;
 
-    // Envoyer via le même canal configuré
-    const digestSettings = { ...settings };
-    await _dispatch(articles, digestSettings, subject, html, text);
+    const subject = `☀️ Briefing Cybersécurité ${label} — ${top.length} alertes prioritaires · ${new Date().toLocaleDateString("fr-FR")}`;
+    const html    = _formatBriefingHTML(top, rest, label);
+    const text    = _formatBriefingText(top, rest, label);
 
-    // Nettoyage : retirer les envoyés, MAJ lastDigestAt
+    await _dispatch([...top, ...rest], { ...settings }, subject, html, text);
+
+    // Nettoyage : marquer tous comme alertés, MAJ lastDigestAt
     _clearDigest();
-    markAsAlerted(articles.map(a => a.id));
+    markAsAlerted(queue.map(a => a.id));
     saveSettings({ ...settings, lastDigestAt: Date.now(), lastSentAt: Date.now() });
 
     if (window.UI) {
-      UI.showToast(`📋 Digest ${label} envoyé — ${articles.length} alerte(s)`, "success");
+      UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
     }
-    console.log("[Alerts] Digest %s envoyé (%d articles)", label, articles.length);
+    console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
   }
 
   /** Dispatch vers le bon canal avec subject/html/text optionnels (digest override). */
