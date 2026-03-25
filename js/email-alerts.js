@@ -218,16 +218,17 @@ const AlertManager = (() => {
    * Sélectionne les 3–5 articles les plus critiques de la file.
    * Priorité : KEV actif > EPSS élevé > score > trending.
    */
+  /**
+   * Sélectionne les 3–5 articles les plus critiques via digestPriorityScore().
+   * Fallback sur article.score si scorer.js n'est pas disponible.
+   */
   function _selectTopArticles(queue, max = 5) {
-    const scored = queue.map(a => {
-      let p = 0;
-      if (a.isKEV)                                         p += 1000;
-      if (a.epssScore != null && a.epssScore >= 0.70)      p += 500 + Math.round(a.epssScore * 100);
-      else if (a.epssScore != null && a.epssScore >= 0.40) p += 200 + Math.round(a.epssScore * 100);
-      if (a.score != null)                                 p += a.score * 5;
-      if (a.isTrending)                                    p += 50;
-      return { ...a, _p: p };
-    });
+    const scored = queue.map(a => ({
+      ...a,
+      _p: typeof digestPriorityScore === "function"
+        ? digestPriorityScore(a).score
+        : (a.score ?? 0)
+    }));
     scored.sort((a, b) => b._p - a._p);
     // Retourner au moins 3, au plus `max`
     return scored.slice(0, Math.max(3, Math.min(max, scored.length)));

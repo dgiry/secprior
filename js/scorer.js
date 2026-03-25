@@ -58,6 +58,59 @@ function scoreComposite(article) {
   };
 }
 
+// ── Score de priorité digest ──────────────────────────────────────────────
+
+/**
+ * digestPriorityScore(article) → { score, base, bonus, breakdown }
+ *
+ * Complète scoreComposite pour le tri du briefing matinal.
+ * Utilise le score composite comme base (0-100) et ajoute des bonus thématiques.
+ * N'affecte PAS le score affiché ni la criticité des articles.
+ *
+ * Bonus :
+ *   watchlist  +25 par terme matché (max 75) — sujet explicitement surveillé
+ *   kev        +50                           — exploitation confirmée (CISA)
+ *   epss       +35 si ≥ 70 %, +15 si ≥ 40 % — probabilité d'exploitation
+ *   trending   +20                           — couverture multi-source
+ *   sources    +5 par source supplémentaire (max 20)
+ *   zeroDay    +30                           — vulnérabilité 0-day détectée
+ */
+function digestPriorityScore(article) {
+  // Base : score composite déjà calculé, ou recalcul si absent
+  const base = article.score != null ? article.score : scoreComposite(article).score;
+
+  const bd = {};
+
+  // Watchlist — signal fort : terme explicitement surveillé par l'utilisateur
+  const wl     = Array.isArray(article.watchlistMatches) ? article.watchlistMatches.length : 0;
+  bd.watchlist = Math.min(wl * 25, 75);
+
+  // KEV actif — exploitation confirmée dans la nature
+  bd.kev = article.isKEV ? 50 : 0;
+
+  // EPSS — probabilité d'exploitation prochaine
+  const epss = article.epssScore ?? null;
+  bd.epss = epss != null ? (epss >= 0.70 ? 35 : epss >= 0.40 ? 15 : 0) : 0;
+
+  // Trending / multi-source
+  bd.trending = article.isTrending ? 20 : 0;
+  bd.sources  = Math.min(((article.sourceCount || 1) - 1) * 5, 20);
+
+  // Zero-day : vérifie les attackTags du contextualizer, puis le titre en fallback
+  const isZeroDay = article.attackTags?.some(t => t.label === "0-Day")
+    || /zero.?day|0.?day/i.test(article.title || "");
+  bd.zeroDay = isZeroDay ? 30 : 0;
+
+  const bonus = Object.values(bd).reduce((s, v) => s + v, 0);
+
+  return {
+    score:     base + bonus,  // score digest (non borné à 100)
+    base,
+    bonus,
+    breakdown: bd             // lisible : watchlist, kev, epss, trending, sources, zeroDay
+  };
+}
+
 // ── Heuristique mots-clés (conservée comme signal interne) ───────────────
 
 function _keywordSignal(title, desc) {
