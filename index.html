@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CyberVeille Pro — Dashboard de veille cybersécurité en temps réel">
+  <title>CyberVeille Pro 🛡️</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d1117">
+  <!-- iOS / Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CVPro">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <!-- Windows -->
+  <meta name="msapplication-TileColor" content="#0d1117">
+  <meta name="msapplication-TileImage" content="icons/icon.svg">
+
+  <link rel="stylesheet" href="css/style.css?v=13">
+</head>
+<body>
+
+  <!-- ── Navigation / Barre de filtres ───────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="navbar-brand">🛡️ Cyber<span>Veille</span> Pro</div>
+
+    <input
+      type="search"
+      id="search-input"
+      class="search-input"
+      placeholder="🔍 Rechercher... (ex: ransomware, CVE)"
+      autocomplete="off"
+    >
+
+    <select id="filter-criticality" class="select-filter" title="Filtrer par criticité">
+      <option value="all">🎯 Toutes criticités</option>
+      <option value="high">🔴 Haute</option>
+      <option value="medium">🟠 Moyenne</option>
+      <option value="low">🟢 Basse</option>
+    </select>
+
+    <select id="filter-source" class="select-filter" title="Filtrer par source">
+      <!-- Peuplé dynamiquement par ui.js -->
+    </select>
+
+    <select id="filter-date" class="select-filter" title="Filtrer par période">
+      <option value="all">📅 Toute période</option>
+      <option value="24h">⏱ Dernières 24h</option>
+      <option value="7d">📆 7 derniers jours</option>
+      <option value="30d">🗓 30 derniers jours</option>
+    </select>
+
+    <button id="btn-favs" class="btn" title="Mes favoris seulement">
+      ★ Favoris (<span id="fav-count">0</span>)
+    </button>
+
+    <button id="btn-export" class="btn" title="Exporter les articles filtrés en CSV">
+      ⬇ CSV
+    </button>
+
+    <button id="btn-refresh" class="btn" title="Forcer la mise à jour des flux">
+      ↻ Actualiser
+    </button>
+
+    <button id="btn-watchlist" class="btn" title="Gérer la watchlist">
+      👁 Watchlist<span id="watchlist-count"></span>
+    </button>
+
+    <button id="btn-risk-filter" class="btn" title="Filtres menace opérationnelle (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
+      🎯 Risque réel<span id="risk-nav-badge"></span>
+    </button>
+
+    <button id="btn-stats" class="btn" title="Dashboard statistiques">
+      📊 Stats
+    </button>
+
+    <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
+      📄 Rapport PDF
+    </button>
+
+    <button id="btn-settings" class="btn" title="Paramètres alertes email/webhook">
+      ⚙️ Alertes
+    </button>
+  </nav>
+
+  <!-- ── Barre filtre Risque Réel (injectée par risk-filter.js) ────────────── -->
+  <div id="risk-filter-container"></div>
+
+  <!-- ── Dashboard Statistiques (collapsible) ─────────────────────────────── -->
+  <div id="stats-panel" class="stats-panel" style="display:none">
+    <div class="stats-panel-inner">
+
+      <!-- KPI row -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-value" id="kpi-total">—</span>
+          <span class="kpi-label">📰 Articles</span>
+        </div>
+        <div class="kpi-card kpi-high">
+          <span class="kpi-value" id="kpi-high">—</span>
+          <span class="kpi-label">🔴 HIGH</span>
+        </div>
+        <div class="kpi-card kpi-medium">
+          <span class="kpi-value" id="kpi-medium">—</span>
+          <span class="kpi-label">🟠 MEDIUM</span>
+        </div>
+        <div class="kpi-card kpi-kev">
+          <span class="kpi-value" id="kpi-kev">—</span>
+          <span class="kpi-label">⚠ KEV actifs</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-value" id="kpi-epss">—</span>
+          <span class="kpi-label">📊 EPSS moyen</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-value" id="kpi-trending">—</span>
+          <span class="kpi-label">🔥 Trending</span>
+        </div>
+        <div class="kpi-card kpi-watch">
+          <span class="kpi-value" id="kpi-watch">—</span>
+          <span class="kpi-label">👁 Watchlist</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-value" id="kpi-score">—</span>
+          <span class="kpi-label">⚡ Score moy.</span>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="charts-grid">
+        <!-- Donut criticité -->
+        <div class="chart-card">
+          <h4 class="chart-title">Distribution criticité</h4>
+          <div class="chart-wrap chart-wrap-sm">
+            <div id="chart-crit"></div>
+          </div>
+        </div>
+
+        <!-- Bar sources -->
+        <div class="chart-card chart-card-wide">
+          <h4 class="chart-title">Articles par source</h4>
+          <div class="chart-wrap">
+            <canvas id="chart-source"></canvas>
+          </div>
+        </div>
+
+        <!-- Line timeline -->
+        <div class="chart-card chart-card-wide">
+          <h4 class="chart-title">Timeline 7 derniers jours</h4>
+          <div class="chart-wrap">
+            <canvas id="chart-timeline"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom row : ATT&CK + top CVEs -->
+      <div class="charts-grid charts-grid-2">
+        <div class="chart-card">
+          <h4 class="chart-title">🎯 Top tactiques MITRE ATT&CK</h4>
+          <div id="attack-list" class="attack-list"></div>
+        </div>
+        <div class="chart-card">
+          <h4 class="chart-title">🔍 Top CVEs détectés</h4>
+          <div id="top-cves" class="cve-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
+  <div id="demo-bar" style="display:none; background:#2d1b00; border-bottom:1px solid #f0883e;
+       padding:.4rem 1rem; font-size:.78rem; color:#f0883e; align-items:center; gap:.5rem;">
+    ⚠️ <strong>MODE DÉMO</strong> — Les flux RSS live ne sont pas accessibles depuis cet environnement.
+    Déployez l'app sur un serveur public pour recevoir les vraies alertes en temps réel.
+  </div>
+
+  <!-- ── Barre de statut ──────────────────────────────────────────────────── -->
+  <div class="statusbar">
+    <span><span class="dot"></span>Live</span>
+    <span>Sources : <span id="statusbar-feed-count">…</span> flux actifs</span>
+    <span>Actualisation auto : 10 min</span>
+    <span>Dernière MàJ : <strong id="last-update">—</strong></span>
+    <span style="margin-left:auto"><strong id="article-count">0</strong> articles affichés</span>
+  </div>
+
+  <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
+  <main class="main">
+    <div id="feed-grid">
+      <!-- Cartes articles injectées par ui.js -->
+    </div>
+  </main>
+
+  <!-- ── Spinner de chargement ──────────────────────────────────────────────── -->
+  <div id="spinner">
+    <div class="spin"></div>
+    <span>Chargement des flux cybersécurité…</span>
+  </div>
+
+  <!-- ── Zone de notifications toast ──────────────────────────────────────── -->
+  <div id="toast-area"></div>
+
+  <!-- ── Modal Watchlist ───────────────────────────────────────────────────── -->
+  <div id="modal-watchlist" class="modal-overlay" style="display:none" onclick="if(event.target===this)WatchlistModal.close()">
+    <div class="modal-box" style="width:min(480px,95vw)">
+      <div class="modal-header">
+        <h2>👁 Watchlist — Termes surveillés</h2>
+        <button class="modal-close" onclick="WatchlistModal.close()">✕</button>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-hint" style="margin-top:0">
+          Les articles contenant ces termes reçoivent le badge <strong style="color:#d2a8ff">👁 Vous concerne</strong>.
+          Utile pour surveiller un vendeur, un produit, un CVE ou une menace spécifique.
+        </p>
+        <div class="watchlist-items" id="watchlist-items"></div>
+        <div class="watchlist-add-row">
+          <input id="watchlist-input" type="text" class="settings-input"
+                 placeholder="Ex : fortinet, CVE-2024, exchange, ransomware…">
+          <button class="btn btn-primary" onclick="WatchlistModal.add()">+ Ajouter</button>
+        </div>
+        <p class="settings-hint">Appuyez sur <strong>Entrée</strong> ou cliquez sur + Ajouter. Non sensible à la casse.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="WatchlistModal.close()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal Paramètres (Alertes + Flux RSS) ─────────────────────────────── -->
+  <div id="modal-settings" class="modal-overlay" style="display:none" onclick="if(event.target===this)SettingsModal.close()">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-header">
+        <h2>⚙️ Paramètres</h2>
+        <button class="modal-close" onclick="SettingsModal.close()">✕</button>
+      </div>
+
+      <!-- ── Onglets ──────────────────────────────────────────────────────── -->
+      <div class="settings-tabs">
+        <button class="settings-tab settings-tab-active" data-tab="alerts"
+                onclick="SettingsModal.switchTab('alerts')">⚙️ Alertes</button>
+        <button class="settings-tab" data-tab="feeds"
+                onclick="SettingsModal.switchTab('feeds')">
+          📡 Flux RSS <span id="fm-active-badge"></span>
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ONGLET 1 — Alertes                                                -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="settings-tab-alerts" class="settings-tab-pane">
+
+        <!-- Toggle global -->
+        <div class="settings-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="alert-enabled">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            Activer les alertes automatiques
+          </label>
+        </div>
+
+        <!-- Canal -->
+        <div class="settings-group">
+          <label class="settings-label">Canal d'envoi</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="alert-channel" value="webhook">
+              🔗 Webhook (Zapier / n8n / Slack / Discord)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="alert-channel" value="resend">
+              ✉️ Resend <span class="channel-tag tag-recommended">Recommandé</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="alert-channel" value="sendgrid">
+              ✉️ SendGrid (Twilio)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="alert-channel" value="emailjs">
+              📧 EmailJS (email direct navigateur)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="alert-channel" value="mailto">
+              📬 mailto: (ouvre votre client email)
+            </label>
+          </div>
+        </div>
+
+        <!-- Section Webhook -->
+        <div id="section-webhook" class="settings-group">
+          <label class="settings-label">URL Webhook</label>
+          <input id="alert-webhook-url" type="url" class="settings-input"
+                 placeholder="https://hooks.slack.com/... ou https://hook.us1.make.com/...">
+          <p class="settings-hint">
+            Compatible Slack Incoming Webhooks, Discord, Zapier, Make, n8n, ou tout endpoint HTTP POST JSON.
+          </p>
+          <button class="btn btn-test" onclick="SettingsModal.testWebhook()">🧪 Tester le webhook</button>
+        </div>
+
+        <!-- Section Resend -->
+        <div id="section-resend" class="settings-group" style="display:none">
+          <div class="security-notice">
+            ⚠️ <strong>Clé API exposée côté navigateur.</strong>
+            Pour la production, utilisez un proxy serverless (Vercel/Netlify function).
+            <a href="https://resend.com/docs" target="_blank">Docs Resend ↗</a>
+          </div>
+          <label class="settings-label">Clé API Resend <span class="settings-hint-inline">re_xxxxxxxxxxxx</span></label>
+          <input id="alert-resend-key" type="password" class="settings-input"
+                 placeholder="re_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+          <label class="settings-label">Expéditeur <span class="settings-hint-inline">(domaine vérifié requis en prod)</span></label>
+          <input id="alert-resend-from" type="text" class="settings-input"
+                 placeholder="CyberVeille Pro &lt;alerts@votredomaine.fr&gt;">
+          <p class="settings-hint">
+            Test rapide : laissez vide pour utiliser <code>onboarding@resend.dev</code>
+            (sandbox Resend, vérifié sans configuration).<br>
+            Compte gratuit sur <a href="https://resend.com" target="_blank">resend.com</a>
+            — 3 000 emails/mois, 100/jour.
+          </p>
+          <label class="settings-label">Email destinataire</label>
+          <input id="alert-resend-to" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <button class="btn btn-test" onclick="SettingsModal.testResend()">🧪 Envoyer un email test</button>
+        </div>
+
+        <!-- Section SendGrid -->
+        <div id="section-sendgrid" class="settings-group" style="display:none">
+          <div class="security-notice">
+            ⚠️ <strong>Clé API exposée côté navigateur.</strong>
+            Pour la production, utilisez un proxy serverless (Vercel/Netlify function).
+            <a href="https://docs.sendgrid.com/api-reference/mail-send" target="_blank">Docs SendGrid ↗</a>
+          </div>
+          <label class="settings-label">Clé API SendGrid <span class="settings-hint-inline">SG.xxxxxxxxxxxx</span></label>
+          <input id="alert-sg-key" type="password" class="settings-input"
+                 placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+          <label class="settings-label">Expéditeur vérifié <span class="settings-hint-inline">(Single Sender Verification requise)</span></label>
+          <input id="alert-sg-from" type="email" class="settings-input" placeholder="alerts@votredomaine.fr">
+          <p class="settings-hint">
+            L'adresse expéditeur doit être vérifiée dans votre compte SendGrid
+            (Settings → Sender Authentication → Single Sender Verification).<br>
+            Compte gratuit sur <a href="https://sendgrid.com" target="_blank">sendgrid.com</a>
+            — 100 emails/jour.
+          </p>
+          <label class="settings-label">Email destinataire</label>
+          <input id="alert-sg-to" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <button class="btn btn-test" onclick="SettingsModal.testSendGrid()">🧪 Envoyer un email test</button>
+        </div>
+
+        <!-- Section EmailJS -->
+        <div id="section-emailjs" class="settings-group" style="display:none">
+          <label class="settings-label">Service ID <span class="settings-hint-inline">(EmailJS dashboard)</span></label>
+          <input id="alert-ejs-service" type="text" class="settings-input" placeholder="service_xxxxxxx">
+          <label class="settings-label">Template ID</label>
+          <input id="alert-ejs-template" type="text" class="settings-input" placeholder="template_xxxxxxx">
+          <label class="settings-label">Clé publique</label>
+          <input id="alert-ejs-key" type="text" class="settings-input" placeholder="xxxxxxxxxxxxxxxxxxxx">
+          <label class="settings-label">Email destinataire</label>
+          <input id="alert-recipient" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <p class="settings-hint">
+            Créez un compte gratuit sur <a href="https://www.emailjs.com" target="_blank">emailjs.com</a>
+            (200 emails/mois gratuits). Votre template doit contenir les variables :
+            <code>to_email</code>, <code>subject</code>, <code>message_html</code>.
+          </p>
+          <button class="btn btn-test" onclick="SettingsModal.testEmailJS()">🧪 Envoyer un email test</button>
+        </div>
+
+        <!-- Section mailto -->
+        <div id="section-mailto" class="settings-group" style="display:none">
+          <label class="settings-label">Email destinataire</label>
+          <input id="alert-mailto-email" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <p class="settings-hint">
+            Ouvre votre client email avec les alertes pré-remplies. Nécessite une action manuelle.
+          </p>
+        </div>
+
+        <!-- Mode d'envoi -->
+        <div class="settings-group">
+          <label class="settings-label">Mode d'envoi</label>
+          <select id="alert-mode" class="select-filter" style="width:100%">
+            <option value="immediate">⚡ Immédiat — dès qu'un article critique est détecté</option>
+            <option value="urgent_only">🚨 Urgent uniquement — KEV actif ou EPSS ≥ 70 %</option>
+            <option value="daily_digest">📋 Digest quotidien — résumé envoyé 1× par jour</option>
+            <option value="weekly_digest">📅 Digest hebdomadaire — résumé envoyé 1× par semaine</option>
+          </select>
+          <p class="settings-hint" id="alert-mode-hint"></p>
+          <button class="btn" id="btn-flush-digest" style="display:none"
+                  onclick="AlertManager.flushDigest()">
+            📤 Envoyer le digest maintenant
+            <span id="digest-queue-count"></span>
+          </button>
+        </div>
+
+        <!-- Seuil & cooldown -->
+        <div class="settings-row-inline">
+          <div class="settings-group" style="flex:1">
+            <label class="settings-label">Seuil de criticité</label>
+            <select id="alert-threshold" class="select-filter" style="width:100%">
+              <option value="high">🔴 Haute uniquement</option>
+              <option value="medium">🟠 Moyenne + Haute</option>
+            </select>
+          </div>
+          <div class="settings-group" style="flex:1">
+            <label class="settings-label">Cooldown (minutes)</label>
+            <input id="alert-cooldown" type="number" class="settings-input" min="5" max="1440" value="30">
+          </div>
+          <div class="settings-group" style="flex:1">
+            <label class="settings-label">Max articles/alerte</label>
+            <input id="alert-batch" type="number" class="settings-input" min="1" max="20" value="5">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn" onclick="SettingsModal.close()">Annuler</button>
+          <button class="btn btn-primary" onclick="SettingsModal.save()">💾 Enregistrer</button>
+        </div>
+
+      </div><!-- /settings-tab-alerts -->
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ONGLET 2 — Flux RSS                                               -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="settings-tab-feeds" class="settings-tab-pane" style="display:none">
+
+        <!-- Barre de stats + filtres -->
+        <div class="fm-stats-bar">
+          <span id="fm-count-stats" class="fm-count-stats">Chargement…</span>
+          <div class="fm-filter-pills">
+            <button class="fm-filter-pill fm-filter-active" data-filter="all"
+                    onclick="SettingsModal.renderFeeds('all')">Tous</button>
+            <button class="fm-filter-pill" data-filter="active"
+                    onclick="SettingsModal.renderFeeds('active')">Actifs</button>
+            <button class="fm-filter-pill" data-filter="error"
+                    onclick="SettingsModal.renderFeeds('error')">En erreur</button>
+          </div>
+        </div>
+
+        <!-- Liste des flux (rendue par JS) -->
+        <div id="fm-feed-list" class="fm-feed-list"></div>
+
+        <!-- Formulaire d'ajout -->
+        <div class="fm-add-panel">
+          <h4 class="fm-section-title">➕ Ajouter un flux personnalisé</h4>
+          <div class="fm-add-grid">
+            <input id="fm-new-name" type="text" class="settings-input"
+                   placeholder="Nom  (ex : ANSSI)">
+            <input id="fm-new-url" type="url" class="settings-input"
+                   placeholder="URL RSS  (https://…/feed.xml)">
+            <select id="fm-new-category" class="select-filter">
+              <option value="news">📰 News</option>
+              <option value="advisory">🔔 Advisory</option>
+              <option value="exploit">🧨 Exploit</option>
+              <option value="threat">🕵️ Threat Intel</option>
+              <option value="cert">🏛 CERT</option>
+              <option value="research">🔬 Recherche</option>
+            </select>
+            <input id="fm-new-icon" type="text" class="settings-input fm-icon-input"
+                   placeholder="📡" maxlength="4">
+          </div>
+          <div id="fm-add-errors" class="fm-error-panel" style="display:none"></div>
+          <button class="btn btn-primary" onclick="SettingsModal.addFeed()">➕ Ajouter ce flux</button>
+        </div>
+
+        <!-- Actions globales -->
+        <div class="fm-footer-actions">
+          <button class="btn" title="Supprimer tous les flux personnalisés"
+                  onclick="SettingsModal.resetCustomFeeds()">🗑 Réinitialiser flux custom</button>
+          <button class="btn" title="Réactiver tous les flux par défaut désactivés"
+                  onclick="SettingsModal.restoreDefaultFeeds()">↺ Restaurer défauts</button>
+          <button class="btn btn-primary" onclick="SettingsModal.applyAndRefresh()"
+                  title="Fermer et relancer immédiatement la collecte RSS">↺ Appliquer et actualiser</button>
+          <button class="btn" onclick="SettingsModal.close()">Fermer</button>
+        </div>
+
+      </div><!-- /settings-tab-feeds -->
+
+    </div><!-- /modal-box -->
+  </div><!-- /modal-settings -->
+
+  <!-- ── Conteneur rapport PDF (caché à l'écran, visible à l'impression) ──── -->
+  <div id="pdf-report"></div>
+
+  <!-- ── Scripts (ordre d'injection important) ─────────────────────────────── -->
+  <script src="js/pwa.js?v=13"></script>
+  <script src="js/article-modal.js?v=13"></script>
+  <script src="js/config.js?v=13"></script>
+  <script src="js/feed-manager.js?v=13"></script>
+  <script src="js/stats.js?v=13"></script>
+  <script src="js/demo-data.js?v=13"></script>
+  <script src="js/scorer.js?v=13"></script>
+  <script src="js/storage.js?v=13"></script>
+  <script src="js/feeds.js?v=13"></script>
+  <script src="js/enricher.js?v=13"></script>
+  <script src="js/deduplicator.js?v=13"></script>
+  <script src="js/contextualizer.js?v=13"></script>
+  <script src="js/ioc-extractor.js?v=13"></script>
+  <script src="js/risk-filter.js?v=13"></script>
+  <script src="js/pipeline.js?v=13"></script>
+  <script src="js/nvd.js?v=13"></script>
+  <script src="js/email-alerts.js?v=13"></script>
+  <script src="js/settings-modal.js?v=13"></script>
+  <script src="js/watchlist-modal.js?v=13"></script>
+  <script src="js/ui.js?v=13"></script>
+  <script src="js/pdf-report.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+# ============================================================
+# CyberVeille Pro — .htaccess (Hostinger)
+# ============================================================
+
+# Empêche le cache du Service Worker (doit toujours être frais)
+<Files "service-worker.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</Files>
+
+# Pas de cache pour HTML
+<FilesMatch "\.html$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+
+# Pas de cache pour JS et CSS (permet les déploiements sans vider le cache)
+<FilesMatch "\.(js|css)$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+
+# Compression gzip
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# CORS pour les API locales
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Origin "*"
+</IfModule>

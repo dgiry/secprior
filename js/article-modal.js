@@ -1,0 +1,539 @@
+// article-modal.js — Modal de détail article CyberVeille Pro
+//
+// Clic sur une carte → overlay pleine page avec :
+//   • Score composite + CVSS (NVD) + jauge EPSS + KEV
+//   • CVEs avec liens NVD
+//   • Tactiques MITRE ATT&CK détectées
+//   • Watchlist matches
+//   • Description complète
+//   • Articles similaires (algo CVE + mots-clés)
+//   • Bouton "Copier IOCs" (CVEs, URL, ATT&CK, IPs, domaines)
+//   • Bouton favoris + lien "Ouvrir l'article"
+
+const ArticleModal = (() => {
+
+  let _articles = [];   // Référence aux articles (pour la recherche de similaires)
+  let _nvdMap   = {};   // Données NVD enrichies { articleId: cveData }
+
+  // ─── API publique ──────────────────────────────────────────────────────────
+
+  function setArticles(articles, nvdMap = {}) {
+    _articles = articles;
+    _nvdMap   = nvdMap;
+  }
+
+  function openById(id) {
+    const article = _articles.find(a => a.id === id);
+    if (article) open(article);
+  }
+
+  function open(article) {
+    const modal   = document.getElementById('modal-article');
+    const content = document.getElementById('art-modal-content');
+    if (!modal || !content) return;
+
+    content.innerHTML = _buildContent(article);
+
+    // Bind des boutons footer (injectés dynamiquement)
+    document.getElementById('art-modal-copy-ioc')
+      ?.addEventListener('click', () => _copyIOCs(article));
+
+    document.getElementById('art-modal-fav')
+      ?.addEventListener('click', () => {
+        const isNow = UI.toggleFav(article.id);
+        const btn   = document.getElementById('art-modal-fav');
+        if (!btn) return;
+        btn.classList.toggle('active', isNow);
+        btn.innerHTML = isNow ? '★ Favori' : '☆ Favoris';
+        btn.title     = isNow ? 'Retirer des favoris' : 'Ajouter aux favoris';
+      });
+
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    content.scrollTop = 0;
+  }
+
+  function close() {
+    const modal = document.getElementById('modal-article');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
+  // ─── Construction du contenu ───────────────────────────────────────────────
+
+  function _buildContent(article) {
+    const m       = _critMeta(article.criticality);
+    const nvd     = _nvdMap[article.id] || null;
+    const similar = _findSimilar(article);
+    const isFav   = Storage.isFavorite(article.id);
+    const dateStr = article.pubDate.toLocaleDateString('fr-FR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    return `
+      <!-- ── EN-TÊTE ─────────────────────────────────────────────────── -->
+      <div class="art-modal-head">
+        <div class="art-modal-badges">
+          <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
+          <span class="badge badge-source">${article.sourceIcon || ''} ${_esc(article.sourceName)}</span>
+          ${article.isKEV      ? `<span class="badge badge-kev">⚠ KEV</span>` : ''}
+          ${article.isTrending ? `<span class="badge badge-trending">🔥 Trending×${article.trendingCount}</span>` : ''}
+          ${article.watchlistMatches?.length ? `<span class="badge badge-watchlist">👁 Watchlist</span>` : ''}
+        </div>
+        <h2 class="art-modal-title">${_esc(article.title)}</h2>
+        <div class="art-modal-sub">
+          <span>📅 ${dateStr}</span>
+          ${article.score != null ? `<span>⚡ Score : <strong>${article.score}/100</strong></span>` : ''}
+        </div>
+      </div>
+
+      <!-- ── CORPS ──────────────────────────────────────────────────── -->
+      <div class="art-modal-body">
+
+        <!-- Colonne gauche : métriques, CVEs, ATT&CK -->
+        <div class="art-modal-left">
+
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">📊 Métriques sécurité</h4>
+            ${_renderMetrics(article, nvd)}
+          </div>
+
+          ${(article.cves || []).length ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">🔍 CVE détectés (${article.cves.length})</h4>
+            ${_renderCVEs(article.cves, nvd)}
+          </div>` : ''}
+
+          ${(article.attackTags || []).length ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">🎯 MITRE ATT&CK</h4>
+            ${_renderAttack(article.attackTags)}
+          </div>` : ''}
+
+          ${article.watchlistMatches?.length ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">👁 Watchlist — termes correspondants</h4>
+            <div class="art-watchlist-matches">
+              ${article.watchlistMatches.map(w =>
+                `<span class="badge badge-watchlist">${_esc(w)}</span>`
+              ).join(' ')}
+            </div>
+          </div>` : ''}
+
+          ${(article.iocCount > 0) ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">🔬 IOCs Extraits (${article.iocCount})</h4>
+            ${_renderIOCPanel(article.iocs)}
+          </div>` : ''}
+
+        </div>
+
+        <!-- Colonne droite : description, similaires -->
+        <div class="art-modal-right">
+
+          ${article.description ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">📝 Description</h4>
+            <p class="art-modal-desc">${_esc(article.description)}</p>
+          </div>` : ''}
+
+          ${similar.length ? `
+          <div class="art-modal-section">
+            <h4 class="art-modal-section-title">🔗 Articles similaires</h4>
+            <div class="art-similar-list">
+              ${similar.map(a => {
+                const sm = _critMeta(a.criticality);
+                return `
+                  <div class="art-similar-item" data-id="${a.id}" role="button" tabindex="0"
+                       title="Ouvrir cet article">
+                    <div class="art-similar-meta">
+                      <span class="badge ${sm.cssClass} art-badge-xs">${sm.icon}</span>
+                      <span class="art-similar-source">${_esc(a.sourceName)}</span>
+                      <span class="art-similar-date">${a.pubDate.toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div class="art-similar-title">${_esc(a.title)}</div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>` : ''}
+
+        </div>
+      </div>
+
+      <!-- ── PIED DE PAGE ────────────────────────────────────────────── -->
+      <div class="art-modal-footer">
+        <button id="art-modal-copy-ioc" class="btn art-modal-ioc-btn"
+                title="Copier CVEs, URL, ATT&CK, IPs/domaines détectés">
+          📋 Copier IOCs
+        </button>
+        <button id="art-modal-fav" class="btn ${isFav ? 'active' : ''}"
+                title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
+          ${isFav ? '★ Favori' : '☆ Favoris'}
+        </button>
+        <a href="${article.link}" target="_blank" rel="noopener noreferrer"
+           class="btn btn-primary art-modal-open-btn">
+          ↗ Ouvrir l'article original
+        </a>
+      </div>`;
+  }
+
+  // ─── Bloc métriques ────────────────────────────────────────────────────────
+
+  function _renderMetrics(article, nvd) {
+    const rows = [];
+
+    // Score composite
+    if (article.score != null) {
+      const colorCls = article.score >= 70 ? 'err' : article.score >= 40 ? 'warn' : 'ok';
+      rows.push(`
+        <div class="art-metric-row">
+          <span class="art-metric-label">Score composite</span>
+          <div class="art-metric-bar-wrap" title="${article.score}/100">
+            <div class="art-metric-bar art-bar-${colorCls}" style="width:${article.score}%"></div>
+          </div>
+          <span class="art-metric-val">${article.score}/100</span>
+        </div>`);
+    }
+
+    // CVSS (NVD)
+    if (nvd?.score != null) {
+      const cls = _cvssClass(nvd.score);
+      rows.push(`
+        <div class="art-metric-row">
+          <span class="art-metric-label">CVSS v3.1</span>
+          <span class="badge ${cls}" title="${nvd.vector || 'Vecteur CVSS'}">
+            ${nvd.score.toFixed(1)} ${nvd.severity || ''}
+          </span>
+          ${nvd.cwe ? `<span class="badge badge-cwe" title="CWE">${nvd.cwe}</span>` : ''}
+          ${nvd.vector
+            ? `<span class="art-metric-vector" title="${nvd.vector}">${nvd.vector.slice(0,30)}…</span>`
+            : ''}
+        </div>`);
+    } else {
+      rows.push(`
+        <div class="art-metric-row">
+          <span class="art-metric-label">CVSS v3.1</span>
+          <span class="art-metric-na">— En attente enrichissement NVD</span>
+        </div>`);
+    }
+
+    // EPSS avec jauge
+    if (article.epssScore != null) {
+      const pct   = (article.epssScore * 100).toFixed(1);
+      const perc  = article.epssPercentile != null
+        ? `(${(article.epssPercentile * 100).toFixed(0)}e centile)`
+        : '';
+      // Normalisation visuelle : 50% EPSS = 100% barre
+      const barW  = Math.min(article.epssScore * 200, 100);
+      const barCls = article.epssScore >= 0.5 ? 'err' : article.epssScore >= 0.1 ? 'warn' : 'ok';
+      rows.push(`
+        <div class="art-metric-row">
+          <span class="art-metric-label">EPSS</span>
+          <div class="art-metric-bar-wrap" title="EPSS : ${pct}% ${perc}">
+            <div class="art-metric-bar art-bar-${barCls}" style="width:${barW}%"></div>
+          </div>
+          <span class="art-metric-val">${pct}% <small>${perc}</small></span>
+        </div>
+        <p class="art-metric-hint">Probabilité d'exploitation dans les 30 prochains jours (FIRST.org)</p>`);
+    }
+
+    // KEV
+    rows.push(`
+      <div class="art-metric-row">
+        <span class="art-metric-label">CISA KEV</span>
+        ${article.isKEV
+          ? `<span class="badge badge-kev">✅ Exploitation active confirmée</span>`
+          : `<span class="art-metric-na">— Non répertorié</span>`}
+      </div>`);
+
+    return `<div class="art-metrics">${rows.join('')}</div>`;
+  }
+
+  // ─── Bloc CVEs ─────────────────────────────────────────────────────────────
+
+  function _renderCVEs(cves, nvd) {
+    return `<div class="art-cve-list">
+      ${cves.map(cve => {
+        const isEnriched = nvd?.cveId === cve;
+        return `
+          <div class="art-cve-row">
+            <a href="https://nvd.nist.gov/vuln/detail/${cve}"
+               target="_blank" rel="noopener" class="art-cve-id">
+              ${cve} ↗
+            </a>
+            ${isEnriched && nvd.score != null
+              ? `<span class="badge ${_cvssClass(nvd.score)}" title="${nvd.vector || ''}">
+                   CVSS ${nvd.score.toFixed(1)}
+                 </span>
+                 ${nvd.cwe ? `<span class="badge badge-cwe">${nvd.cwe}</span>` : ''}`
+              : ''}
+          </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ─── Bloc ATT&CK ──────────────────────────────────────────────────────────
+
+  function _renderAttack(tags) {
+    // Grouper par tactique
+    const byTactic = {};
+    tags.forEach(t => {
+      if (!byTactic[t.tactic]) byTactic[t.tactic] = [];
+      byTactic[t.tactic].push(t);
+    });
+
+    return `<div class="art-attack-list">
+      ${Object.entries(byTactic).map(([tactic, techniques]) => `
+        <div class="art-attack-group">
+          <div class="art-attack-tactic-label">${tactic}</div>
+          <div class="art-attack-techniques">
+            ${techniques.map(t =>
+              `<span class="badge badge-attack" title="Tactique : ${t.tactic}">${t.label}</span>`
+            ).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // ─── Panneau IOCs complet (modal) ─────────────────────────────────────────
+
+  function _renderIOCPanel(iocs) {
+    if (!iocs) return '<p class="art-metric-na">Aucun IOC détecté.</p>';
+
+    const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
+    const sections = [];
+
+    const _iocRow = (type, icon, cssType, value, displayVal) => {
+      const copyEsc = (value || '').replace(/'/g, "\\'");
+      const shortDisplay = displayVal || value;
+      return `
+        <div class="art-ioc-row">
+          <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
+          <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
+          <button class="art-ioc-copy-btn"
+                  onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
+                  title="Copier">📋</button>
+        </div>`;
+    };
+
+    if (hashes.length) {
+      sections.push(`<div class="art-ioc-group">
+        <div class="art-ioc-group-label">🔑 Hashes (${hashes.length})</div>
+        ${hashes.map(h => _iocRow(h.type, '🔑', 'hash',
+          h.value,
+          h.value.slice(0, 16) + '…' + h.value.slice(-8)
+        )).join('')}
+      </div>`);
+    }
+
+    if (ips.length) {
+      sections.push(`<div class="art-ioc-group">
+        <div class="art-ioc-group-label">🌐 Adresses IP (${ips.length})</div>
+        ${ips.map(ip => _iocRow('IP', '🌐', 'ip', ip, ip)).join('')}
+      </div>`);
+    }
+
+    if (domains.length) {
+      sections.push(`<div class="art-ioc-group">
+        <div class="art-ioc-group-label">🔗 Domaines (${domains.length})</div>
+        ${domains.map(d => _iocRow('Domain', '🔗', 'domain', d, d)).join('')}
+      </div>`);
+    }
+
+    if (urls.length) {
+      sections.push(`<div class="art-ioc-group">
+        <div class="art-ioc-group-label">🕸 URLs (${urls.length})</div>
+        ${urls.map(u => _iocRow('URL', '🕸', 'url', u,
+          u.length > 48 ? u.slice(0, 45) + '…' : u
+        )).join('')}
+      </div>`);
+    }
+
+    return sections.length
+      ? `<div class="art-ioc-panel">${sections.join('')}</div>`
+      : '<p class="art-metric-na">Aucun IOC détecté dans ce texte.</p>';
+  }
+
+  // ─── Algorithme articles similaires ───────────────────────────────────────
+
+  function _findSimilar(article) {
+    if (!_articles.length) return [];
+
+    const STOPWORDS = new Set([
+      'the','a','an','in','of','on','for','with','and','or','is','to','by','are','has','new',
+      'le','la','les','de','du','des','en','et','ou','un','une','sur','par','dans','une',
+      'via','using','how','its','that','this','from','was','use','used','exploit','zero'
+    ]);
+
+    const cveSet   = new Set(article.cves || []);
+    const titleW   = new Set(
+      article.title.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !STOPWORDS.has(w))
+    );
+
+    const score = (a) => {
+      // CVEs partagés (poids 4 chacun)
+      const cveScore = (a.cves || []).filter(c => cveSet.has(c)).length * 4;
+      // Mots-clés titre partagés (poids 1 chacun)
+      const words    = a.title.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !STOPWORDS.has(w));
+      const wScore   = words.filter(w => titleW.has(w)).length;
+      // ATT&CK partagés (poids 2 chacun)
+      const atkSet   = new Set((article.attackTags || []).map(t => t.label));
+      const atkScore = (a.attackTags || []).filter(t => atkSet.has(t.label)).length * 2;
+      return cveScore + wScore + atkScore;
+    };
+
+    return _articles
+      .filter(a => a.id !== article.id)
+      .map(a => ({ a, s: score(a) }))
+      .filter(({ s }) => s >= 2)
+      .sort((x, y) => y.s - x.s)
+      .slice(0, 4)
+      .map(({ a }) => a);
+  }
+
+  // ─── Copier IOCs ──────────────────────────────────────────────────────────
+
+  async function _copyIOCs(article) {
+    const lines = [
+      `# CyberVeille Pro — IOCs`,
+      `# Titre   : ${article.title}`,
+      `# Source  : ${article.sourceName}`,
+      `# Date    : ${article.pubDate.toLocaleDateString('fr-FR')}`,
+      `# URL     : ${article.link}`,
+      ''
+    ];
+
+    // CVEs (enrichisseur RSS)
+    if (article.cves?.length) {
+      lines.push('## CVE IDs', ...article.cves, '');
+    }
+
+    // ATT&CK
+    if (article.attackTags?.length) {
+      lines.push('## MITRE ATT&CK');
+      article.attackTags.forEach(t => lines.push(`${t.label}  [${t.tactic}]`));
+      lines.push('');
+    }
+
+    // IOCs extraits par le pipeline (ioc-extractor.js)
+    const iocs = article.iocs || {};
+    if (iocs.hashes?.length) {
+      lines.push('## Hashes');
+      iocs.hashes.forEach(h => lines.push(`${h.type}:${h.value}`));
+      lines.push('');
+    }
+    if (iocs.ips?.length) {
+      lines.push('## IP Addresses', ...iocs.ips, '');
+    }
+    if (iocs.domains?.length) {
+      lines.push('## Domains', ...iocs.domains, '');
+    }
+    if (iocs.urls?.length) {
+      lines.push('## URLs', ...iocs.urls, '');
+    }
+
+    const payload = lines.join('\n');
+    const total   = (article.cves?.length || 0) + (article.attackTags?.length || 0)
+                  + (article.iocCount || 0);
+
+    try {
+      await navigator.clipboard.writeText(payload);
+    } catch {
+      const ta = Object.assign(document.createElement('textarea'), {
+        value: payload, style: 'position:fixed;top:-9999px;opacity:0'
+      });
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+
+    if (window.UI) UI.showToast(`📋 ${total} IOC${total > 1 ? 's' : ''} copiés (CVE, hashes, IPs, domaines)`, 'success');
+  }
+
+  // ─── Initialisation ────────────────────────────────────────────────────────
+
+  function init() {
+    _injectModalDOM();
+    _bindGlobalEvents();
+    _bindCardClickDelegation();
+  }
+
+  function _injectModalDOM() {
+    if (document.getElementById('modal-article')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div id="modal-article" class="art-modal-overlay" style="display:none"
+           onclick="if(event.target===this)ArticleModal.close()">
+        <div class="art-modal-box">
+          <button class="modal-close art-modal-close-btn"
+                  onclick="ArticleModal.close()" title="Fermer (Échap)">✕</button>
+          <div id="art-modal-content" class="art-modal-scroll"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap.firstElementChild);
+  }
+
+  function _bindGlobalEvents() {
+    // Fermer avec Échap
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') close();
+    });
+
+    // Navigation article similaire (délégation globale)
+    document.addEventListener('click', e => {
+      const similar = e.target.closest('.art-similar-item');
+      if (!similar) return;
+      const id = similar.dataset.id;
+      if (id) openById(id);
+    });
+
+    // Keyboard nav sur les similaires (accessibilité)
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const similar = e.target.closest('.art-similar-item');
+      if (!similar) return;
+      const id = similar.dataset.id;
+      if (id) openById(id);
+    });
+  }
+
+  function _bindCardClickDelegation() {
+    // Délégation sur la grille — ouvrir le modal au clic (hors liens et étoile)
+    const grid = document.getElementById('feed-grid');
+    if (!grid) return;
+
+    grid.addEventListener('click', e => {
+      if (e.target.closest('.btn-star')) return;  // bouton favori
+      if (e.target.closest('a'))         return;  // liens (titre)
+      if (e.target.closest('[onclick]'))  return;  // onclick explicites
+
+      const card = e.target.closest('.card[data-id]');
+      if (!card) return;
+      openById(card.dataset.id);
+    });
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  function _critMeta(c) {
+    if (c === 'high')   return { cssClass: 'badge-high',   icon: '🔴', label: 'HAUTE'   };
+    if (c === 'medium') return { cssClass: 'badge-medium', icon: '🟠', label: 'MOYENNE' };
+    return                     { cssClass: 'badge-low',    icon: '🟢', label: 'BASSE'   };
+  }
+
+  function _cvssClass(s) {
+    if (s >= 9) return 'badge-cvss-critical';
+    if (s >= 7) return 'badge-cvss-high';
+    if (s >= 4) return 'badge-cvss-medium';
+    return 'badge-cvss-low';
+  }
+
+  function _esc(str) {
+    return (str || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  return { init, open, openById, close, setArticles };
+})();

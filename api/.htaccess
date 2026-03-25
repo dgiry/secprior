@@ -1,0 +1,21 @@
+# ── Réécriture d'URL : /api/fetch-feeds → /api/fetch-feeds.php ──────────────
+# Permet au frontend d'appeler /api/xxx sans extension .php
+Options -Indexes
+RewriteEngine On
+RewriteBase /api/
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+# ── Sécurité : bloquer l'accès direct à secret.php ──────────────────────────
+<Files "secret.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# ── Headers de sécurité sur les réponses API ─────────────────────────────────
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

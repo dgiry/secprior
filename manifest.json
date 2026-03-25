@@ -1,0 +1,51 @@
+{
+  "name": "CyberVeille Pro",
+  "short_name": "CVPro",
+  "description": "Dashboard de veille cybersécurité en temps réel — alertes HIGH, CVE, MITRE ATT&CK",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "lang": "fr",
+  "orientation": "any",
+  "categories": ["security", "news", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Alertes HIGH",
+      "short_name": "HIGH",
+      "url": "/?criticality=high",
+      "description": "Voir uniquement les alertes haute criticité",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Rapport PDF",
+      "short_name": "Rapport",
+      "url": "/?action=pdf",
+      "description": "Générer le rapport hebdomadaire PDF",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Favoris",
+      "short_name": "Favoris",
+      "url": "/?view=favs",
+      "description": "Voir mes articles favoris",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": []
+}
