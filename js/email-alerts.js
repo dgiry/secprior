@@ -146,7 +146,7 @@ const AlertManager = (() => {
   function formatAlertBody(articles) {
     return articles.map(a => {
       const crit = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
-      const date = a.pubDate.toLocaleString("fr-FR");
+      const date = a.pubDate instanceof Date ? a.pubDate.toLocaleString("fr-FR") : String(a.pubDate || "");
       return `${crit} | ${a.sourceName} | ${date}\n${a.title}\n${a.link}`;
     }).join("\n\n---\n\n");
   }
@@ -198,11 +198,11 @@ const AlertManager = (() => {
   function _selectTopArticles(queue, max = 5) {
     const scored = queue.map(a => {
       let p = 0;
-      if (a.isKEV)                                           p += 1000;
-      if (a.epssScore !== null && a.epssScore >= 0.70)       p += 500 + Math.round(a.epssScore * 100);
-      else if (a.epssScore !== null && a.epssScore >= 0.40)  p += 200 + Math.round(a.epssScore * 100);
-      if (a.score !== undefined)                             p += a.score * 5;
-      if (a.isTrending)                                      p += 50;
+      if (a.isKEV)                                         p += 1000;
+      if (a.epssScore != null && a.epssScore >= 0.70)      p += 500 + Math.round(a.epssScore * 100);
+      else if (a.epssScore != null && a.epssScore >= 0.40) p += 200 + Math.round(a.epssScore * 100);
+      if (a.score != null)                                 p += a.score * 5;
+      if (a.isTrending)                                    p += 50;
       return { ...a, _p: p };
     });
     scored.sort((a, b) => b._p - a._p);
@@ -214,22 +214,23 @@ const AlertManager = (() => {
    * Génère une phrase expliquant pourquoi l'article est important.
    */
   function _whyImportant(a) {
+    // Prédicats conçus pour s'accorder avec "Cette vulnérabilité est …"
     const r = [];
     if (a.isKEV)
       r.push("activement exploitée dans la nature (CISA KEV)");
-    if (a.epssScore !== null && a.epssScore >= 0.70)
-      r.push(`probabilité d'exploitation très élevée (EPSS ${Math.round(a.epssScore * 100)} %)`);
-    else if (a.epssScore !== null && a.epssScore >= 0.40)
-      r.push(`risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
-    if (a.score >= 90)      r.push("score de criticité maximal");
-    else if (a.score >= 80) r.push("score de criticité très élevé");
-    if (a.isTrending)       r.push("en tendance sur les plateformes de threat intel");
-    if (a.cveIds?.length)   r.push(`CVE : ${a.cveIds.slice(0, 2).join(", ")}`);
+    if (a.epssScore != null && a.epssScore >= 0.70)
+      r.push(`à très haute probabilité d'exploitation (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    else if (a.epssScore != null && a.epssScore >= 0.40)
+      r.push(`à risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    if (a.score != null && a.score >= 90)      r.push("de criticité maximale");
+    else if (a.score != null && a.score >= 80) r.push("de très haute criticité");
+    if (a.isTrending)     r.push("en forte circulation sur les plateformes de threat intel");
+    if (a.cveIds?.length) r.push(`référencée sous ${a.cveIds.slice(0, 2).join(", ")}`);
     if (r.length === 0)
       return a.criticality === "high"
-        ? "Classé haute criticité par l'analyse automatique."
-        : "Identifié comme menace potentielle.";
-    return "Cette menace est " + r.join(", ") + ".";
+        ? "Classée haute criticité par l'analyse automatique."
+        : "Identifiée comme menace potentielle.";
+    return "Cette vulnérabilité est " + r.join(", ") + ".";
   }
 
   /** Retourne les produits/secteurs touchés depuis les tags ou la source. */
@@ -242,12 +243,19 @@ const AlertManager = (() => {
    */
   function _watchpoints(a) {
     const pts = [];
-    if (a.isKEV)             pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
-    if (a.epssScore >= 0.70) pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
-    if (a.criticality === "high") pts.push("Vérifier l'exposition de vos actifs concernés");
-    if (a.isTrending)        pts.push("Consulter les IoCs publiés par la communauté threat intel");
-    if (a.cveIds?.length)    pts.push(`Vérifier le statut de patch pour ${a.cveIds[0]}`);
-    if (pts.length === 0)    pts.push("Surveiller l'évolution et appliquer les recommandations du fournisseur");
+    if (a.isKEV)
+      pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
+    if (a.epssScore != null && a.epssScore >= 0.70)
+      pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
+    // "Vérifier l'exposition" seulement si aucun point plus spécifique n'a été ajouté
+    if (pts.length === 0 && a.criticality === "high")
+      pts.push("Vérifier l'exposition de vos actifs concernés");
+    if (a.isTrending)
+      pts.push("Consulter les IoCs publiés par la communauté threat intel");
+    if (a.cveIds?.length)
+      pts.push(`Vérifier le statut de patch pour ${a.cveIds[0]}`);
+    if (pts.length === 0)
+      pts.push("Surveiller l'évolution et appliquer les recommandations du fournisseur");
     return pts;
   }
 
@@ -276,21 +284,21 @@ const AlertManager = (() => {
       const color = a.criticality === "high" ? "#f85149" : "#f0883e";
       const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
       const meta  = [
-        a.isKEV              ? "🚨 KEV ACTIF"                                          : "",
-        a.epssScore !== null ? `EPSS ${Math.round(a.epssScore * 100)} %`               : "",
-        a.score !== undefined ? `Score ${a.score}`                                      : ""
+        a.isKEV             ? "🚨 KEV ACTIF"                                     : "",
+        a.epssScore != null ? `EPSS ${Math.round(a.epssScore * 100)} %`          : "",
+        a.score     != null ? `Score ${a.score}`                                  : ""
       ].filter(Boolean).join(" · ");
       const pts  = _watchpoints(a).map(p =>
         `<li style="margin:4px 0;color:#e6edf3">${p}</li>`).join("");
 
       return `
         <div style="border:1px solid ${color};border-radius:8px;padding:16px;margin-bottom:16px;background:#161b22">
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="margin-bottom:8px;overflow:hidden">
+            <span style="color:#8b949e;font-size:12px;float:right">${a.sourceName}</span>
             <span style="color:${color};font-weight:700;font-size:13px">${badge}</span>
-            ${meta ? `<span style="color:#8b949e;font-size:12px">${meta}</span>` : ""}
-            <span style="color:#8b949e;font-size:12px;margin-left:auto">${a.sourceName}</span>
+            ${meta ? `<span style="color:#8b949e;font-size:12px"> · ${meta}</span>` : ""}
           </div>
-          <h3 style="margin:0 0 8px;font-size:15px;line-height:1.4">
+          <h3 style="margin:0 0 8px;font-size:15px;line-height:1.4;word-break:break-word">
             <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
           </h3>
           <p style="margin:0 0 8px;font-size:12px;color:#8b949e">🏷️ ${_affectedProducts(a)}</p>
@@ -317,8 +325,8 @@ const AlertManager = (() => {
             const b = a.criticality === "high" ? "🔴" : "🟠";
             return `<tr>
               <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${b} ${a.criticality.toUpperCase()}</td>
-              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e;white-space:nowrap">${a.sourceName}</td>
-              <td style="padding:5px 8px;border-bottom:1px solid #21262d">
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e">${a.sourceName}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;word-break:break-word">
                 <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
               </td>
             </tr>`;
@@ -464,7 +472,7 @@ const AlertManager = (() => {
         source:      a.sourceName,
         criticality: a.criticality,
         link:        a.link,
-        pubDate:     a.pubDate.toISOString(),
+        pubDate:     a.pubDate instanceof Date ? a.pubDate.toISOString() : String(a.pubDate || ""),
         description: a.description
       })),
       // Compatibilité Slack
