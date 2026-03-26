@@ -400,6 +400,124 @@ const AlertManager = (() => {
   }
 
   /**
+   * Calcule les statistiques enrichies du digest :
+   * total, HIGH, KEV, watchlist, top CVEs, top vendors, watchlist terms.
+   */
+  function _buildDigestStats(articles) {
+    const total          = articles.length;
+    const highCount      = articles.filter(a => a.criticality === "high").length;
+    const kevCount       = articles.filter(a => a.isKEV).length;
+    const watchlistCount = articles.filter(a => a.watchlistMatches?.length > 0).length;
+
+    // Top CVEs (par fréquence)
+    const cveFreq = {};
+    articles.forEach(a => (a.cveIds || []).forEach(cve => { cveFreq[cve] = (cveFreq[cve] || 0) + 1; }));
+    const topCVEs = Object.entries(cveFreq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c]) => c);
+
+    // Top vendors (détection légère sur titre + description + tags)
+    const VD = [
+      ["Microsoft",  ["microsoft","windows","azure","exchange","sharepoint","outlook","active directory","defender","hyper-v"]],
+      ["Google",     ["google","chrome","android","chromium","workspace"]],
+      ["Apple",      ["apple","ios","macos","safari","iphone","ipad"]],
+      ["Cisco",      ["cisco","ios xe","nx-os","webex"]],
+      ["Apache",     ["apache","log4j","tomcat","struts"]],
+      ["VMware",     ["vmware","esxi","vcenter"]],
+      ["Fortinet",   ["fortinet","fortigate","fortios","forticlient"]],
+      ["Palo Alto",  ["palo alto","pan-os","prisma"]],
+      ["Atlassian",  ["atlassian","confluence","jira","bitbucket"]],
+      ["Linux",      ["linux","ubuntu","debian","red hat","rhel","kernel"]],
+      ["Oracle",     ["oracle","weblogic","java"]],
+      ["Ivanti",     ["ivanti","mobileiron"]],
+      ["Citrix",     ["citrix","netscaler"]],
+      ["F5",         ["f5","big-ip","nginx"]],
+      ["Juniper",    ["juniper","junos"]],
+      ["OpenSSL",    ["openssl","openssh"]],
+      ["Veeam",      ["veeam"]],
+      ["SolarWinds", ["solarwinds"]],
+      ["GitLab",     ["gitlab"]],
+      ["WordPress",  ["wordpress"]],
+      ["SAP",        ["sap"]],
+    ];
+    const vCount = {};
+    articles.forEach(a => {
+      const hay = [a.title || "", a.description || "", ...(a.tags || [])].join(" ").toLowerCase();
+      VD.forEach(([name, terms]) => {
+        if (terms.some(t => hay.includes(t))) vCount[name] = (vCount[name] || 0) + 1;
+      });
+    });
+    const topVendors = Object.entries(vCount).sort((a, b) => b[1] - a[1])
+      .slice(0, 5).map(([name, count]) => ({ name, count }));
+
+    // Watchlist terms (par fréquence)
+    const wFreq = {};
+    articles.forEach(a => (a.watchlistMatches || []).forEach(t => { wFreq[t] = (wFreq[t] || 0) + 1; }));
+    const watchlistTerms = Object.entries(wFreq).sort((a, b) => b[1] - a[1])
+      .slice(0, 5).map(([term, count]) => ({ term, count }));
+
+    return { total, highCount, kevCount, watchlistCount, topCVEs, topVendors, watchlistTerms };
+  }
+
+  /** Bloc HTML des statistiques enrichies (KPI chips + CVE + vendors + watchlist). */
+  function _statsBlockHTML(stats) {
+    const chips = [
+      { label: "Articles",   value: stats.total,        color: "#e6edf3", bg: "#21262d" },
+      { label: "🔴 HIGH",    value: stats.highCount,     color: "#f85149", bg: stats.highCount  > 0 ? "#2d1515" : "#161b22" },
+      { label: "🚨 KEV",     value: stats.kevCount,      color: stats.kevCount    > 0 ? "#f85149" : "#8b949e", bg: stats.kevCount > 0 ? "#2d1515" : "#161b22" },
+    ];
+    if (stats.watchlistCount > 0)
+      chips.push({ label: "👁 Watchlist", value: stats.watchlistCount, color: "#3fb950", bg: "#0d2818" });
+
+    const w = `${Math.floor(100 / chips.length)}%`;
+    const chipsHTML = `
+      <table width="100%" cellpadding="0" cellspacing="6" style="border-collapse:separate;margin-bottom:4px">
+        <tr>
+          ${chips.map(c => `
+            <td width="${w}" align="center" style="background:${c.bg};border-radius:6px;padding:10px 6px">
+              <div style="font-size:22px;font-weight:700;color:${c.color};line-height:1.2">${c.value}</div>
+              <div style="font-size:11px;color:#8b949e;margin-top:3px">${c.label}</div>
+            </td>`).join("")}
+        </tr>
+      </table>`;
+
+    const lines = [];
+    if (stats.topCVEs.length > 0) {
+      const badges = stats.topCVEs.map(c =>
+        `<span style="display:inline-block;background:#1a1a2e;color:#c4b5fd;font-family:monospace;font-size:11px;padding:2px 6px;border-radius:3px;margin:2px 3px 2px 0">${c}</span>`
+      ).join("");
+      lines.push(`<p style="margin:8px 0 0;font-size:11px;color:#8b949e">
+        <strong style="text-transform:uppercase;letter-spacing:.5px">🔍 Top CVE</strong>&nbsp; ${badges}</p>`);
+    }
+    if (stats.topVendors.length > 0) {
+      const vList = stats.topVendors.map(v =>
+        `<strong style="color:#e6edf3">${v.name}</strong>&nbsp;<span style="color:#8b949e">(${v.count})</span>`
+      ).join(" · ");
+      lines.push(`<p style="margin:8px 0 0;font-size:11px;color:#8b949e">
+        <strong style="text-transform:uppercase;letter-spacing:.5px">🏢 Vendors</strong>&nbsp; ${vList}</p>`);
+    }
+    if (stats.watchlistTerms.length > 0) {
+      const wBadges = stats.watchlistTerms.map(w =>
+        `<span style="display:inline-block;background:#0d2818;color:#3fb950;font-size:11px;padding:2px 6px;border-radius:3px;margin:2px 3px 2px 0">${w.term}&nbsp;(${w.count})</span>`
+      ).join("");
+      lines.push(`<p style="margin:8px 0 0;font-size:11px;color:#8b949e">
+        <strong style="text-transform:uppercase;letter-spacing:.5px">👁 Watchlist</strong>&nbsp; ${wBadges}</p>`);
+    }
+
+    return `<div style="margin-bottom:20px">${chipsHTML}${lines.join("")}</div>`;
+  }
+
+  /** Version texte brut des statistiques enrichies. */
+  function _statsBlockText(stats) {
+    let t = "STATISTIQUES DU DIGEST\n" + "-".repeat(30) + "\n";
+    t += `Total : ${stats.total} · HIGH : ${stats.highCount} · KEV : ${stats.kevCount}`;
+    if (stats.watchlistCount > 0) t += ` · Watchlist : ${stats.watchlistCount} hits`;
+    t += "\n";
+    if (stats.topCVEs.length > 0)     t += `Top CVE    : ${stats.topCVEs.join(", ")}\n`;
+    if (stats.topVendors.length > 0)   t += `Vendors    : ${stats.topVendors.map(v => `${v.name} (${v.count})`).join(", ")}\n`;
+    if (stats.watchlistTerms.length > 0) t += `Watchlist  : ${stats.watchlistTerms.map(w => `${w.term} (${w.count})`).join(", ")}\n`;
+    return t + "\n";
+  }
+
+  /**
    * Génère une phrase expliquant pourquoi l'article est important.
    */
   function _whyImportant(a) {
@@ -455,7 +573,7 @@ const AlertManager = (() => {
    * `top` = 3–5 articles prioritaires détaillés.
    * `rest` = autres alertes en format compact.
    */
-  function _formatBriefingHTML(top, rest, label) {
+  function _formatBriefingHTML(top, rest, label, stats = null) {
     const now = new Date().toLocaleDateString("fr-FR",
       { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const total    = top.length + rest.length;
@@ -537,6 +655,8 @@ const AlertManager = (() => {
                     text-transform:uppercase;letter-spacing:.5px">RÉSUMÉ EXÉCUTIF</p>
           <p style="margin:0;font-size:14px;color:#cdd9e5">${exec}</p>
         </div>
+        <!-- Statistiques enrichies -->
+        ${stats ? _statsBlockHTML(stats) : ""}
         <!-- Top alertes -->
         <h2 style="font-size:15px;font-weight:700;color:#e6edf3;margin:0 0 16px;
                    text-transform:uppercase;letter-spacing:.5px">🎯 Top ${top.length} Alertes Prioritaires</h2>
@@ -556,7 +676,7 @@ const AlertManager = (() => {
   // ── Formatage texte brut du briefing ─────────────────────────────────────
 
   /** Version texte brut du briefing (fallback clients email sans HTML). */
-  function _formatBriefingText(top, rest, label) {
+  function _formatBriefingText(top, rest, label, stats = null) {
     const now    = new Date().toLocaleDateString("fr-FR",
       { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const total    = top.length + rest.length;
@@ -570,6 +690,8 @@ const AlertManager = (() => {
     t += `${total} menace(s) détectée(s)`;
     if (kevCount > 0) t += `, dont ${kevCount} KEV activement exploitée(s)`;
     t += ".\n\n";
+
+    if (stats) t += _statsBlockText(stats);
 
     t += `🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep60}\n\n`;
     top.forEach((a, i) => {
@@ -615,10 +737,11 @@ const AlertManager = (() => {
     const total   = top.length + rest.length;
     const allArts = [...top, ...rest];
     const reason  = isManual ? "manual_digest_flush" : settings.mode;
+    const stats   = _buildDigestStats(allArts);
 
     const subject = `☀️ Briefing Cybersécurité ${label} — ${top.length} alertes prioritaires · ${new Date().toLocaleDateString("fr-FR")}`;
-    const html    = _formatBriefingHTML(top, rest, label);
-    const text    = _formatBriefingText(top, rest, label);
+    const html    = _formatBriefingHTML(top, rest, label, stats);
+    const text    = _formatBriefingText(top, rest, label, stats);
 
     try {
       await _dispatch(allArts, { ...settings }, subject, html, text);
