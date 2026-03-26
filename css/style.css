@@ -1798,8 +1798,17 @@ body.modal-open { overflow: hidden; }
 
 /* ── CVE Panel ────────────────────────────────────────────────────────────── */
 
+/* Barre de contrôles (recherche + filtres) */
+.cp-controls      { padding:.5rem 1rem .25rem; }
+.cp-search-bar    { margin-bottom:.4rem; }
+.cp-search-input  { width:100%; max-width:28rem; background:var(--card);
+                    border:1px solid var(--border); border-radius:5px;
+                    color:var(--text); padding:.3rem .6rem; font-size:.8rem;
+                    outline:none; transition:border-color .15s; }
+.cp-search-input:focus { border-color:var(--accent); }
+
 /* Barre de filtres */
-.cp-filter-bar    { display:flex; gap:.4rem; padding:.5rem 1rem .75rem; flex-wrap:wrap; }
+.cp-filter-bar    { display:flex; gap:.4rem; padding:0 0 .5rem; flex-wrap:wrap; }
 .cp-filter-btn    { background:var(--card); border:1px solid var(--border); color:var(--text2);
                     border-radius:4px; padding:.25rem .65rem; font-size:.75rem; cursor:pointer;
                     transition:border-color .15s, color .15s; }
@@ -1857,3 +1866,11 @@ body.modal-open { overflow: hidden; }
 
 /* État vide */
 .cp-empty         { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }
+
+/* Lien CVE depuis Top CVEs (stats.js) */
+.cp-cve-link      { cursor:pointer; color:var(--accent); font-family:monospace;
+                    font-size:.8rem; text-decoration:underline dotted; }
+.cp-cve-link:hover{ text-decoration:underline; }
+.cp-nvd-link      { color:var(--text2); font-size:.7rem; margin-left:.25rem;
+                    text-decoration:none; opacity:.6; }
+.cp-nvd-link:hover{ opacity:1; color:var(--accent); }

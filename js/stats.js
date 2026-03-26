@@ -508,10 +508,18 @@ const StatsPanel = (() => {
 
     el.innerHTML = sorted.map(([cve, info]) => `
       <div class="cve-row">
-        <a href="https://nvd.nist.gov/vuln/detail/${cve}" target="_blank" class="cve-id">${cve}</a>
+        <span class="cve-id cp-cve-link" data-cve="${cve}" title="Voir les articles liés dans le panneau CVE">${cve}</span>
         ${info.isKEV ? `<span class="badge badge-kev" style="font-size:.6rem;padding:.05rem .3rem">KEV</span>` : ""}
         ${info.epss != null ? `<span class="badge badge-epss" style="font-size:.6rem;padding:.05rem .3rem">EPSS ${(info.epss*100).toFixed(1)}%</span>` : ""}
+        <a href="https://nvd.nist.gov/vuln/detail/${cve}" target="_blank" class="cp-nvd-link" title="Voir sur NVD">↗</a>
       </div>`).join("");
+
+    // Brancher les clics vers CVEPanel.openCVE
+    el.querySelectorAll(".cp-cve-link").forEach(span => {
+      span.addEventListener("click", () => {
+        if (typeof CVEPanel !== "undefined") CVEPanel.openCVE(span.dataset.cve);
+      });
+    });
   }
 
   // ── Init ───────────────────────────────────────────────────────────────────
