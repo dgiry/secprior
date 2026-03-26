@@ -602,6 +602,7 @@ module.exports = async (req, res) => {
         title:       a.title,
         sourceName:  a.sourceName,
         score:       a.score,
+        digestScore: digestPriorityScore(a).score,
         criticality: a.criticality,
         topicKey:    a._topicKey || _topicKey(a),
         isKEV:       a.isKEV ?? false,
