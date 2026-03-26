@@ -170,4 +170,75 @@ async function saveLastSlot(slot) {
   }
 }
 
-module.exports = { loadSentIds, saveSentIds, loadSentTopics, saveSentTopics, loadLastSlot, saveLastSlot };
+// ── État du dernier run significatif ─────────────────────────────────────────
+
+const RUN_KEY = "digest:last_run"; // JSON — état du dernier run réel (sent/failed/noArticles)
+const RUN_TTL = 30 * 24 * 3600;   // TTL 30 j — garde l'historique un mois
+
+/**
+ * Persiste l'état du dernier run significatif en fusionnant avec l'état précédent.
+ * La fusion préserve lastSentAt et lastFailureAt entre les runs : si le dernier run
+ * est un échec, lastSentAt reste celle du précédent envoi réussi, et vice-versa.
+ *
+ * Silencieux en cas d'erreur — ne bloque jamais le cron.
+ *
+ * @param {{ lastResult, lastReason, lastStats, lastRunAt }} update
+ */
+async function saveLastRun(update) {
+  if (!_kvAvailable()) return;
+  try {
+    // Charge l'état précédent pour préserver les timestamps de l'autre type de résultat
+    let prev = {};
+    try {
+      const existing = await _kvGet("get", RUN_KEY);
+      if (existing.result) prev = JSON.parse(existing.result);
+    } catch (_) { /* ignore — on repart d'un état vide */ }
+
+    const state = {
+      // Timestamps préservés des runs précédents (non écrasés si non concernés)
+      lastSentAt:    prev.lastSentAt    || null,
+      lastSuccessAt: prev.lastSuccessAt || null,
+      lastFailureAt: prev.lastFailureAt || null,
+      // Écrase avec le résultat courant
+      lastRunAt:  update.lastRunAt,
+      lastResult: update.lastResult,   // "sent" | "failed" | "noArticles"
+      lastReason: update.lastReason || null,
+      lastStats:  update.lastStats,
+      // Met à jour uniquement le timestamp correspondant au résultat
+      ...(update.lastResult === "sent"   && { lastSentAt:    update.lastRunAt,
+                                              lastSuccessAt: update.lastRunAt }),
+      ...(update.lastResult === "failed" && { lastFailureAt: update.lastRunAt })
+    };
+
+    await _kvPipeline([
+      ["setex", RUN_KEY, RUN_TTL, JSON.stringify(state)]
+    ]);
+    console.log("[dedup] lastRun persisté : %s (%s)", update.lastResult, update.lastRunAt);
+  } catch (e) {
+    console.warn("[dedup] saveLastRun échoué (non bloquant) :", e.message);
+  }
+}
+
+/**
+ * Charge l'état du dernier run depuis KV.
+ * Retourne null si KV non configuré, clé absente ou erreur.
+ *
+ * @returns {Promise<object|null>}
+ */
+async function loadLastRun() {
+  if (!_kvAvailable()) return null;
+  try {
+    const json = await _kvGet("get", RUN_KEY);
+    return json.result ? JSON.parse(json.result) : null;
+  } catch (e) {
+    console.warn("[dedup] loadLastRun échoué :", e.message);
+    return null;
+  }
+}
+
+module.exports = {
+  loadSentIds, saveSentIds,
+  loadSentTopics, saveSentTopics,
+  loadLastSlot, saveLastSlot,
+  saveLastRun, loadLastRun
+};

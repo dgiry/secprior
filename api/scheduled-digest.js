@@ -20,7 +20,8 @@ const { parseRSS }           = require("./lib/rss-parser");
 const { enrichArticles }     = require("./lib/enricher");
 const { loadSentIds,    saveSentIds,
         loadSentTopics, saveSentTopics,
-        loadLastSlot,   saveLastSlot }   = require("./lib/dedup-store");
+        loadLastSlot,   saveLastSlot,
+        saveLastRun }                    = require("./lib/dedup-store");
 const { digestPriorityScore,
         selectTopArticles,
         formatBriefingHTML,
@@ -350,6 +351,23 @@ function _previewArticle(a, rank) {
   };
 }
 
+// ── Helper état du run pour /api/status ──────────────────────────────────────
+/**
+ * Construit l'objet d'état à passer à saveLastRun().
+ * @param {"sent"|"failed"|"noArticles"} result
+ * @param {string|null} reason  — message d'erreur ou raison
+ * @param {{ feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }} stats
+ * @returns {object}
+ */
+function _makeRunState(result, reason, { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }) {
+  return {
+    lastRunAt:  new Date().toISOString(),
+    lastResult: result,
+    lastReason: reason || null,
+    lastStats:  { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }
+  };
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 module.exports = async (req, res) => {
 
@@ -500,6 +518,12 @@ module.exports = async (req, res) => {
 
   if (queue.length === 0) {
     console.log("[scheduled-digest] Aucun article dans les 48 h. Briefing non envoyé.");
+    if (!isTestMode) {
+      await saveLastRun(_makeRunState("noArticles", "Aucun article dans les 48 dernières heures", {
+        feedsOk: fetchOk, feedsErr: fetchErr,
+        rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: 0
+      }));
+    }
     return res.status(200).json({
       success: false,
       message: "Aucun article dans les 48 dernières heures — briefing non envoyé.",
@@ -626,6 +650,10 @@ module.exports = async (req, res) => {
     await saveSentIds(top.map(a => a.id));
     await saveSentTopics(top.map(a => a._topicKey || _topicKey(a)));
     await saveLastSlot(mtl.slot);
+    await saveLastRun(_makeRunState("sent", null, {
+      feedsOk: fetchOk, feedsErr: fetchErr,
+      rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
+    }));
 
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",
@@ -638,6 +666,10 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error("[scheduled-digest] ❌ Erreur envoi email :", err.message);
+    await saveLastRun(_makeRunState("failed", err.message, {
+      feedsOk: fetchOk, feedsErr: fetchErr,
+      rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
+    }));
     return res.status(502).json({ error: `Envoi email échoué : ${err.message}` });
   }
 };
