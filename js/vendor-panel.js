@@ -10,7 +10,9 @@ const VendorPanel = (() => {
   let _articles          = [];      // dernière liste d'articles reçue
   let _rendered          = false;   // true après le premier rendu
   let _sortBy            = "default"; // tri actif
+  let _filterBy          = "all";   // "all" | "briefing" | "kev"
   let _briefingAvailable = false;   // true si BriefingPanel cache chargé
+  let _lastBriefingIds   = null;    // Set<id> partagé avec _renderDetail
 
   // ── Canonical vendor map : variant → canonical name ─────────────────────
   const VENDOR_MAP = [
@@ -212,8 +214,15 @@ const VendorPanel = (() => {
       ? BriefingPanel.getTopIds()
       : null;
     _briefingAvailable = briefingIds !== null;
+    _lastBriefingIds   = briefingIds;
 
-    const vendors = _computeVendors(_articles, briefingIds);
+    const allVendors = _computeVendors(_articles, briefingIds);
+
+    // ── Filtre rapide ────────────────────────────────────────────────────────
+    let vendors = allVendors;
+    if (_filterBy === "briefing") vendors = allVendors.filter(v => v.briefingCount > 0);
+    if (_filterBy === "kev")      vendors = allVendors.filter(v => v.kev > 0);
+
     _rendered = true;
 
     if (metaEl) {
@@ -235,8 +244,19 @@ const VendorPanel = (() => {
       }
     }
 
+    const filterBar = `<div class="vp-filter-bar">
+  <button class="vp-filter-btn${_filterBy==="all"      ?" active":""}" data-filter="all">Tous (${allVendors.length})</button>
+  <button class="vp-filter-btn${_filterBy==="briefing" ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
+  <button class="vp-filter-btn${_filterBy==="kev"      ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
+</div>`;
+
     if (vendors.length === 0) {
-      listEl.innerHTML = '<div class="vp-empty">Aucun vendor détecté dans les articles courants.</div>';
+      const emptyMsg = _filterBy === "briefing" && !_briefingAvailable
+        ? "Ouvre l\'onglet Briefing d\'abord pour activer ce filtre."
+        : "Aucun vendor pour ce filtre.";
+      listEl.innerHTML = filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
+      listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
+        btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
       return;
     }
 
@@ -255,7 +275,11 @@ const VendorPanel = (() => {
   ${hint}
 </div>`;
 
-    listEl.innerHTML = sortBar + vendors.map(v => _renderVendorCard(v)).join("");
+    listEl.innerHTML = filterBar + sortBar + vendors.map(v => _renderVendorCard(v)).join("");
+
+    // Filtre : boutons
+    listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
+      btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
 
     // Tri : changement de l'option
     document.getElementById("vp-sort-select")?.addEventListener("change", e => {
@@ -263,7 +287,7 @@ const VendorPanel = (() => {
       _render();
     });
 
-    // Attach click handlers for expand/collapse
+    // Expand/collapse vendor detail
     listEl.querySelectorAll(".vp-row").forEach(row => {
       row.addEventListener("click", () => _toggleDetail(row.dataset.slug));
     });
@@ -311,18 +335,20 @@ const VendorPanel = (() => {
     });
 
     return sorted.map(a => {
-      const critIcon = a.criticality === "high"   ? '<span class="vp-ac" style="color:var(--crit-high,#f87171)">🔴</span>'
-                     : a.criticality === "medium" ? '<span class="vp-ac" style="color:var(--crit-med,#fbbf24)">🟡</span>'
-                     : '<span class="vp-ac" style="color:var(--text-muted)">🟢</span>';
-      const kevBadge  = a.isKEV ? ' <span class="vp-badge vp-kev">KEV</span>' : "";
-      const epssBadge = (typeof a.epssScore === "number" && a.epssScore > 0)
+      const inBriefing = _lastBriefingIds && _lastBriefingIds.has(a.id);
+      const critIcon   = a.criticality === "high"   ? '<span class="vp-ac" style="color:var(--crit-high,#f87171)">🔴</span>'
+                       : a.criticality === "medium" ? '<span class="vp-ac" style="color:var(--crit-med,#fbbf24)">🟡</span>'
+                       : '<span class="vp-ac" style="color:var(--text-muted)">🟢</span>';
+      const briefingMark = inBriefing ? ' <span class="vp-badge vp-briefing vp-in-briefing">📬 Top briefing</span>' : "";
+      const kevBadge     = a.isKEV ? ' <span class="vp-badge vp-kev">KEV</span>' : "";
+      const epssBadge    = (typeof a.epssScore === "number" && a.epssScore > 0)
         ? ` <span class="vp-badge vp-epss">EPSS ${(a.epssScore * 100).toFixed(0)}%</span>` : "";
-      const srcName   = a.source || a.feedName || "";
+      const srcName      = a.source || a.feedName || "";
 
-      return `<div class="vp-article">
+      return `<div class="vp-article${inBriefing ? " vp-article-top" : ""}">
   ${critIcon}
   <a class="vp-article-title" href="${a.link || "#"}" target="_blank" rel="noopener noreferrer">${_escHtml(a.title || "Sans titre")}</a>
-  ${kevBadge}${epssBadge}
+  ${briefingMark}${kevBadge}${epssBadge}
   ${srcName ? `<span class="vp-article-src">${_escHtml(srcName)}</span>` : ""}
 </div>`;
     }).join("");
