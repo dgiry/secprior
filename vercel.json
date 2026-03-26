@@ -3,9 +3,6 @@
   "name": "cyberveille-pro",
   "functions": {
     "api/*.js": {
-      "maxDuration": 30
-    },
-    "api/scheduled-digest.js": {
       "maxDuration": 60
     }
   },
