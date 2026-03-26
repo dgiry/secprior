@@ -94,6 +94,10 @@
       🎯 Incidents
     </button>
 
+    <button id="btn-visibility" class="btn" title="Vue visibilité — KPIs, flux, enrichissement, top vendors/incidents">
+      👁 Visibilité
+    </button>
+
     <button id="btn-saved-filters" class="btn" title="Sauvegarder / rappeler une vue filtrée">
       💾 Vues
     </button>
@@ -286,6 +290,15 @@
       <span class="bp-meta" id="incident-meta"></span>
     </div>
     <div id="incident-list"></div>
+  </div>
+
+  <!-- ── Panneau Visibilité (collapsible) ─────────────────────────────────── -->
+  <div id="visibility-panel" class="vendor-panel" style="display:none">
+    <div class="bp-header">
+      <h3 class="bp-title-h3">👁 Visibilité</h3>
+      <span class="bp-meta" id="vb-meta"></span>
+    </div>
+    <div id="visibility-content"></div>
   </div>
 
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
@@ -690,6 +703,7 @@
   <script src="js/entity-status.js?v=1"></script>
   <script src="js/cve-panel.js?v=3"></script>
   <script src="js/incident-panel.js?v=2"></script>
+  <script src="js/visibility-panel.js?v=1"></script>
   <script src="js/saved-filters.js?v=2"></script>
 
 </body>

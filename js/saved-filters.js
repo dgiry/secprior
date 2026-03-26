@@ -33,9 +33,10 @@ const SavedFilters = (() => {
       { id: "stats-panel",    view: "stats",     mod: () => (typeof StatsPanel    !== "undefined" ? StatsPanel    : null) },
       { id: "briefing-panel", view: "briefing",  mod: () => (typeof BriefingPanel !== "undefined" ? BriefingPanel : null) },
       { id: "health-panel",   view: "health",    mod: () => (typeof HealthPanel   !== "undefined" ? HealthPanel   : null) },
-      { id: "vendor-panel",   view: "vendors",   mod: () => (typeof VendorPanel   !== "undefined" ? VendorPanel   : null) },
-      { id: "cve-panel",      view: "cves",      mod: () => (typeof CVEPanel      !== "undefined" ? CVEPanel      : null) },
-      { id: "incident-panel", view: "incidents", mod: () => (typeof IncidentPanel !== "undefined" ? IncidentPanel : null) },
+      { id: "vendor-panel",     view: "vendors",    mod: () => (typeof VendorPanel     !== "undefined" ? VendorPanel     : null) },
+      { id: "cve-panel",        view: "cves",       mod: () => (typeof CVEPanel        !== "undefined" ? CVEPanel        : null) },
+      { id: "incident-panel",   view: "incidents",  mod: () => (typeof IncidentPanel   !== "undefined" ? IncidentPanel   : null) },
+      { id: "visibility-panel", view: "visibility", mod: () => (typeof VisibilityPanel !== "undefined" ? VisibilityPanel : null) },
     ];
     for (const { id, view: pView, mod } of PANELS) {
       if (pView === view) continue;
@@ -156,6 +157,10 @@ const SavedFilters = (() => {
     } else if (view === "health" && typeof HealthPanel !== "undefined") {
       const panel = document.getElementById("health-panel");
       if (panel && panel.style.display === "none") HealthPanel.toggle();
+
+    } else if (view === "visibility" && typeof VisibilityPanel !== "undefined") {
+      const panel = document.getElementById("visibility-panel");
+      if (panel && panel.style.display === "none") VisibilityPanel.toggle();
     }
     // view === "main" → aucun panneau à ouvrir, filtres déjà appliqués
 
@@ -166,13 +171,14 @@ const SavedFilters = (() => {
   // ── UI helpers ────────────────────────────────────────────────────────────
 
   const _VIEW_LABELS = {
-    main:      "📰 Dashboard",
-    cves:      "🔍 CVEs",
-    incidents: "🎯 Incidents",
-    vendors:   "🏢 Vendors",
-    stats:     "📊 Stats",
-    briefing:  "📰 Briefing",
-    health:    "🩺 Santé"
+    main:       "📰 Dashboard",
+    cves:       "🔍 CVEs",
+    incidents:  "🎯 Incidents",
+    vendors:    "🏢 Vendors",
+    visibility: "👁 Visibilité",
+    stats:      "📊 Stats",
+    briefing:   "📰 Briefing",
+    health:     "🩺 Santé"
   };
 
   function _esc(s) {

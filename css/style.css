@@ -2022,3 +2022,71 @@ body.modal-open { overflow: hidden; }
 .cp-status-btn.active { background:rgba(88,166,255,.15);
                         color:var(--accent); border-color:var(--accent);
                         font-weight:600; }
+
+/* ── Panneau Visibilité — visibility-panel.js ──────────────────────────── */
+.vb-header      { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:.75rem; }
+.vb-title-h3    { font-size:1rem; font-weight:700; margin:0; }
+
+.vb-section     { margin-bottom:1.5rem; }
+.vb-section-title { font-size:.82rem; font-weight:700; margin:0 0 .2rem; letter-spacing:.01em; }
+.vb-section-sub   { font-size:.68rem; color:var(--text2); margin:0 0 .6rem; }
+
+.vb-two-col  { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+.vb-col      { min-width:0; }
+@media (max-width:720px) { .vb-two-col { grid-template-columns:1fr; } }
+
+/* KPI Cards */
+.vb-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:.55rem; margin-bottom:.25rem; }
+.vb-kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+               padding:.85rem .65rem; text-align:center;
+               display:flex; flex-direction:column; align-items:center; gap:.22rem; }
+.vb-kpi-ok   { border-top:3px solid var(--ok); }
+.vb-kpi-warn { border-top:3px solid var(--warn); }
+.vb-kpi-err  { border-top:3px solid var(--err); }
+.vb-kpi-neutral { border-top:3px solid var(--border); }
+.vb-kpi-icon  { font-size:1.05rem; line-height:1; }
+.vb-kpi-value { font-size:1.55rem; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
+.vb-kpi-label { font-size:.6rem; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; }
+
+/* Enrichment bars */
+.vb-enr-list  { display:flex; flex-direction:column; gap:.38rem; }
+.vb-enr-row   { display:flex; align-items:center; gap:.45rem; }
+.vb-enr-icon  { font-size:.8rem; flex-shrink:0; width:1.1rem; text-align:center; }
+.vb-enr-label { font-size:.7rem; flex:0 0 125px; color:var(--text2); white-space:nowrap;
+                overflow:hidden; text-overflow:ellipsis; }
+.vb-enr-bar-wrap { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; min-width:30px; }
+.vb-enr-bar-fill { height:100%; border-radius:3px; min-width:2px; }
+.vb-enr-pct   { font-size:.68rem; font-weight:600; width:2.4rem; text-align:right; flex-shrink:0; }
+
+/* Feed table */
+.vb-feed-scroll   { overflow-x:auto; }
+.vb-feed-table    { width:100%; border-collapse:collapse; font-size:.71rem; }
+.vb-thead th      { color:var(--text2); font-size:.63rem; text-transform:uppercase;
+                    letter-spacing:.04em; padding:.22rem .45rem;
+                    border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+.vb-feed-row      { border-bottom:1px solid var(--border); transition:background .1s; }
+.vb-feed-row:hover { background:rgba(255,255,255,.028); }
+.vb-feed-row td   { padding:.32rem .45rem; vertical-align:middle; }
+.vb-feed-name     { display:flex; align-items:center; gap:.3rem; font-weight:600; white-space:nowrap; }
+.vb-feed-meta     { color:var(--text2); font-size:.65rem; white-space:nowrap; }
+.vb-feed-err      { color:var(--err); font-size:.65rem; }
+.vb-errmsg        { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Top tables (vendors + incidents) */
+.vb-top-table { width:100%; border-collapse:collapse; font-size:.71rem; }
+.vb-top-row   { border-bottom:1px solid var(--border); transition:background .1s; }
+.vb-top-row:hover { background:rgba(255,255,255,.028); }
+.vb-top-row td { padding:.3rem .45rem; vertical-align:middle; }
+.vb-inc-title  { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vb-num        { text-align:right; color:var(--text2); white-space:nowrap; }
+.vb-dim        { color:var(--text2); font-size:.68rem; }
+.vb-empty      { color:var(--text2); font-style:italic; font-size:.76rem; padding:.6rem 0; }
+
+/* Badges inline Visibilité */
+.vb-badge   { display:inline-flex; align-items:center; font-size:.6rem; font-weight:600;
+              padding:.1rem .35rem; border-radius:3px; white-space:nowrap; }
+.vb-ok      { background:rgba(63,185,80,.14);   color:var(--ok); }
+.vb-warn    { background:rgba(240,136,62,.14);  color:var(--warn); }
+.vb-err     { background:rgba(248,81,73,.14);   color:var(--err); }
+.vb-muted   { background:var(--surface2); color:var(--text2); }
+.vb-neutral { background:var(--surface2); color:var(--text); }

@@ -33,6 +33,7 @@ const App = (() => {
       VendorPanel.update(articles);
       CVEPanel.update(articles);
       IncidentPanel.update(articles);
+      VisibilityPanel.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -222,6 +223,9 @@ const App = (() => {
     // ── Panneau Incidents Consolidés ──────────────────────────────────────────
     IncidentPanel.init();
 
+    // ── Panneau Visibilité ────────────────────────────────────────────────────
+    VisibilityPanel.init();
+
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();
 
@@ -286,12 +290,13 @@ const App = (() => {
   }
   function getActivePanel() {
     const panels = [
-      { id: "cve-panel",      view: "cves" },
-      { id: "incident-panel", view: "incidents" },
-      { id: "vendor-panel",   view: "vendors" },
-      { id: "stats-panel",    view: "stats" },
-      { id: "briefing-panel", view: "briefing" },
-      { id: "health-panel",   view: "health" }
+      { id: "cve-panel",         view: "cves" },
+      { id: "incident-panel",    view: "incidents" },
+      { id: "vendor-panel",      view: "vendors" },
+      { id: "visibility-panel",  view: "visibility" },
+      { id: "stats-panel",       view: "stats" },
+      { id: "briefing-panel",    view: "briefing" },
+      { id: "health-panel",      view: "health" }
     ];
     for (const { id, view } of panels) {
       const el = document.getElementById(id);
