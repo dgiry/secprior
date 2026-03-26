@@ -1407,6 +1407,18 @@ body.modal-open { overflow: hidden; }
 }
 }
 
+/* ── KPI digest (2e rangée Stats) ────────────────────────────────────────── */
+.kpi-section-label {
+  font-size: .68rem; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .6px;
+  padding: .1rem 0 .1rem .1rem;
+  border-left: 2px solid var(--border);
+}
+.kpi-sub {
+  font-size: .65rem; color: var(--text2); margin-top: .1rem;
+  min-height: .9rem; /* évite le saut de hauteur quand vide */
+}
+
 /* ── Panneau Briefing ─────────────────────────────────────────────────────── */
 
 .briefing-panel {

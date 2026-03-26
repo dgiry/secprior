@@ -43,6 +43,7 @@ const StatsPanel = (() => {
 
   function _render(articles) {
     _renderKPIs(articles);
+    _renderDigestKPIs(articles);
     _renderDonut(articles);
     _renderSourceBars(articles);
     _renderTimeline(articles);
@@ -80,6 +81,80 @@ const StatsPanel = (() => {
   function _set(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
+  }
+
+  // ── KPI digest (qualité moteur) ────────────────────────────────────────────
+  // Stop-words identiques à scheduled-digest.js pour des clés de sujet cohérentes
+  const _DIGEST_STOP = new Set([
+    "the","a","an","in","of","to","for","and","or","is","are","was","were","be",
+    "with","how","new","update","patch","patches","patched","fix","fixes","fixed",
+    "security","advisory","vulnerability","vulnerabilities","vuln","cve","exploit",
+    "exploited","exploiting","critical","high","severe","alert","warning","report",
+    "attack","attacks","threat","threats","flaw","flaws","bug","bugs","issue"
+  ]);
+
+  /**
+   * Calcule les stats de topic grouping léger sur les articles front.
+   * Même algorithme que scheduled-digest.js _topicKey / _groupByTopic.
+   * @returns {{ unique, merged, avgSize }}
+   */
+  function _topicStats(articles) {
+    const groups = new Map();
+    for (const a of articles) {
+      let key;
+      const cves = a.cveIds || a.cves || [];
+      if (cves.length > 0) {
+        key = "cve:" + [...cves].map(c => c.toUpperCase()).sort().slice(0, 2).join("+");
+      } else {
+        const tokens = (a.title || "").toLowerCase()
+          .replace(/[^a-z0-9 ]/g, " ").split(/\s+/)
+          .filter(w => w.length >= 3 && !_DIGEST_STOP.has(w)).slice(0, 4).join("-") || "misc";
+        key = "title:" + tokens;
+      }
+      groups.set(key, (groups.get(key) || 0) + 1);
+    }
+    const sizes   = [...groups.values()];
+    const total   = sizes.reduce((s, v) => s + v, 0) || 1;
+    const merged  = sizes.filter(s => s > 1).length;
+    const avgSize = sizes.length ? (total / sizes.length).toFixed(1) : "—";
+    return { unique: groups.size, merged, avgSize };
+  }
+
+  function _renderDigestKPIs(articles) {
+    // Éligibles digest : articles non "low" (pool que le moteur considère)
+    const eligible = articles.filter(a => a.criticality !== "low").length;
+
+    // Topic grouping léger
+    const { unique: topicUnique, merged, avgSize } = _topicStats(articles);
+
+    // Enrichissement : au moins un signal réel (KEV, EPSS, CVSS)
+    const enriched    = articles.filter(a => a.isKEV || a.epssScore != null || a.cvssScore != null).length;
+    const notEnriched = articles.length - enriched;
+
+    // CVEs uniques extraits
+    const allCves = new Set();
+    articles.forEach(a => (a.cveIds || a.cves || []).forEach(c => allCves.add(c.toUpperCase())));
+
+    // Flux en erreur (via FeedManager si disponible)
+    let feedErr = "—";
+    try {
+      if (typeof FeedManager !== "undefined") {
+        feedErr = FeedManager.getAllFeeds().filter(f => f.lastStatus === "error").length;
+      }
+    } catch (_) {}
+
+    _set("kpi-eligible",  eligible);
+    _set("kpi-topics",    topicUnique);
+    _set("kpi-grouped",   merged);
+    _set("kpi-enriched",  enriched);
+    _set("kpi-cves",      allCves.size);
+    _set("kpi-feed-err",  feedErr);
+
+    // Sous-labels dynamiques
+    const avgEl    = document.getElementById("kpi-topics-sub");
+    if (avgEl)      avgEl.textContent = avgSize !== "—" ? `moy. ${avgSize} art./sujet` : "";
+    const enrichEl = document.getElementById("kpi-enriched-sub");
+    if (enrichEl)   enrichEl.textContent = `${notEnriched} non enrichis`;
   }
 
   // ── Donut SVG (criticité) ─────────────────────────────────────────────────
