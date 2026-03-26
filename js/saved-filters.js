@@ -1,9 +1,11 @@
-// saved-filters.js — Vues / filtres sauvegardés (V1)
+// saved-filters.js — Vues / filtres sauvegardés (V1.1)
 //
-// Stocke dans localStorage (clé "cv_saved_filters") une liste de presets.
-// Chaque preset capture : vue active + filtres globaux + filtres du panneau.
+// V1.1 — 3 améliorations ciblées :
+//   1. _closeAllPanelsExcept(view) — ferme les autres panneaux avant d'ouvrir la cible
+//   2. Support explicite de stats, briefing, health dans capture + application
+//   3. updatePreset(id) — écrase un preset existant avec l'état courant
 //
-// API publique : init, open, close, addPreset, removePreset, applyPreset
+// API publique : init, open, close, addPreset, removePreset, applyPreset, updatePreset
 
 const SavedFilters = (() => {
 
@@ -21,6 +23,27 @@ const SavedFilters = (() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   }
 
+  // ── Fermer tous les panneaux sauf la cible ────────────────────────────────
+  //
+  // Appelle toggle() uniquement si le panneau est actuellement ouvert,
+  // pour laisser le pattern toggle existant gérer la classe active du bouton.
+
+  function _closeAllPanelsExcept(view) {
+    const PANELS = [
+      { id: "stats-panel",    view: "stats",     mod: () => (typeof StatsPanel    !== "undefined" ? StatsPanel    : null) },
+      { id: "briefing-panel", view: "briefing",  mod: () => (typeof BriefingPanel !== "undefined" ? BriefingPanel : null) },
+      { id: "health-panel",   view: "health",    mod: () => (typeof HealthPanel   !== "undefined" ? HealthPanel   : null) },
+      { id: "vendor-panel",   view: "vendors",   mod: () => (typeof VendorPanel   !== "undefined" ? VendorPanel   : null) },
+      { id: "cve-panel",      view: "cves",      mod: () => (typeof CVEPanel      !== "undefined" ? CVEPanel      : null) },
+      { id: "incident-panel", view: "incidents", mod: () => (typeof IncidentPanel !== "undefined" ? IncidentPanel : null) },
+    ];
+    for (const { id, view: pView, mod } of PANELS) {
+      if (pView === view) continue;
+      const el = document.getElementById(id);
+      if (el && el.style.display !== "none") mod()?.toggle();
+    }
+  }
+
   // ── Capture de l'état courant ─────────────────────────────────────────────
 
   function captureState() {
@@ -31,6 +54,7 @@ const SavedFilters = (() => {
     if (view === "cves"      && typeof CVEPanel      !== "undefined") Object.assign(filters, CVEPanel.getFilters());
     if (view === "incidents" && typeof IncidentPanel !== "undefined") Object.assign(filters, IncidentPanel.getFilters());
     if (view === "vendors"   && typeof VendorPanel   !== "undefined") Object.assign(filters, VendorPanel.getFilters());
+    // stats, briefing, health — pas de filtres internes à capturer pour l'instant
 
     return { view, filters };
   }
@@ -62,12 +86,28 @@ const SavedFilters = (() => {
     _renderList();
   }
 
+  // ── Mise à jour d'un preset existant (V1.1) ───────────────────────────────
+
+  function updatePreset(id) {
+    const list = _load();
+    const idx  = list.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    const { view, filters } = captureState();
+    list[idx] = { ...list[idx], view, filters, updatedAt: new Date().toISOString() };
+    _save(list);
+    _renderList();
+    _toast(`Vue "${list[idx].name}" mise à jour.`, "success");
+  }
+
   // ── Application d'un preset ───────────────────────────────────────────────
 
   function applyPreset(preset) {
     const { view, filters } = preset;
 
-    // 1. Filtres globaux
+    // 1. Fermer tous les panneaux sauf la cible (V1.1)
+    _closeAllPanelsExcept(view);
+
+    // 2. Filtres globaux (dashboard principal)
     if (typeof App !== "undefined") {
       App.setFilters({
         query:       filters.query       ?? "",
@@ -78,7 +118,7 @@ const SavedFilters = (() => {
       });
     }
 
-    // 2. Ouvrir le bon panneau + ses filtres
+    // 3. Ouvrir la bonne vue + appliquer ses filtres
     if (view === "cves" && typeof CVEPanel !== "undefined") {
       const panel = document.getElementById("cve-panel");
       if (panel && panel.style.display === "none") CVEPanel.toggle();
@@ -86,6 +126,7 @@ const SavedFilters = (() => {
         filterBy:    filters.filterBy    ?? "all",
         searchQuery: filters.searchQuery ?? ""
       });
+
     } else if (view === "incidents" && typeof IncidentPanel !== "undefined") {
       const panel = document.getElementById("incident-panel");
       if (panel && panel.style.display === "none") IncidentPanel.toggle();
@@ -93,6 +134,7 @@ const SavedFilters = (() => {
         filterBy:    filters.filterBy    ?? "all",
         searchQuery: filters.searchQuery ?? ""
       });
+
     } else if (view === "vendors" && typeof VendorPanel !== "undefined") {
       const panel = document.getElementById("vendor-panel");
       if (panel && panel.style.display === "none") VendorPanel.toggle();
@@ -101,7 +143,21 @@ const SavedFilters = (() => {
         sortBy:      filters.sortBy      ?? "default",
         searchQuery: filters.searchQuery ?? ""
       });
+
+    // V1.1 — vues stats, briefing, health ────────────────────────────────────
+    } else if (view === "stats" && typeof StatsPanel !== "undefined") {
+      const panel = document.getElementById("stats-panel");
+      if (panel && panel.style.display === "none") StatsPanel.toggle();
+
+    } else if (view === "briefing" && typeof BriefingPanel !== "undefined") {
+      const panel = document.getElementById("briefing-panel");
+      if (panel && panel.style.display === "none") BriefingPanel.toggle();
+
+    } else if (view === "health" && typeof HealthPanel !== "undefined") {
+      const panel = document.getElementById("health-panel");
+      if (panel && panel.style.display === "none") HealthPanel.toggle();
     }
+    // view === "main" → aucun panneau à ouvrir, filtres déjà appliqués
 
     close();
     _toast(`Vue "${preset.name}" appliquée.`, "success");
@@ -156,7 +212,8 @@ const SavedFilters = (() => {
           <span class="sf-preset-meta">${_formatFilters(p.filters)}</span>
         </div>
         <div class="sf-preset-actions">
-          <button class="btn btn-primary sf-apply-btn" data-id="${_esc(p.id)}">↩ Appliquer</button>
+          <button class="btn btn-primary sf-apply-btn"  data-id="${_esc(p.id)}" title="Appliquer cette vue">↩ Appliquer</button>
+          <button class="btn sf-update-btn" data-id="${_esc(p.id)}" title="Écraser avec la vue actuelle">⟳</button>
           <button class="btn sf-delete-btn" data-id="${_esc(p.id)}" title="Supprimer cette vue">✕</button>
         </div>
       </div>
@@ -212,14 +269,19 @@ const SavedFilters = (() => {
     document.getElementById("sf-name-input")
       ?.addEventListener("keydown", e => { if (e.key === "Enter") _onSave(); });
 
-    // Délégation sur la liste (Apply + Delete)
+    // Délégation sur la liste (Apply + Update + Delete)
     document.getElementById("sf-preset-list")
       ?.addEventListener("click", e => {
         const applyBtn  = e.target.closest(".sf-apply-btn");
+        const updateBtn = e.target.closest(".sf-update-btn");
         const deleteBtn = e.target.closest(".sf-delete-btn");
+
         if (applyBtn) {
           const preset = _load().find(p => p.id === applyBtn.dataset.id);
           if (preset) applyPreset(preset);
+        }
+        if (updateBtn) {
+          updatePreset(updateBtn.dataset.id);
         }
         if (deleteBtn) {
           removePreset(deleteBtn.dataset.id);
@@ -227,5 +289,5 @@ const SavedFilters = (() => {
       });
   }
 
-  return { init, open, close, addPreset, removePreset, applyPreset };
+  return { init, open, close, addPreset, removePreset, applyPreset, updatePreset };
 })();

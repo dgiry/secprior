@@ -1980,3 +1980,5 @@ body.modal-open { overflow: hidden; }
 .sf-apply-btn       { font-size:.75rem; padding:.2rem .6rem; }
 .sf-delete-btn      { font-size:.75rem; padding:.2rem .45rem; opacity:.5; }
 .sf-delete-btn:hover { opacity:1; color:#f85149; border-color:#f85149; }
+.sf-update-btn      { font-size:.75rem; padding:.2rem .45rem; opacity:.55; }
+.sf-update-btn:hover { opacity:1; color:var(--accent); border-color:var(--accent); }
