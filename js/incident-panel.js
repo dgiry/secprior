@@ -11,10 +11,11 @@
 
 const IncidentPanel = (() => {
 
-  let _articles    = [];    // dernière liste d'articles reçue
-  let _filterBy    = "all"; // "all"|"multi"|"kev"|"watchlist"|"exploit"|"patch"|"high"
-  let _searchQuery = "";    // filtre texte libre
-  let _statusFilter = "all"; // "all" | EntityStatus.VALID_STATUSES
+  let _articles      = [];    // dernière liste d'articles reçue
+  let _filterBy      = "all"; // "all"|"multi"|"kev"|"watchlist"|"exploit"|"patch"|"high"|"ioc"
+  let _searchQuery   = "";    // filtre texte libre
+  let _statusFilter  = "all"; // "all" | EntityStatus.VALID_STATUSES
+  let _lastIncidents = [];    // cache pour export IOC au clic
 
   // ── Catégorisation d'angle (synchronisée avec cve-panel.js) ───────────────
 
@@ -140,12 +141,15 @@ const IncidentPanel = (() => {
       .toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").slice(0, 44);
     const incidentId = `inc_${slug}`;
 
+    // Comptage brut des IOCs (somme articles, doublons possibles — utilisé pour filtre/badge)
+    const rawIocCount = arts.reduce((n, a) => n + (a.iocCount || 0), 0);
+
     return {
       incidentId, title,
       articleCount: arts.length, sourceCount: sources.length,
       articles: sorted, cves, vendors, sources,
       maxScore, maxEpss, kev, watchlistHit, trending, attackTags, angles,
-      firstSeen, lastSeen
+      firstSeen, lastSeen, rawIocCount
     };
   }
 
@@ -196,6 +200,7 @@ const IncidentPanel = (() => {
     if (!list) return;
 
     const allIncidents = buildIncidentIndex(_articles);
+    _lastIncidents = allIncidents; // cache pour export IOC
     let incidents = [...allIncidents];
 
     // Filtre statut analyste
@@ -209,6 +214,7 @@ const IncidentPanel = (() => {
     if (_filterBy === "exploit")   incidents = incidents.filter(i => i.angles.includes("exploitation"));
     if (_filterBy === "patch")     incidents = incidents.filter(i => i.angles.includes("patch"));
     if (_filterBy === "high")      incidents = incidents.filter(i => i.maxScore >= 70);
+    if (_filterBy === "ioc")       incidents = incidents.filter(i => i.rawIocCount > 0);
 
     // Filtre texte
     if (_searchQuery) {
@@ -299,6 +305,40 @@ const IncidentPanel = (() => {
       });
     }
 
+    // ── IOC — copier un indicateur individuel ───────────────────────────────
+    list.querySelectorAll(".ioc-copy-one").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        if (typeof IOCUtils !== "undefined")
+          IOCUtils.copyOne(btn.dataset.iocType, btn.dataset.iocVal);
+      });
+    });
+
+    // ── IOC — copier un groupe ou tout copier ────────────────────────────────
+    list.querySelectorAll(".ioc-copy-group, .ioc-copy-all").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        if (typeof IOCUtils === "undefined") return;
+        const vals  = (btn.dataset.iocVals || "").split("||").filter(Boolean);
+        const label = btn.dataset.iocLabel || "IOC";
+        IOCUtils.copyGroup(label, vals);
+      });
+    });
+
+    // ── IOC — export JSON / TXT ──────────────────────────────────────────────
+    list.querySelectorAll(".ioc-export-json, .ioc-export-txt").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        if (typeof IOCUtils === "undefined") return;
+        const iid      = btn.dataset.iid;
+        const incident = _lastIncidents.find(i => i.incidentId === iid);
+        if (!incident) return;
+        const iocs = IOCUtils.aggregateIOCs(incident.articles);
+        const fmt  = btn.classList.contains("ioc-export-json") ? "json" : "txt";
+        IOCUtils.exportIOC(iocs, fmt, incident.title);
+      });
+    });
+
     // Toggle détail sur clic ligne
     list.querySelectorAll(".ip-row").forEach(row => {
       row.addEventListener("click", () => {
@@ -345,6 +385,7 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="exploit"   ?" active":""}" data-filter="exploit">💀 Exploit</button>
           <button class="ip-filter-btn${f==="patch"     ?" active":""}" data-filter="patch">🩹 Patch</button>
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">🔴 Score ≥ 70</button>
+          <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 Avec IOC</button>
         </div>
         ${statusBarHTML}
       </div>`;
@@ -356,9 +397,10 @@ const IncidentPanel = (() => {
     const scoreStr = i.maxScore > 0  ? i.maxScore : "—";
 
     const signals = [
-      i.kev          ? `<span class="ip-badge ip-kev">🚨 KEV</span>` : "",
-      i.watchlistHit ? `<span class="ip-badge ip-wl">👁 WL</span>`  : "",
-      i.trending     ? `<span class="ip-badge ip-tr">🔥</span>`      : ""
+      i.kev              ? `<span class="ip-badge ip-kev">🚨 KEV</span>`  : "",
+      i.watchlistHit     ? `<span class="ip-badge ip-wl">👁 WL</span>`   : "",
+      i.trending         ? `<span class="ip-badge ip-tr">🔥</span>`       : "",
+      i.rawIocCount > 0  ? `<span class="ip-badge ip-ioc">🔗 IOC</span>` : ""
     ].filter(Boolean).join(" ");
 
     const cveHTML = i.cves.slice(0, 2).map(c =>
@@ -394,6 +436,11 @@ const IncidentPanel = (() => {
           <div class="ip-detail-inner">
             ${_detailHeaderHTML(i)}
             ${typeof EntityStatus !== "undefined" ? EntityStatus.statusBlockHTML("incident", i.incidentId) : ""}
+            ${(() => {
+              if (typeof IOCUtils === "undefined") return "";
+              const iocs = IOCUtils.aggregateIOCs(i.articles);
+              return IOCUtils.iocBlockHTML(iocs, i.incidentId);
+            })()}
             <div class="ip-timeline">
               ${i.articles.map(a => _timelineRowHTML(a)).join("")}
             </div>

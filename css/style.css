@@ -2090,3 +2090,60 @@ body.modal-open { overflow: hidden; }
 .vb-err     { background:rgba(248,81,73,.14);   color:var(--err); }
 .vb-muted   { background:var(--surface2); color:var(--text2); }
 .vb-neutral { background:var(--surface2); color:var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IOC UTILS  (.ioc-*)  — ioc-utils.js V1
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Bloc principal */
+.ioc-block            { margin:.65rem 0 .5rem; border:1px solid var(--border);
+                        border-left:3px solid #79c0ff; border-radius:6px;
+                        background:rgba(121,192,255,.03); overflow:hidden; }
+
+/* En-tête du bloc */
+.ioc-block-head       { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+                        padding:.38rem .65rem;
+                        border-bottom:1px solid var(--border);
+                        background:rgba(121,192,255,.07); }
+.ioc-block-title      { font-size:.72rem; font-weight:700; color:#79c0ff;
+                        white-space:nowrap; }
+.ioc-block-count      { font-size:.67rem; color:var(--text2);
+                        margin-right:auto; white-space:nowrap; }
+.ioc-block-actions    { display:flex; gap:.3rem; flex-shrink:0; flex-wrap:wrap; }
+
+/* Section par type (IPs, Domaines, URLs, Hashes) */
+.ioc-section          { padding:.32rem .65rem; border-bottom:1px solid var(--border); }
+.ioc-section:last-child { border-bottom:none; }
+
+.ioc-section-head     { display:flex; align-items:center; gap:.35rem; margin-bottom:.28rem; }
+.ioc-type-icon        { font-size:.75rem; flex-shrink:0; }
+.ioc-type-label       { font-size:.68rem; font-weight:600; color:var(--text); }
+.ioc-type-count       { font-size:.64rem; color:var(--text2); margin-right:auto; }
+
+/* Liste des valeurs IOC */
+.ioc-list             { display:flex; flex-wrap:wrap; gap:.28rem .45rem; }
+.ioc-item             { display:inline-flex; align-items:center; gap:.18rem; }
+.ioc-val              { font-family:monospace; font-size:.67rem; color:var(--text);
+                        background:var(--surface2); border:1px solid var(--border);
+                        border-radius:3px; padding:.07rem .28rem;
+                        max-width:32rem; overflow:hidden;
+                        text-overflow:ellipsis; white-space:nowrap; }
+
+/* Boutons IOC (cohérents avec le thème existant) */
+.ioc-copy-one,
+.ioc-copy-group,
+.ioc-copy-all,
+.ioc-export-json,
+.ioc-export-txt       { background:transparent; border:1px solid var(--border);
+                        border-radius:3px; color:var(--text2); cursor:pointer;
+                        font-family:var(--font); font-size:.62rem;
+                        padding:.07rem .3rem; white-space:nowrap;
+                        transition:color .12s, border-color .12s; }
+.ioc-copy-one:hover,
+.ioc-copy-group:hover,
+.ioc-copy-all:hover   { color:var(--accent); border-color:var(--accent); }
+.ioc-export-json:hover,
+.ioc-export-txt:hover { color:var(--ok); border-color:var(--ok); }
+
+/* Badge IOC dans la colonne Signaux de l'incident panel */
+.ip-ioc               { background:rgba(121,192,255,.12); color:#79c0ff; }
