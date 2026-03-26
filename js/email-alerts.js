@@ -22,6 +22,17 @@ const AlertManager = (() => {
   const DIGEST_KEY    = "cv_alert_digest";   // file d'attente pour les digests
   const HISTORY_KEY   = "cv_alert_history";  // historique des envois
   const HISTORY_MAX   = 200;                 // entrées conservées
+  const DEDUPE_KEY    = "cv_alert_dedupe";   // anti-doublon temporel
+
+  // Fenêtres d'anti-doublon (centralisées, modifiables ici)
+  const DEDUPE_CONFIG = {
+    windowMsImmediate:              60 * 60_000,          // 1 h   — mode immediate
+    windowMsUrgent:                 3  * 60 * 60_000,     // 3 h   — mode urgent_only
+    windowMsDigest:                 7  * 24 * 60 * 60_000,// 7 j   — cross-mode / inter-digest
+    suppressDigestIfAlreadySent:    true,  // exclure du digest si déjà envoyé individuellement
+    suppressDigestIfInRecentDigest: true,  // exclure si déjà dans un digest récent
+    pruneAfterMs:                   30 * 24 * 60 * 60_000 // 30 j  — rétention store
+  };
 
   // ── Paramètres par défaut ─────────────────────────────────────────────────
 
@@ -106,9 +117,15 @@ const AlertManager = (() => {
   }
 
   function _addToDigest(articles) {
-    const queue   = _loadDigest();
+    const queue    = _loadDigest();
     const existing = new Set(queue.map(a => a.id));
-    articles.forEach(a => { if (!existing.has(a.id)) queue.push(a); });
+    let skipped = 0;
+    articles.forEach(a => {
+      if (existing.has(a.id)) return;
+      if (shouldExcludeFromDigest(a)) { skipped++; return; } // étapes 5 & 6
+      queue.push(a);
+    });
+    if (skipped > 0) console.log(`[Alerts] Dedupe digest : ${skipped} article(s) exclus (déjà envoyés)`);
     _saveDigest(queue);
   }
 
@@ -163,6 +180,103 @@ const AlertManager = (() => {
     if (batch.some(a => a.epssScore >= 0.70))                  return "urgent_only: epss≥70%";
     if (batch.some(a => a.score !== undefined && a.score >= 80)) return "urgent_only: score≥80";
     return "urgent_only";
+  }
+
+  // ── Anti-doublon temporel (déduplication par fenêtre de temps) ───────────
+
+  /**
+   * Clé stable pour identifier un article de façon unique.
+   * Priorité : id > URL canonique > CVE+source > titre+source
+   */
+  function makeAlertDedupeKey(article) {
+    // 1. ID applicatif
+    if (article.id && article.id.length > 4) return `id:${article.id}`;
+    // 2. URL sans paramètres tracking
+    if (article.link) {
+      try {
+        const u = new URL(article.link);
+        ["utm_source","utm_medium","utm_campaign","ref","source","fbclid"]
+          .forEach(p => u.searchParams.delete(p));
+        return `url:${u.origin}${u.pathname}`;
+      } catch {}
+    }
+    // 3. CVE principale + source
+    const cve = (Array.isArray(article.cveIds) && article.cveIds[0])
+      || ((article.title || "").match(/CVE-\d{4}-\d+/i) || [])[0];
+    if (cve) {
+      const src = (article.sourceName || "").toLowerCase().replace(/\s+/g,"").slice(0, 20);
+      return `cve:${cve.toUpperCase()}:${src}`;
+    }
+    // 4. Titre normalisé + source
+    const title = (article.title || "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 60);
+    const src = (article.sourceName || article.source || "").toLowerCase().slice(0, 15);
+    return `t:${title}:${src}`;
+  }
+
+  function loadAlertDedupe() {
+    try {
+      const raw = localStorage.getItem(DEDUPE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  }
+
+  function saveAlertDedupe(state) {
+    try {
+      localStorage.setItem(DEDUPE_KEY, JSON.stringify(state));
+    } catch (e) { console.warn("[Alerts] Sauvegarde dedupe échouée:", e.message); }
+  }
+
+  /** Purge in-place les entrées plus vieilles que pruneAfterMs. */
+  function pruneAlertDedupe(state) {
+    const cutoff = Date.now() - DEDUPE_CONFIG.pruneAfterMs;
+    for (const key of Object.keys(state)) {
+      if (new Date(state[key].sentAt).getTime() < cutoff) delete state[key];
+    }
+  }
+
+  /**
+   * Retourne true si l'article a déjà été envoyé dans la fenêtre windowMs.
+   * Étape 3 (immediate) et 4 (urgent_only).
+   */
+  function wasRecentlySent(article, windowMs) {
+    const entry = loadAlertDedupe()[makeAlertDedupeKey(article)];
+    return !!entry && (Date.now() - new Date(entry.sentAt).getTime()) < windowMs;
+  }
+
+  /**
+   * Enregistre un batch dans le store dedupe — une seule lecture/écriture.
+   * Appelé après chaque envoi réussi.
+   */
+  function _markBatchSent(batch, mode, channel) {
+    const state = loadAlertDedupe();
+    const now   = new Date().toISOString();
+    batch.forEach(a => {
+      state[makeAlertDedupeKey(a)] = {
+        sentAt: now, mode, channel,
+        articleId: a.id  || "",
+        title:     (a.title || "").slice(0, 100)
+      };
+    });
+    pruneAlertDedupe(state);
+    saveAlertDedupe(state);
+  }
+
+  /**
+   * Étapes 5 & 6 — Retourne true si l'article doit être exclu de la file digest.
+   * - Déjà envoyé individuellement (immediate/urgent) dans les 7 derniers jours.
+   * - Déjà inclus dans un digest récent.
+   */
+  function shouldExcludeFromDigest(article) {
+    const entry = loadAlertDedupe()[makeAlertDedupeKey(article)];
+    if (!entry) return false;
+    const age = Date.now() - new Date(entry.sentAt).getTime();
+    if (age >= DEDUPE_CONFIG.windowMsDigest) return false;
+    const isIndividual = entry.mode === "immediate" || entry.mode === "urgent_only";
+    const isDigest     = entry.mode === "daily_digest" || entry.mode === "weekly_digest"
+                      || entry.mode === "manual_digest_flush";
+    return (DEDUPE_CONFIG.suppressDigestIfAlreadySent    && isIndividual)
+        || (DEDUPE_CONFIG.suppressDigestIfInRecentDigest && isDigest);
   }
 
   /**
@@ -512,6 +626,7 @@ const AlertManager = (() => {
       _clearDigest();
       markAsAlerted(queue.map(a => a.id));
       saveSettings({ ...settings, lastDigestAt: Date.now(), lastSentAt: Date.now() });
+      _markBatchSent(allArts, reason, settings.channel);
       appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, true, "", { digest: true, manualFlush: isManual }));
       if (window.UI) UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
       console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
@@ -744,7 +859,11 @@ const AlertManager = (() => {
         return;
       }
       if (candidates.length === 0) { console.log("[Alerts] Aucune nouvelle alerte"); return; }
-      await _sendImmediate(candidates.slice(0, settings.batchSize), settings, "immediate");
+      // Étape 3 — anti-doublon immediate
+      const toSend = candidates.filter(a => !wasRecentlySent(a, DEDUPE_CONFIG.windowMsImmediate));
+      if (toSend.length === 0) { console.log("[Alerts] Immédiat : tous les candidats déjà envoyés récemment (dedupe)"); return; }
+      if (toSend.length < candidates.length) console.log(`[Alerts] Dedupe immediate : ${candidates.length - toSend.length} article(s) filtrés`);
+      await _sendImmediate(toSend.slice(0, settings.batchSize), settings, "immediate");
       return;
     }
 
@@ -752,8 +871,11 @@ const AlertManager = (() => {
     if (mode === "urgent_only") {
       const urgent = candidates.filter(_isUrgent);
       if (urgent.length === 0) { console.log("[Alerts] Aucun article urgent (KEV/EPSS/score)"); return; }
-      console.log(`[Alerts] ${urgent.length} article(s) urgent(s) détecté(s)`);
-      await _sendImmediate(urgent.slice(0, settings.batchSize), settings, _urgentReason(urgent));
+      // Étape 4 — anti-doublon urgent_only
+      const toSendUrgent = urgent.filter(a => !wasRecentlySent(a, DEDUPE_CONFIG.windowMsUrgent));
+      if (toSendUrgent.length === 0) { console.log("[Alerts] Urgent : tous déjà envoyés récemment (dedupe)"); return; }
+      if (toSendUrgent.length < urgent.length) console.log(`[Alerts] Dedupe urgent : ${urgent.length - toSendUrgent.length} article(s) filtrés`);
+      await _sendImmediate(toSendUrgent.slice(0, settings.batchSize), settings, _urgentReason(toSendUrgent));
       return;
     }
 
@@ -780,6 +902,7 @@ const AlertManager = (() => {
       await _dispatch(batch, settings);
       markAsAlerted(batch.map(a => a.id));
       saveSettings({ ...settings, lastSentAt: Date.now() });
+      _markBatchSent(batch, reason || settings.mode, settings.channel);
       appendAlertHistory(_makeHistoryEntry(batch, settings, reason || settings.mode, true, ""));
       if (window.UI) {
         UI.showToast(`📧 Alerte envoyée — ${batch.length} article(s) via ${settings.channel}`, "success");
