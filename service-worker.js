@@ -5,7 +5,7 @@
 //   • Appels API / RSS externes → Network-First avec fallback cache
 //     (essaie le réseau, replie sur le cache si hors-ligne)
 
-const SW_VERSION   = 'v27';
+const SW_VERSION   = 'v28';
 const CACHE_STATIC = `cvpro-static-${SW_VERSION}`;
 const CACHE_DATA   = `cvpro-data-${SW_VERSION}`;
 
@@ -37,6 +37,7 @@ const APP_SHELL = [
   '/js/pdf-report.js',
   '/js/briefing-panel.js',
   '/js/health-panel.js',
+  '/js/vendor-panel.js',
   '/js/pwa.js',
   '/js/app.js',
   '/icons/icon.svg'
