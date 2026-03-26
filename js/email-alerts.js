@@ -97,7 +97,7 @@ const AlertManager = (() => {
 
   function markAsAlerted(ids) {
     const existing = getAlertedIds();
-    ids.forEach(id => existing.add(id));
+    ids.filter(Boolean).forEach(id => existing.add(id)); // ignore les IDs undefined/null/""
     saveAlertedIds(existing);
   }
 
@@ -329,13 +329,33 @@ const AlertManager = (() => {
     );
   }
 
+  // ── Helpers de sécurité / robustesse pour la génération HTML ─────────────
+
+  /** Échappe les caractères HTML sensibles (titre, source, etc.). */
+  function _escHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  /** Retourne l'URL uniquement si elle est http/https, sinon "#". */
+  function _safeHref(url) {
+    try {
+      const u = new URL(String(url || ""));
+      return (u.protocol === "https:" || u.protocol === "http:") ? u.href : "#";
+    } catch { return "#"; }
+  }
+
   // ── Formatage du corps d'alerte ───────────────────────────────────────────
 
   function formatAlertBody(articles) {
     return articles.map(a => {
       const crit = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
       const date = a.pubDate instanceof Date ? a.pubDate.toLocaleString("fr-FR") : String(a.pubDate || "");
-      return `${crit} | ${a.sourceName} | ${date}\n${a.title}\n${a.link}`;
+      return `${crit} | ${a.sourceName || "?"} | ${date}\n${a.title || "(sans titre)"}\n${a.link || ""}`;
     }).join("\n\n---\n\n");
   }
 
@@ -349,10 +369,10 @@ const AlertManager = (() => {
             <span style="color:${color};font-weight:700">${badge}</span>
           </td>
           <td style="padding:8px;border-bottom:1px solid #30363d;color:#8b949e">
-            ${a.sourceName}
+            ${_escHtml(a.sourceName || "")}
           </td>
           <td style="padding:8px;border-bottom:1px solid #30363d">
-            <a href="${a.link}" style="color:#58a6ff">${a.title}</a>
+            <a href="${_safeHref(a.link)}" style="color:#58a6ff">${_escHtml(a.title || "(sans titre)")}</a>
           </td>
         </tr>`;
     }).join("");
@@ -391,7 +411,7 @@ const AlertManager = (() => {
     const scored = queue.map(a => ({
       ...a,
       _p: typeof digestPriorityScore === "function"
-        ? digestPriorityScore(a).score
+        ? (digestPriorityScore(a)?.score ?? 0)  // null-guard si le scorer retourne null
         : (a.score ?? 0)
     }));
     scored.sort((a, b) => b._p - a._p);
@@ -601,12 +621,12 @@ const AlertManager = (() => {
       return `
         <div style="border:1px solid ${color};border-radius:8px;padding:16px;margin-bottom:16px;background:#161b22">
           <div style="margin-bottom:8px;overflow:hidden">
-            <span style="color:#8b949e;font-size:12px;float:right">${a.sourceName}</span>
+            <span style="color:#8b949e;font-size:12px;float:right">${_escHtml(a.sourceName || "")}</span>
             <span style="color:${color};font-weight:700;font-size:13px">${badge}</span>
             ${meta ? `<span style="color:#8b949e;font-size:12px"> · ${meta}</span>` : ""}
           </div>
           <h3 style="margin:0 0 8px;font-size:15px;line-height:1.4;word-break:break-word">
-            <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
+            <a href="${_safeHref(a.link)}" style="color:#58a6ff;text-decoration:none">${_escHtml(a.title || "(sans titre)")}</a>
           </h3>
           <p style="margin:0 0 8px;font-size:12px;color:#8b949e">🏷️ ${_affectedProducts(a)}</p>
           <p style="margin:0 0 12px;font-size:13px;color:#cdd9e5;background:#0d1117;
@@ -631,10 +651,10 @@ const AlertManager = (() => {
             const c = a.criticality === "high" ? "#f85149" : "#f0883e";
             const b = a.criticality === "high" ? "🔴" : "🟠";
             return `<tr>
-              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${b} ${a.criticality.toUpperCase()}</td>
-              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e">${a.sourceName}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${b} ${_escHtml((a.criticality || "?").toUpperCase())}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e">${_escHtml(a.sourceName || "")}</td>
               <td style="padding:5px 8px;border-bottom:1px solid #21262d;word-break:break-word">
-                <a href="${a.link}" style="color:#58a6ff;text-decoration:none">${a.title}</a>
+                <a href="${_safeHref(a.link)}" style="color:#58a6ff;text-decoration:none">${_escHtml(a.title || "(sans titre)")}</a>
               </td>
             </tr>`;
           }).join("")}
@@ -700,9 +720,9 @@ const AlertManager = (() => {
       const epss  = a.epssScore !== null
         ? ` | EPSS ${Math.round(a.epssScore * 100)} %` : "";
       t += `${i + 1}. ${badge}${kev}${epss}\n`;
-      t += `   ${a.title}\n`;
-      t += `   Source : ${a.sourceName} — ${_affectedProducts(a)}\n`;
-      t += `   Lien   : ${a.link}\n`;
+      t += `   ${a.title || "(sans titre)"}\n`;
+      t += `   Source : ${a.sourceName || "?"} — ${_affectedProducts(a)}\n`;
+      t += `   Lien   : ${a.link || ""}\n`;
       t += `   ► ${_whyImportant(a)}\n`;
       _watchpoints(a).forEach(p => { t += `   • ${p}\n`; });
       t += "\n";
@@ -712,7 +732,7 @@ const AlertManager = (() => {
       t += `📋 AUTRES ALERTES (${rest.length})\n${"-".repeat(60)}\n`;
       rest.forEach(a => {
         const b = a.criticality === "high" ? "🔴" : "🟠";
-        t += `${b} [${a.sourceName}] ${a.title}\n   ${a.link}\n`;
+        t += `${b} [${a.sourceName || "?"}] ${a.title || "(sans titre)"}\n   ${a.link || ""}\n`;
       });
       t += "\n";
     }
@@ -751,7 +771,8 @@ const AlertManager = (() => {
       saveSettings({ ...settings, lastDigestAt: Date.now(), lastSentAt: Date.now() });
       _markBatchSent(allArts, reason, settings.channel);
       appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, true, "", { digest: true, manualFlush: isManual }));
-      if (window.UI) UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
+      // Toast uniquement si appelé automatiquement — flushDigest() gère son propre message
+      if (window.UI && !isManual) UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
       console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
     } catch (err) {
       appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, false, err.message, { digest: true, manualFlush: isManual }));
