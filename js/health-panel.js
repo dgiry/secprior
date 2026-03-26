@@ -143,6 +143,7 @@ const HealthPanel = (() => {
     ${cause ? `<span class="hp-sum-lbl">⚠️ Alerte</span><span class="hp-sum-val hp-sum-cause">${cause}</span>` : ""}
   </div>
 </div>`;
+  }   // ← fermeture de _renderSummary
 
   // ── Feeds en erreur ─────────────────────────────────────────────────────────
   function _renderFeedErrors(feedErrors, totalFeeds) {
