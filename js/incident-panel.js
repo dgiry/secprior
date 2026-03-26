@@ -385,22 +385,33 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="exploit"   ?" active":""}" data-filter="exploit">💀 Exploit</button>
           <button class="ip-filter-btn${f==="patch"     ?" active":""}" data-filter="patch">🩹 Patch</button>
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">🔴 Score ≥ 70</button>
-          <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 Avec IOC</button>
+          <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 Avec IOC${(() => { const n = _lastIncidents.filter(i => i.rawIocCount > 0).length; return n ? ` (${n})` : ""; })()}</button>
         </div>
         ${statusBarHTML}
       </div>`;
   }
 
   function _rowHTML(i) {
-    const safeId  = i.incidentId.replace(/[^a-z0-9\-_]/g, "-");
-    const epssStr = i.maxEpss != null ? `${Math.round(i.maxEpss * 100)}%` : "—";
-    const scoreStr = i.maxScore > 0  ? i.maxScore : "—";
+    const safeId   = i.incidentId.replace(/[^a-z0-9\-_]/g, "-");
+    const epssStr  = i.maxEpss != null ? `${Math.round(i.maxEpss * 100)}%` : "—";
+    const scoreStr = i.maxScore > 0    ? i.maxScore : "—";
+
+    // Agrégation dédupliquée (une seule fois — sert au badge + au détail)
+    let iocTotal   = 0;
+    let iocSection = "";
+    if (typeof IOCUtils !== "undefined") {
+      const iocs = IOCUtils.aggregateIOCs(i.articles);
+      iocTotal   = IOCUtils.total(iocs);
+      iocSection = iocTotal > 0
+        ? IOCUtils.iocBlockHTML(iocs, i.incidentId)
+        : `<p class="ip-ioc-empty">🔗 Aucun IOC détecté pour cet incident.</p>`;
+    }
 
     const signals = [
-      i.kev              ? `<span class="ip-badge ip-kev">🚨 KEV</span>`  : "",
-      i.watchlistHit     ? `<span class="ip-badge ip-wl">👁 WL</span>`   : "",
-      i.trending         ? `<span class="ip-badge ip-tr">🔥</span>`       : "",
-      i.rawIocCount > 0  ? `<span class="ip-badge ip-ioc">🔗 IOC</span>` : ""
+      i.kev          ? `<span class="ip-badge ip-kev">🚨 KEV</span>`              : "",
+      i.watchlistHit ? `<span class="ip-badge ip-wl">👁 WL</span>`               : "",
+      i.trending     ? `<span class="ip-badge ip-tr">🔥</span>`                   : "",
+      iocTotal > 0   ? `<span class="ip-badge ip-ioc">🔗 ${iocTotal} IOC</span>` : ""
     ].filter(Boolean).join(" ");
 
     const cveHTML = i.cves.slice(0, 2).map(c =>
@@ -436,11 +447,7 @@ const IncidentPanel = (() => {
           <div class="ip-detail-inner">
             ${_detailHeaderHTML(i)}
             ${typeof EntityStatus !== "undefined" ? EntityStatus.statusBlockHTML("incident", i.incidentId) : ""}
-            ${(() => {
-              if (typeof IOCUtils === "undefined") return "";
-              const iocs = IOCUtils.aggregateIOCs(i.articles);
-              return IOCUtils.iocBlockHTML(iocs, i.incidentId);
-            })()}
+            ${iocSection}
             <div class="ip-timeline">
               ${i.articles.map(a => _timelineRowHTML(a)).join("")}
             </div>

@@ -2147,3 +2147,7 @@ body.modal-open { overflow: hidden; }
 
 /* Badge IOC dans la colonne Signaux de l'incident panel */
 .ip-ioc               { background:rgba(121,192,255,.12); color:#79c0ff; }
+
+/* Message "aucun IOC" dans le détail */
+.ip-ioc-empty         { margin:.5rem 0 .4rem; font-size:.74rem; color:var(--text2);
+                        font-style:italic; padding:.3rem 0; }
