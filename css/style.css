@@ -1670,6 +1670,8 @@ body.modal-open { overflow: hidden; }
 .hp-hist-slot  { display: inline-block; font-size: .64rem; color: var(--text2); opacity: .6;
                  font-family: var(--font); margin-top: .1rem; }
 .hp-hist-stats { color: var(--text2); }
+.hp-hist-feeds-ok   { color: var(--ok);   font-weight: 600; font-size: .7rem; margin-right: .3rem; }
+.hp-hist-feeds-warn { color: var(--warn); font-weight: 600; font-size: .7rem; margin-right: .3rem; }
 .hp-hist-reason { color: var(--warn); font-size: .7rem; }
 .hp-pill-sm    { font-size: .62rem; padding: .1rem .35rem; }
 

@@ -195,15 +195,19 @@ const HealthPanel = (() => {
     const rows = history.map((r, i) => {
       const isLast  = i === 0;
       const badge   = r.lastResult === "sent"
-        ? '<span class="hp-pill hp-ok hp-pill-sm">✅ sent</span>'
+        ? '<span class="hp-pill hp-ok hp-pill-sm">✅ Envoyé</span>'
         : r.lastResult === "failed"
-          ? '<span class="hp-pill hp-err hp-pill-sm">❌ failed</span>'
-          : '<span class="hp-pill hp-warn hp-pill-sm">⚠️ noArt</span>';
+          ? '<span class="hp-pill hp-err hp-pill-sm">❌ Échec</span>'
+          : '<span class="hp-pill hp-warn hp-pill-sm">⚠️ Aucun art.</span>';
 
       const d   = new Date(r.lastRunAt);
       const ts  = isNaN(d) ? r.lastRunAt : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
       const slotStr = r.slot ? `<br><span class="hp-hist-slot">${r.slot}</span>` : "";
       const ls  = r.lastStats || {};
+      const feedsTotal = (ls.feedsOk ?? 0) + (ls.feedsErr ?? 0);
+      const feedsStr   = feedsTotal > 0
+        ? `<span class="${ls.feedsErr > 0 ? "hp-hist-feeds-warn" : "hp-hist-feeds-ok"}">${ls.feedsOk ?? 0}/${feedsTotal} flux</span>`
+        : "";
       const errBadge = ls.feedsErr > 0
         ? `<span class="hp-pill hp-warn hp-pill-sm">${ls.feedsErr} err</span>`
         : "";
@@ -213,7 +217,7 @@ const HealthPanel = (() => {
       return `<tr class="${isLast ? "hp-hist-last" : ""}">
   <td class="hp-hist-ts">${ts}${slotStr}</td>
   <td>${badge}</td>
-  <td class="hp-hist-stats">${ls.rawArticles ?? "—"} bruts · ${ls.uniqueArticles ?? "—"} uniq · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
+  <td class="hp-hist-stats">${feedsStr} ${ls.rawArticles ?? "—"} bruts · ${ls.uniqueArticles ?? "—"} uniq · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
   <td>${reason}</td>
 </tr>`;
     }).join("");
