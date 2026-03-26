@@ -16,6 +16,8 @@
 
 const { parseRSS }           = require("./lib/rss-parser");
 const { enrichArticles }     = require("./lib/enricher");
+const { loadSentIds,
+        saveSentIds }        = require("./lib/dedup-store");
 const { selectTopArticles,
         formatBriefingHTML,
         formatBriefingText } = require("./lib/digest-engine");
@@ -259,10 +261,23 @@ module.exports = async (req, res) => {
     });
   }
 
+  // ── 3.5. Filtre les articles déjà envoyés dans les digest précédents ─────
+  // loadSentIds() retourne un Set vide si Vercel KV n'est pas configuré.
+  const sentIds   = await loadSentIds();
+  const freshQueue = sentIds.size > 0
+    ? queue.filter(a => !sentIds.has(a.id))
+    : queue;
+  // Fallback : si trop peu d'articles après dédup, on reprend la queue complète
+  const finalQueue = freshQueue.length >= 3 ? freshQueue : queue;
+  if (sentIds.size > 0) {
+    console.log("[scheduled-digest] Dédup : %d → %d articles (filtrés: %d)",
+      queue.length, finalQueue.length, queue.length - finalQueue.length);
+  }
+
   // ── 4. Sélection des articles du briefing ─────────────────────────────────
-  const top    = selectTopArticles(queue, 5);
+  const top    = selectTopArticles(finalQueue, 5);
   const topIds = new Set(top.map(a => a.id));
-  const rest   = queue
+  const rest   = finalQueue
     .filter(a => !topIds.has(a.id) && a.criticality !== "low")
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 20);
@@ -280,6 +295,10 @@ module.exports = async (req, res) => {
   // ── 6. Envoi ──────────────────────────────────────────────────────────────
   try {
     const emailResult = await _sendEmail({ channel, to: recipient, subject, html, text });
+
+    // Persiste les IDs des top articles pour éviter les répétitions demain
+    await saveSentIds(top.map(a => a.id));
+
     const elapsed = Date.now() - started;
     console.log("[scheduled-digest] ✅ Envoyé en %d ms — top:%d rest:%d sources:%d/%d",
       elapsed, top.length, rest.length, fetchOk, FEEDS.length);
