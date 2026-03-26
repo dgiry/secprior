@@ -230,4 +230,12 @@ function formatBriefingText(top, rest, label) {
   return t;
 }
 
-module.exports = { digestPriorityScore, selectTopArticles, formatBriefingHTML, formatBriefingText };
+module.exports = {
+  digestPriorityScore,
+  selectTopArticles,
+  formatBriefingHTML,
+  formatBriefingText,
+  // Helpers d'explication exposés pour le mode preview de scheduled-digest.js
+  whyImportant: _whyImportant,
+  watchpoints:  _watchpoints
+};

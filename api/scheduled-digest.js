@@ -21,9 +21,12 @@ const { enrichArticles }     = require("./lib/enricher");
 const { loadSentIds,    saveSentIds,
         loadSentTopics, saveSentTopics,
         loadLastSlot,   saveLastSlot }   = require("./lib/dedup-store");
-const { selectTopArticles,
+const { digestPriorityScore,
+        selectTopArticles,
         formatBriefingHTML,
-        formatBriefingText } = require("./lib/digest-engine");
+        formatBriefingText,
+        whyImportant,
+        watchpoints }        = require("./lib/digest-engine");
 const { FEEDS }              = require("./lib/feeds"); // source canonique — modifier là-bas
 
 // ── Scoring heuristique côté serveur (port de config.js + scorer.js) ─────────
@@ -272,18 +275,59 @@ function _montrealNow() {
   };
 }
 
-// ── Helper preview : résumé d'un article pour la réponse JSON ────────────────
-function _previewArticle(a) {
+// ── Helper preview : fiche explicative d'un article pour la réponse JSON ──────
+/**
+ * Construit la fiche explicative complète d'un article top en mode preview.
+ * Inclut scores, breakdown des bonus digest, signaux d'enrichissement et
+ * raisons lisibles (whyImportant + watchpoints) — miroir exact du contenu email.
+ *
+ * @param {object} a    - article enrichi + scoré
+ * @param {number} rank - position dans le top (1-based)
+ * @returns {object}
+ */
+function _previewArticle(a, rank) {
+  const { score: dps, base, bonus, breakdown } = digestPriorityScore(a);
   return {
-    title:       a.title,
-    link:        a.link,
-    sourceName:  a.sourceName,
+    rank,
+    title:      a.title,
+    link:       a.link,
+    sourceName: a.sourceName,
+    pubDate:    a.pubDate instanceof Date ? a.pubDate.toISOString() : null,
+
+    // ── Score composite (construit par _scoreComposite après enrichissement) ──
     score:       a.score,
     criticality: a.criticality,
-    isKEV:       a.isKEV,
-    epssScore:   a.epssScore != null ? Math.round(a.epssScore * 1000) / 1000 : null,
-    cvssScore:   a.cvssScore,
-    cveIds:      (a.cveIds || []).slice(0, 3)
+
+    // ── Score de priorisation digest (base + bonus signals) ──────────────────
+    digestScore: dps,      // score final utilisé pour classer dans le top
+    digestBase:  base,     // = a.score (hérite du composite)
+    digestBonus: bonus,    // total des bonifications appliquées
+    digestBreakdown: {     // détail par signal — tous cumulatifs
+      kev:       breakdown.kev,       // +50 si CISA KEV actif
+      epss:      breakdown.epss,      // +35 si EPSS≥70 % · +15 si ≥40 %
+      cvss:      breakdown.cvss,      // +30 si CVSS≥9 · +15 si ≥7 · +5 si ≥4
+      zeroDay:   breakdown.zeroDay,   // +30 si "zero-day" / "0-day" dans le titre
+      watchlist: breakdown.watchlist, // +25 par mot watchlist (plafonné 75)
+      trending:  breakdown.trending,  // +20 si isTrending
+      sources:   breakdown.sources    // +5 par source supplémentaire (plafonné 20)
+    },
+
+    // ── Signaux d'enrichissement (KEV / EPSS / CVSS) ─────────────────────────
+    isKEV:            a.isKEV      ?? false,
+    epssScore:        a.epssScore  != null ? Math.round(a.epssScore * 1000) / 1000 : null,
+    epssPercent:      a.epssScore  != null ? `${Math.round(a.epssScore * 100)} %`  : null,
+    cvssScore:        a.cvssScore  ?? null,
+    isTrending:       a.isTrending ?? false,
+    sourceCount:      a.sourceCount ?? 1,     // nb sources couvrant ce sujet (après groupByTopic)
+    cveIds:           (a.cveIds          || []).slice(0, 3),
+    watchlistMatches: (a.watchlistMatches || []).slice(0, 5),
+
+    // ── Déduplication ─────────────────────────────────────────────────────────
+    topicKey: a._topicKey || _topicKey(a),    // clé utilisée pour l'anti-doublon inter-digest
+
+    // ── Raisons lisibles (identiques au contenu de l'email généré) ───────────
+    whyImportant: whyImportant(a),   // phrase d'explication ("Cette vulnérabilité est …")
+    watchpoints:  watchpoints(a)     // liste de recommandations immédiates
   };
 }
 
@@ -533,16 +577,23 @@ module.exports = async (req, res) => {
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ PREVIEW terminé en %dms (email non envoyé)", elapsed);
     return res.status(200).json({
-      preview:  true,
+      preview: true,
       subject,
-      top:      top.map(_previewArticle),
-      rest:     rest.slice(0, 10).map(a => ({
+      // Articles du top : fiche explicative complète (scores, breakdown, raisons)
+      top: top.map((a, i) => _previewArticle(a, i + 1)),
+      // Articles secondaires : résumé léger (score + topicKey pour traçabilité)
+      rest: rest.slice(0, 10).map((a, i) => ({
+        rank:        top.length + i + 1,
         title:       a.title,
         sourceName:  a.sourceName,
         score:       a.score,
-        criticality: a.criticality
+        criticality: a.criticality,
+        topicKey:    a._topicKey || _topicKey(a),
+        isKEV:       a.isKEV ?? false,
+        epssPercent: a.epssScore != null ? `${Math.round(a.epssScore * 100)} %` : null,
+        cvssScore:   a.cvssScore ?? null
       })),
-      stats:    { ...pipelineStats, elapsedMs: elapsed }
+      stats: { ...pipelineStats, elapsedMs: elapsed }
     });
   }
 
