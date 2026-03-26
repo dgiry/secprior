@@ -325,6 +325,21 @@ function _previewArticle(a, rank) {
     // ── Déduplication ─────────────────────────────────────────────────────────
     topicKey: a._topicKey || _topicKey(a),    // clé utilisée pour l'anti-doublon inter-digest
 
+    // ── Étiquettes courtes de sélection (lecture rapide en un coup d'œil) ──────
+    selectionReasons: [
+      a.isKEV                                            && "KEV actif",
+      a.epssScore >= 0.70                                && `EPSS ${Math.round(a.epssScore * 100)} %`,
+      a.epssScore >= 0.40 && a.epssScore < 0.70          && `EPSS modéré ${Math.round(a.epssScore * 100)} %`,
+      a.cvssScore >= 9                                   && `CVSS ${a.cvssScore} critique`,
+      a.cvssScore >= 7    && a.cvssScore < 9             && `CVSS ${a.cvssScore}`,
+      /zero.?day|0.?day/i.test(a.title || "")           && "zero-day",
+      (a.watchlistMatches || []).length > 0              && `watchlist (${a.watchlistMatches.length})`,
+      a.isTrending                                       && "trending",
+      (a.sourceCount || 1) >= 2                         && `${a.sourceCount} sources`,
+      a.criticality === "high"  && !a.isKEV              && "haute criticité",
+      a.criticality === "medium"&& !a.isKEV              && "criticité moyenne"
+    ].filter(Boolean),
+
     // ── Raisons lisibles (identiques au contenu de l'email généré) ───────────
     whyImportant: whyImportant(a),   // phrase d'explication ("Cette vulnérabilité est …")
     watchpoints:  watchpoints(a)     // liste de recommandations immédiates
