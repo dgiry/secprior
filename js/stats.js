@@ -121,15 +121,18 @@ const StatsPanel = (() => {
   }
 
   function _renderDigestKPIs(articles) {
+    const n = articles.length || 1;
+
     // Éligibles digest : articles non "low" (pool que le moteur considère)
     const eligible = articles.filter(a => a.criticality !== "low").length;
 
-    // Topic grouping léger
+    // Topic grouping léger (tous articles + éligibles seuls pour les dérivés)
     const { unique: topicUnique, merged, avgSize } = _topicStats(articles);
+    const { unique: topicEligible } = _topicStats(articles.filter(a => a.criticality !== "low"));
 
     // Enrichissement : au moins un signal réel (KEV, EPSS, CVSS)
     const enriched    = articles.filter(a => a.isKEV || a.epssScore != null || a.cvssScore != null).length;
-    const notEnriched = articles.length - enriched;
+    const notEnriched = n - enriched;
 
     // CVEs uniques extraits
     const allCves = new Set();
@@ -143,18 +146,65 @@ const StatsPanel = (() => {
       }
     } catch (_) {}
 
-    _set("kpi-eligible",  eligible);
-    _set("kpi-topics",    topicUnique);
-    _set("kpi-grouped",   merged);
-    _set("kpi-enriched",  enriched);
-    _set("kpi-cves",      allCves.size);
-    _set("kpi-feed-err",  feedErr);
+    // ── KPI dérivés ─────────────────────────────────────────────────────────
 
-    // Sous-labels dynamiques
+    // Taux d'enrichissement : % d'articles avec au moins un signal réel
+    const enrichRate = Math.round(enriched / n * 100);
+
+    // Taux de réduction par fusion : % de réduction du pool éligible après regroupement
+    // (eligible → topicEligible) — ex: 120 articles → 80 sujets = 33% réduction
+    const reductionRate = eligible > 0
+      ? Math.round((eligible - topicEligible) / eligible * 100)
+      : 0;
+
+    // Top briefing estimé : nb de sujets qui partiraient maintenant
+    // Miroir de selectTopArticles(queue, 5) : Math.max(3, Math.min(5, queue.length))
+    const briefingTop = topicEligible > 0
+      ? Math.max(3, Math.min(5, topicEligible))
+      : 0;
+
+    // ── Mises à jour DOM ─────────────────────────────────────────────────────
+
+    _set("kpi-eligible",      eligible);
+    _set("kpi-topics",        topicUnique);
+    _set("kpi-grouped",       merged);
+    _set("kpi-enriched",      enriched);
+    _set("kpi-cves",          allCves.size);
+    _set("kpi-feed-err",      feedErr);
+    _set("kpi-enrich-rate",   enrichRate + " %");
+    _set("kpi-reduction-rate",reductionRate + " %");
+    _set("kpi-briefing-top",  briefingTop || "—");
+
+    // Sous-labels dynamiques — existants
     const avgEl    = document.getElementById("kpi-topics-sub");
     if (avgEl)      avgEl.textContent = avgSize !== "—" ? `moy. ${avgSize} art./sujet` : "";
     const enrichEl = document.getElementById("kpi-enriched-sub");
     if (enrichEl)   enrichEl.textContent = `${notEnriched} non enrichis`;
+    const groupedEl = document.getElementById("kpi-grouped-sub");
+    if (groupedEl)  groupedEl.textContent = merged > 0 ? `sur ${topicUnique} sujets` : "";
+
+    // Sous-labels dynamiques — nouveaux
+    const rrEl = document.getElementById("kpi-reduction-rate-sub");
+    if (rrEl)  rrEl.textContent = eligible > 0 ? `${eligible} élig. → ${topicEligible} sujets` : "";
+    const btEl = document.getElementById("kpi-briefing-top-sub");
+    if (btEl)  btEl.textContent = topicEligible > 0 ? `sur ${topicEligible} sujets éligibles` : "";
+
+    // Couleur dynamique des taux (vert si bon, orange si faible)
+    _colorRate("kpi-enrich-rate",    enrichRate,    50, 25);  // vert ≥50%, orange <25%
+    _colorRate("kpi-reduction-rate", reductionRate, 20, 5);   // vert ≥20%, orange <5%
+  }
+
+  /**
+   * Colorie la valeur d'un KPI selon deux seuils.
+   * @param {string} id       — id du .kpi-value
+   * @param {number} val      — valeur numérique
+   * @param {number} okThresh — seuil "vert" (≥ ok)
+   * @param {number} warnThresh — seuil "orange" (< warn)
+   */
+  function _colorRate(id, val, okThresh, warnThresh) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.color = val >= okThresh ? "var(--ok)" : val < warnThresh ? "var(--warn)" : "";
   }
 
   // ── Donut SVG (criticité) ─────────────────────────────────────────────────
