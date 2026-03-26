@@ -239,16 +239,31 @@ const HealthPanel = (() => {
 </div>`;
     }
 
+    const MAX_ARTS = 3;
+
     const cards = history.map((b, i) => {
       const d   = new Date(b.sentAt);
       const ts  = isNaN(d) ? b.sentAt
         : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
-      const subj = b.subject
-        ? b.subject.replace(/^[^\x20-\x7E]*/, "").trim().slice(0, 70) + (b.subject.length > 70 ? "…" : "")
-        : "—";
+      const slotBadge = b.slot
+        ? `<span class="hp-bh-slot">${b.slot}</span>`
+        : "";
 
-      const arts = Array.isArray(b.topArticles) ? b.topArticles : [];
-      const artRows = arts.map(a => {
+      const rawSubj = b.subject ? b.subject.replace(/^[^\x20-\x7E]*/, "").trim() : "";
+      const subjDisplay = rawSubj.slice(0, 72) + (rawSubj.length > 72 ? "…" : "");
+      const safeSubj    = rawSubj.replace(/"/g, "&quot;");
+      const subjEl = rawSubj
+        ? `<span class="hp-bh-subj" title="Cliquer pour copier" data-subj="${safeSubj}"
+             onclick="navigator.clipboard.writeText(this.dataset.subj).then(()=>{const e=this;e.classList.add('hp-bh-copied');setTimeout(()=>e.classList.remove('hp-bh-copied'),1500)})"
+            >${subjDisplay} <span class="hp-bh-copy-icon">⎘</span></span>`
+        : `<span class="hp-bh-subj hp-null">—</span>`;
+
+      const arts       = Array.isArray(b.topArticles) ? b.topArticles : [];
+      const totalCount = b.topCount ?? arts.length;
+      const visible    = arts.slice(0, MAX_ARTS);
+      const hiddenCount = Math.max(0, totalCount - visible.length);
+
+      const artRows = visible.map(a => {
         const crit = a.criticality === "high"   ? '🔴'
                    : a.criticality === "medium" ? '🟠' : '🟢';
         const kev  = a.isKEV ? ' <span class="hp-pill hp-err hp-pill-sm">KEV</span>' : "";
@@ -261,15 +276,19 @@ const HealthPanel = (() => {
         return `<div class="hp-bh-art">${crit} ${title}${kev}${epss}${cve}</div>`;
       }).join("");
 
+      const moreRow = hiddenCount > 0
+        ? `<div class="hp-bh-more">+ ${hiddenCount} autre${hiddenCount > 1 ? "s" : ""}</div>`
+        : "";
+
       const isFirst = i === 0;
       return `
 <div class="hp-bh-card${isFirst ? " hp-bh-card-last" : ""}">
   <div class="hp-bh-head">
-    <span class="hp-bh-ts">${ts}</span>
-    <span class="hp-bh-count"><strong>${b.topCount ?? arts.length}</strong> alerte${(b.topCount ?? arts.length) > 1 ? "s" : ""}</span>
-    <span class="hp-bh-subj">${subj}</span>
+    <span class="hp-bh-ts">${ts}</span>${slotBadge}
+    <span class="hp-bh-count"><strong>${totalCount}</strong> alerte${totalCount > 1 ? "s" : ""}</span>
+    ${subjEl}
   </div>
-  ${artRows}
+  ${artRows}${moreRow}
 </div>`;
     }).join("");
 

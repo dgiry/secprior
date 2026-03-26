@@ -1682,7 +1682,16 @@ body.modal-open { overflow: hidden; }
 .hp-bh-head    { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; margin-bottom: .35rem; }
 .hp-bh-ts      { font-size: .7rem; color: var(--text2); white-space: nowrap; }
 .hp-bh-count   { font-size: .75rem; white-space: nowrap; }
-.hp-bh-subj    { font-size: .72rem; color: var(--text2); flex: 1; min-width: 0; }
+.hp-bh-slot    { font-size: .62rem; color: var(--text2); opacity: .7; font-family: var(--font);
+                 padding: .1rem .3rem; margin-left: .3rem; background: var(--surface2);
+                 border-radius: 3px; white-space: nowrap; vertical-align: middle; }
+.hp-bh-subj    { font-size: .72rem; color: var(--text2); flex: 1; min-width: 0;
+                 cursor: pointer; user-select: none; }
+.hp-bh-subj:hover { color: var(--text); }
+.hp-bh-copy-icon { font-size: .68rem; opacity: .4; margin-left: .2rem; }
+.hp-bh-subj.hp-bh-copied .hp-bh-copy-icon::after { content: " ✓"; color: var(--ok); opacity: 1; }
+.hp-bh-more    { font-size: .68rem; color: var(--text2); opacity: .55; margin-top: .2rem;
+                 padding-left: 1rem; }
 .hp-bh-art     { font-size: .73rem; padding: .15rem 0; border-top: 1px solid var(--border); line-height: 1.4; }
 .hp-bh-art:first-of-type { border-top: none; }
 .hp-bh-link    { color: var(--text); text-decoration: none; }
