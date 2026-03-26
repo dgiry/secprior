@@ -35,6 +35,8 @@ const APP_SHELL = [
   '/js/article-modal.js',
   '/js/ui.js',
   '/js/pdf-report.js',
+  '/js/briefing-panel.js',
+  '/js/health-panel.js',
   '/js/pwa.js',
   '/js/app.js',
   '/icons/icon.svg'
