@@ -32,6 +32,7 @@ const App = (() => {
       StatsPanel.update(articles);
       VendorPanel.update(articles);
       CVEPanel.update(articles);
+      IncidentPanel.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -217,6 +218,9 @@ const App = (() => {
 
     // ── Panneau Corrélation CVE ↔ Articles ────────────────────────────────────
     CVEPanel.init();
+
+    // ── Panneau Incidents Consolidés ──────────────────────────────────────────
+    IncidentPanel.init();
 
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();

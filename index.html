@@ -90,6 +90,10 @@
       🔍 CVEs
     </button>
 
+    <button id="btn-incidents" class="btn" title="Vue incidents consolidés (Union-Find CVE + relatedArticles)">
+      🎯 Incidents
+    </button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -269,6 +273,15 @@
       <span class="bp-meta" id="cve-meta"></span>
     </div>
     <div id="cve-list"></div>
+  </div>
+
+  <!-- ── Panneau Vue Incidents Consolidés (collapsible) ───────────────────── -->
+  <div id="incident-panel" class="vendor-panel" style="display:none">
+    <div class="bp-header">
+      <h3 class="bp-title-h3">🎯 Incidents Consolidés</h3>
+      <span class="bp-meta" id="incident-meta"></span>
+    </div>
+    <div id="incident-list"></div>
   </div>
 
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
@@ -651,6 +664,7 @@
   <script src="js/app.js?v=13"></script>
   <script src="js/vendor-panel.js?v=17"></script>
   <script src="js/cve-panel.js?v=2"></script>
+  <script src="js/incident-panel.js?v=1"></script>
 
 </body>
 </html>

@@ -1873,4 +1873,78 @@ body.modal-open { overflow: hidden; }
 .cp-cve-link:hover{ text-decoration:underline; }
 .cp-nvd-link      { color:var(--text2); font-size:.7rem; margin-left:.25rem;
                     text-decoration:none; opacity:.6; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INCIDENT PANEL  (.ip-*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Barre de filtres + recherche */
+.ip-toolbar        { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+                     padding:.55rem 1rem; border-bottom:1px solid var(--border); }
+.ip-filter-btn     { background:var(--surface2); border:1px solid var(--border);
+                     color:var(--text2); border-radius:4px; padding:.2rem .55rem;
+                     font-size:.72rem; cursor:pointer; transition:all .12s; white-space:nowrap; }
+.ip-filter-btn:hover  { color:var(--text); border-color:var(--accent); }
+.ip-filter-btn.active { background:rgba(88,166,255,.15); color:var(--accent);
+                         border-color:var(--accent); }
+.ip-search         { margin-left:auto; background:var(--surface2);
+                     border:1px solid var(--border); border-radius:4px;
+                     color:var(--text); padding:.25rem .55rem; font-size:.75rem;
+                     font-family:var(--font); min-width:14rem; }
+.ip-search:focus   { outline:none; border-color:var(--accent); }
+
+/* Table incidents */
+.ip-table          { width:100%; border-collapse:collapse; font-size:.78rem; }
+.ip-thead th       { text-align:left; padding:.4rem .6rem; color:var(--text2);
+                     font-size:.68rem; font-weight:600; text-transform:uppercase;
+                     letter-spacing:.04em; border-bottom:1px solid var(--border); }
+.ip-th-num         { text-align:right !important; }
+
+/* Ligne incident cliquable */
+.ip-row            { cursor:pointer; border-bottom:1px solid var(--border);
+                     transition:background .12s; }
+.ip-row:hover      { background:rgba(88,166,255,.06); }
+.ip-row.ip-row-open { background:rgba(88,166,255,.1); }
+.ip-row td         { padding:.45rem .6rem; vertical-align:middle; }
+
+/* Titre incident */
+.ip-title          { font-size:.8rem; color:var(--text); word-break:break-word; }
+.ip-cves           { font-family:monospace; font-size:.7rem; color:var(--text2);
+                     margin-top:.15rem; }
+
+/* Détail expandable — timeline */
+.ip-detail-row td  { padding:0; background:var(--bg); }
+.ip-detail-inner   { padding:.6rem 1rem .8rem 2rem;
+                     border-left:2px solid var(--accent);
+                     border-bottom:1px solid var(--border); }
+.ip-detail-head    { margin:0 0 .5rem; font-size:.75rem; color:var(--text2); }
+
+/* Ligne article dans la timeline */
+.ip-tl-row         { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+                     padding:.25rem 0; border-top:1px solid var(--border); font-size:.74rem; }
+.ip-tl-row:first-of-type { border-top:none; }
+.ip-tl-date        { min-width:7rem; white-space:nowrap; font-family:monospace; }
+.ip-tl-cri         { font-size:.8rem; }
+.ip-tl-src         { min-width:9rem; white-space:nowrap; overflow:hidden;
+                     text-overflow:ellipsis; max-width:12rem; color:var(--text2); }
+.ip-tl-badges      { display:flex; gap:.25rem; flex-shrink:0; }
+.ip-tl-title       { color:var(--accent); text-decoration:none; font-size:.74rem;
+                     flex:1; min-width:0; word-break:break-word; }
+.ip-tl-title:hover { text-decoration:underline; }
+
+/* Badges signaux (réutilise cp-badge mais préfixés ip-) */
+.ip-badge          { display:inline-block; font-size:.62rem; padding:.1rem .35rem;
+                     border-radius:3px; font-weight:600; white-space:nowrap; }
+.ip-kev            { background:#2d1515; color:#f85149; }
+.ip-wl             { background:#0d2818; color:#3fb950; }
+.ip-epss           { background:#1a1a2e; color:#c4b5fd; font-family:monospace; }
+
+/* Colonne numérique */
+.ip-num            { text-align:right; font-family:monospace; font-size:.75rem; }
+.ip-dim            { color:var(--text2); }
+.ip-vendors-cell   { max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+                     color:var(--text2); font-size:.73rem; }
+
+/* État vide */
+.ip-empty          { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }
 .cp-nvd-link:hover{ opacity:1; color:var(--accent); }
