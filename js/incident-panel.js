@@ -14,6 +14,7 @@ const IncidentPanel = (() => {
   let _articles    = [];    // dernière liste d'articles reçue
   let _filterBy    = "all"; // "all"|"multi"|"kev"|"watchlist"|"exploit"|"patch"|"high"
   let _searchQuery = "";    // filtre texte libre
+  let _statusFilter = "all"; // "all" | EntityStatus.VALID_STATUSES
 
   // ── Catégorisation d'angle (synchronisée avec cve-panel.js) ───────────────
 
@@ -197,6 +198,10 @@ const IncidentPanel = (() => {
     const allIncidents = buildIncidentIndex(_articles);
     let incidents = [...allIncidents];
 
+    // Filtre statut analyste
+    if (typeof EntityStatus !== "undefined" && _statusFilter !== "all")
+      incidents = EntityStatus.filterByStatus(incidents, "incident", _statusFilter, i => i.incidentId);
+
     // Filtres
     if (_filterBy === "multi")     incidents = incidents.filter(i => i.articleCount > 1);
     if (_filterBy === "kev")       incidents = incidents.filter(i => i.kev);
@@ -253,6 +258,32 @@ const IncidentPanel = (() => {
       btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); });
     });
 
+    // Filtres statut analyste
+    list.querySelectorAll(".ip-status-btn").forEach(btn => {
+      btn.addEventListener("click", () => { _statusFilter = btn.dataset.status; _render(); });
+    });
+
+    // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
+    if (typeof EntityStatus !== "undefined") {
+      list.querySelectorAll(".es-block .es-select").forEach(sel => {
+        sel.addEventListener("change", e => {
+          const block   = e.target.closest(".es-block");
+          const eid     = block.dataset.eid;
+          const safeEid = block.dataset.safeEid;
+          EntityStatus.setStatus("incident", eid, e.target.value);
+          const slot = document.getElementById("es-slot-incident-" + safeEid);
+          if (slot) slot.innerHTML = EntityStatus.badgeHTML("incident", eid);
+        });
+      });
+      list.querySelectorAll(".es-block .es-note-input").forEach(inp => {
+        inp.addEventListener("blur", e => {
+          const block = e.target.closest(".es-block");
+          EntityStatus.updateNote("incident", block.dataset.eid, e.target.value);
+        });
+        inp.addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+      });
+    }
+
     // Recherche — restaure curseur (évite l'inversion de saisie)
     const searchInput = list.querySelector(".ip-search-input");
     if (searchInput) {
@@ -286,7 +317,19 @@ const IncidentPanel = (() => {
   }
 
   function _controlsHTML() {
-    const f = _filterBy;
+    const f  = _filterBy;
+    const sf = _statusFilter;
+
+    let statusBarHTML = "";
+    if (typeof EntityStatus !== "undefined") {
+      const btns = ["all", ...EntityStatus.VALID_STATUSES].map(s => {
+        const m     = EntityStatus.STATUS_META[s];
+        const label = s === "all" ? "Tous statuts" : m.emoji + "\u00a0" + m.label;
+        return `<button class="ip-status-btn${sf === s ? " active" : ""}" data-status="${s}">${label}</button>`;
+      }).join("");
+      statusBarHTML = `<div class="ip-status-bar">${btns}</div>`;
+    }
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
@@ -303,6 +346,7 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="patch"     ?" active":""}" data-filter="patch">🩹 Patch</button>
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">🔴 Score ≥ 70</button>
         </div>
+        ${statusBarHTML}
       </div>`;
   }
 
@@ -333,6 +377,7 @@ const IncidentPanel = (() => {
     return `
       <tr class="ip-row" data-iid="${safeId}" title="Cliquer pour voir la timeline">
         <td class="ip-title-cell">
+          <span id="es-slot-incident-${safeId}" class="es-badge-slot">${typeof EntityStatus !== "undefined" ? EntityStatus.badgeHTML("incident", i.incidentId) : ""}</span>
           <span class="ip-title">${i.title}</span>
           ${i.vendors.length
             ? `<span class="ip-dim ip-vendors-sub">${i.vendors.slice(0, 3).join(" · ")}</span>` : ""}
@@ -348,6 +393,7 @@ const IncidentPanel = (() => {
         <td colspan="7">
           <div class="ip-detail-inner">
             ${_detailHeaderHTML(i)}
+            ${typeof EntityStatus !== "undefined" ? EntityStatus.statusBlockHTML("incident", i.incidentId) : ""}
             <div class="ip-timeline">
               ${i.articles.map(a => _timelineRowHTML(a)).join("")}
             </div>
@@ -422,11 +468,12 @@ const IncidentPanel = (() => {
 
   // ── API publique filtres (pour SavedFilters) ──────────────────────────────
   function getFilters() {
-    return { filterBy: _filterBy, searchQuery: _searchQuery };
+    return { filterBy: _filterBy, searchQuery: _searchQuery, statusFilter: _statusFilter };
   }
   function setFilters(f) {
-    if (f.filterBy    !== undefined) _filterBy    = f.filterBy;
-    if (f.searchQuery !== undefined) _searchQuery = f.searchQuery;
+    if (f.filterBy     !== undefined) _filterBy     = f.filterBy;
+    if (f.searchQuery  !== undefined) _searchQuery  = f.searchQuery;
+    if (f.statusFilter !== undefined) _statusFilter = f.statusFilter;
     _render();
   }
 

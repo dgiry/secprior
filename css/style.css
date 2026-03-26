@@ -1982,3 +1982,43 @@ body.modal-open { overflow: hidden; }
 .sf-delete-btn:hover { opacity:1; color:#f85149; border-color:#f85149; }
 .sf-update-btn      { font-size:.75rem; padding:.2rem .45rem; opacity:.55; }
 .sf-update-btn:hover { opacity:1; color:var(--accent); border-color:var(--accent); }
+
+/* ── États analyste — entity-status.js ──────────────────────────────────── */
+.es-badge-slot  { display:inline; }
+.es-badge       { display:inline-flex; align-items:center; gap:.2rem;
+                  font-size:.6rem; font-weight:600; padding:.1rem .4rem;
+                  border-radius:3px; white-space:nowrap; vertical-align:middle;
+                  margin-right:.25rem; }
+
+.es-block       { margin:.5rem 0 .7rem; padding:.45rem .65rem;
+                  border:1px solid var(--border); border-radius:6px;
+                  background:rgba(255,255,255,.025); }
+.es-label       { display:block; font-size:.62rem; color:var(--text2);
+                  text-transform:uppercase; letter-spacing:.05em; margin-bottom:.35rem; }
+.es-row         { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+.es-select      { font-size:.72rem; background:var(--card); color:var(--text);
+                  border:1px solid var(--border); border-radius:4px;
+                  padding:.2rem .45rem; cursor:pointer; flex-shrink:0; }
+.es-note-input  { flex:1; min-width:10rem; font-size:.72rem;
+                  background:var(--card); color:var(--text);
+                  border:1px solid var(--border); border-radius:4px;
+                  padding:.2rem .5rem; }
+.es-select:focus,
+.es-note-input:focus { outline:none; border-color:var(--accent); }
+
+/* Barres de filtre statut (incidents + cves) */
+.ip-status-bar,
+.cp-status-bar  { display:flex; gap:.3rem; flex-wrap:wrap;
+                  padding:.35rem 0 0; margin-top:.3rem;
+                  border-top:1px solid var(--border); }
+.ip-status-btn,
+.cp-status-btn  { background:transparent; border:1px solid var(--border);
+                  border-radius:4px; padding:.18rem .5rem;
+                  font-size:.67rem; cursor:pointer; color:var(--text2);
+                  transition:background .12s, color .12s; white-space:nowrap; }
+.ip-status-btn:hover,
+.cp-status-btn:hover { color:var(--text); }
+.ip-status-btn.active,
+.cp-status-btn.active { background:rgba(88,166,255,.15);
+                        color:var(--accent); border-color:var(--accent);
+                        font-weight:600; }
