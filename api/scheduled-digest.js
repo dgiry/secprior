@@ -356,12 +356,14 @@ function _previewArticle(a, rank) {
  * Construit l'objet d'état à passer à saveLastRun().
  * @param {"sent"|"failed"|"noArticles"} result
  * @param {string|null} reason  — message d'erreur ou raison
+ * @param {string} slot         — créneau Montreal ex: "2026-03-25T08:30"
  * @param {{ feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }} stats
  * @returns {object}
  */
-function _makeRunState(result, reason, { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }) {
+function _makeRunState(result, reason, slot, { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }) {
   return {
     lastRunAt:  new Date().toISOString(),
+    slot,
     lastResult: result,
     lastReason: reason || null,
     lastStats:  { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }
@@ -519,7 +521,7 @@ module.exports = async (req, res) => {
   if (queue.length === 0) {
     console.log("[scheduled-digest] Aucun article dans les 48 h. Briefing non envoyé.");
     if (!isTestMode) {
-      await saveLastRun(_makeRunState("noArticles", "Aucun article dans les 48 dernières heures", {
+      await saveLastRun(_makeRunState("noArticles", "Aucun article dans les 48 dernières heures", mtl.slot, {
         feedsOk: fetchOk, feedsErr: fetchErr,
         rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: 0
       }));
@@ -650,7 +652,7 @@ module.exports = async (req, res) => {
     await saveSentIds(top.map(a => a.id));
     await saveSentTopics(top.map(a => a._topicKey || _topicKey(a)));
     await saveLastSlot(mtl.slot);
-    await saveLastRun(_makeRunState("sent", null, {
+    await saveLastRun(_makeRunState("sent", null, mtl.slot, {
       feedsOk: fetchOk, feedsErr: fetchErr,
       rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
     }));
@@ -666,7 +668,7 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error("[scheduled-digest] ❌ Erreur envoi email :", err.message);
-    await saveLastRun(_makeRunState("failed", err.message, {
+    await saveLastRun(_makeRunState("failed", err.message, mtl.slot, {
       feedsOk: fetchOk, feedsErr: fetchErr,
       rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
     }));
