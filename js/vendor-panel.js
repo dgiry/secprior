@@ -7,8 +7,10 @@
 
 const VendorPanel = (() => {
 
-  let _articles  = [];   // dernière liste d'articles reçue
-  let _rendered  = false; // true après le premier rendu
+  let _articles          = [];      // dernière liste d'articles reçue
+  let _rendered          = false;   // true après le premier rendu
+  let _sortBy            = "default"; // tri actif
+  let _briefingAvailable = false;   // true si BriefingPanel cache chargé
 
   // ── Canonical vendor map : variant → canonical name ─────────────────────
   const VENDOR_MAP = [
@@ -97,10 +99,11 @@ const VendorPanel = (() => {
   }
 
   /**
-   * Build per-vendor stats from _articles.
-   * Returns array of { name, count, topics, kev, epssMax, critMax, articles, hasWatchlist }
+   * Build per-vendor stats from articles.
+   * briefingIds : Set<string> | null — IDs des articles top briefing (null = non chargé)
+   * Returns array of { name, count, topics, kev, epssMax, critMax, briefingCount, articles, hasWatchlist }
    */
-  function _computeVendors(articles) {
+  function _computeVendors(articles, briefingIds) {
     const map = new Map(); // canonical name → stats object
 
     for (const a of articles) {
@@ -119,6 +122,7 @@ const VendorPanel = (() => {
             kev: 0,
             epssMax: 0,
             critMax: null,
+            briefingCount: 0,
             articles: [],
             hasWatchlist: false,
           });
@@ -134,6 +138,7 @@ const VendorPanel = (() => {
           }
         }
         if (isWl) s.hasWatchlist = true;
+        if (briefingIds && briefingIds.has(a.id)) s.briefingCount++;
         s.articles.push(a);
       }
     }
@@ -142,20 +147,26 @@ const VendorPanel = (() => {
     const result = [];
     for (const s of map.values()) {
       result.push({
-        name:        s.name,
-        count:       s.count,
-        topics:      s.topics.size,
-        kev:         s.kev,
-        epssMax:     s.epssMax,
-        critMax:     s.critMax || "low",
-        articles:    s.articles,
-        hasWatchlist: s.hasWatchlist,
+        name:          s.name,
+        count:         s.count,
+        topics:        s.topics.size,
+        kev:           s.kev,
+        epssMax:       s.epssMax,
+        critMax:       s.critMax || "low",
+        briefingCount: s.briefingCount,
+        articles:      s.articles,
+        hasWatchlist:  s.hasWatchlist,
       });
     }
 
-    // Sort: critMax desc → kev desc → count desc
+    // Sort selon _sortBy
     result.sort((a, b) => {
       const dc = (CRIT_ORDER[b.critMax] || 0) - (CRIT_ORDER[a.critMax] || 0);
+      if (_sortBy === "kev")      return b.kev - a.kev || dc || b.count - a.count;
+      if (_sortBy === "epss")     return b.epssMax - a.epssMax || b.kev - a.kev || dc;
+      if (_sortBy === "topics")   return b.topics - a.topics || dc || b.count - a.count;
+      if (_sortBy === "briefing") return b.briefingCount - a.briefingCount || dc || b.kev - a.kev;
+      // default : critMax → kev → count
       if (dc !== 0) return dc;
       if (b.kev !== a.kev) return b.kev - a.kev;
       return b.count - a.count;
@@ -196,7 +207,13 @@ const VendorPanel = (() => {
     const metaEl = document.getElementById("vendor-meta");
     if (!listEl) return;
 
-    const vendors = _computeVendors(_articles);
+    // Récupérer les IDs briefing (null = non chargé → fallback propre)
+    const briefingIds = (typeof BriefingPanel !== "undefined" && typeof BriefingPanel.getTopIds === "function")
+      ? BriefingPanel.getTopIds()
+      : null;
+    _briefingAvailable = briefingIds !== null;
+
+    const vendors = _computeVendors(_articles, briefingIds);
     _rendered = true;
 
     if (metaEl) {
@@ -210,7 +227,28 @@ const VendorPanel = (() => {
       return;
     }
 
-    listEl.innerHTML = vendors.map(v => _renderVendorCard(v)).join("");
+    const hint = !_briefingAvailable
+      ? '<span class="vp-sort-hint">Briefing non chargé — ouvre l\'onglet Briefing d\'abord</span>'
+      : '';
+    const sortBar = `<div class="vp-sort-bar">
+  <label class="vp-sort-label">Tri :</label>
+  <select id="vp-sort-select" class="vp-sort-select">
+    <option value="default"  ${_sortBy==="default" ?"selected":""}>Criticité (défaut)</option>
+    <option value="kev"      ${_sortBy==="kev"     ?"selected":""}>KEV</option>
+    <option value="epss"     ${_sortBy==="epss"    ?"selected":""}>EPSS max</option>
+    <option value="topics"   ${_sortBy==="topics"  ?"selected":""}>Sujets uniques</option>
+    <option value="briefing" ${_sortBy==="briefing"?"selected":""}>Présence briefing</option>
+  </select>
+  ${hint}
+</div>`;
+
+    listEl.innerHTML = sortBar + vendors.map(v => _renderVendorCard(v)).join("");
+
+    // Tri : changement de l'option
+    document.getElementById("vp-sort-select")?.addEventListener("change", e => {
+      _sortBy = e.target.value;
+      _render();
+    });
 
     // Attach click handlers for expand/collapse
     listEl.querySelectorAll(".vp-row").forEach(row => {
@@ -228,9 +266,10 @@ const VendorPanel = (() => {
                     : '<span class="vp-crit-badge" style="color:var(--text-muted)">🟢 LOW</span>';
 
     const badges = [];
-    if (v.kev > 0)        badges.push(`<span class="vp-badge vp-kev">KEV ×${v.kev}</span>`);
-    if (v.epssMax > 0)    badges.push(`<span class="vp-badge vp-epss">EPSS ${(v.epssMax * 100).toFixed(0)}%</span>`);
-    if (v.hasWatchlist)   badges.push(`<span class="vp-badge vp-wl">👁 Watchlist</span>`);
+    if (v.kev > 0)                             badges.push(`<span class="vp-badge vp-kev">KEV ×${v.kev}</span>`);
+    if (v.epssMax > 0)                         badges.push(`<span class="vp-badge vp-epss">EPSS ${(v.epssMax * 100).toFixed(0)}%</span>`);
+    if (_briefingAvailable && v.briefingCount > 0) badges.push(`<span class="vp-badge vp-briefing">📬 ${v.briefingCount}</span>`);
+    if (v.hasWatchlist)                        badges.push(`<span class="vp-badge vp-wl">👁 Watchlist</span>`);
 
     const detailHtml = _renderDetail(v, slug);
 

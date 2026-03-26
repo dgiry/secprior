@@ -1652,3 +1652,8 @@ body.modal-open { overflow: hidden; }
 .vp-article-title { color: var(--text); text-decoration: none; flex: 1; min-width: 200px; }
 .vp-article-title:hover { text-decoration: underline; color: var(--accent, #60a5fa); }
 .vp-article-src { font-size: .65rem; color: var(--text-muted); white-space: nowrap; }
+.vp-briefing { background: #1a1a3a; color: #a78bfa; }
+.vp-sort-bar { display:flex; align-items:center; gap:.5rem; padding:.4rem .25rem .6rem; flex-wrap:wrap; }
+.vp-sort-label { font-size:.75rem; color:var(--text-muted); }
+.vp-sort-select { font-size:.75rem; background:var(--card-bg); color:var(--text); border:1px solid var(--border); border-radius:4px; padding:.2rem .4rem; cursor:pointer; }
+.vp-sort-hint { font-size:.7rem; color:var(--text-muted); font-style:italic; }

@@ -197,5 +197,14 @@ const BriefingPanel = (() => {
 </div>`;
   }
 
-  return { init, toggle, refresh };
+  /**
+   * Retourne un Set des IDs des articles top briefing en cache,
+   * ou null si le briefing n'a pas encore été chargé.
+   */
+  function getTopIds() {
+    if (!_cache || !Array.isArray(_cache.top)) return null;
+    return new Set(_cache.top.map(a => a.id).filter(Boolean));
+  }
+
+  return { init, toggle, refresh, getTopIds };
 })();
