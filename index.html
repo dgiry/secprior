@@ -84,6 +84,8 @@
       🩺 Santé
     </button>
 
+    <button id="btn-vendors" class="btn" title="Vendors et assets exposés dans la veille">🏢 Vendors</button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -245,6 +247,15 @@
       </div>
       <div id="health-list"></div>
     </div>
+  </div>
+
+  <!-- ── Panneau Vendors / Assets exposés (collapsible) ──────────────────── -->
+  <div id="vendor-panel" class="vendor-panel" style="display:none">
+    <div class="bp-header">
+      <h3 class="bp-title-h3">🏢 Vendors / Assets exposés</h3>
+      <span class="bp-meta" id="vendor-meta"></span>
+    </div>
+    <div id="vendor-list"></div>
   </div>
 
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
@@ -606,6 +617,7 @@
   <script src="js/ui.js?v=13"></script>
   <script src="js/pdf-report.js?v=13"></script>
   <script src="js/app.js?v=13"></script>
+  <script src="js/vendor-panel.js?v=15"></script>
 
 </body>
 </html>

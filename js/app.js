@@ -30,6 +30,7 @@ const App = (() => {
 
       // Mettre à jour le dashboard stats
       StatsPanel.update(articles);
+      VendorPanel.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -208,6 +209,10 @@ const App = (() => {
     // ── Panneau Santé / Ops ───────────────────────────────────────────────────
     HealthPanel.init();
     document.getElementById("btn-health")?.addEventListener("click", () => HealthPanel.toggle());
+
+    // ── Panneau Vendors / Assets exposés ──────────────────────────────────────
+    VendorPanel.init();
+    document.getElementById("btn-vendors")?.addEventListener("click", () => VendorPanel.toggle());
 
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();

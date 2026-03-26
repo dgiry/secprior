@@ -1623,3 +1623,32 @@ body.modal-open { overflow: hidden; }
 @media (max-width: 600px) {
   #health-list { grid-template-columns: 1fr; }
 }
+
+/* ── Vendor Panel ──────────────────────────────────────────────────────── */
+.vendor-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: .75rem 0; }
+.vp-empty { color: var(--text-muted); padding: .5rem 0; font-size: .85rem; }
+.vp-card { border-bottom: 1px solid var(--border); }
+.vp-card:last-child { border-bottom: none; }
+.vp-row { display: flex; align-items: center; gap: .5rem; padding: .55rem .25rem; cursor: pointer; border-radius: 4px; flex-wrap: wrap; }
+.vp-row:hover { background: var(--hover-bg, rgba(255,255,255,.04)); }
+.vp-row-open { background: var(--hover-bg, rgba(255,255,255,.04)); }
+.vp-row-open .vp-chevron { transform: rotate(90deg); }
+.vp-name { font-weight: 600; font-size: .9rem; min-width: 110px; }
+.vp-badges { display: flex; gap: .3rem; flex-wrap: wrap; flex: 1; }
+.vp-meta { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+.vp-stat { font-size: .78rem; color: var(--text-muted); }
+.vp-chevron { font-size: .7rem; color: var(--text-muted); transition: transform .2s; margin-left: .25rem; }
+.vp-badge { font-size: .65rem; font-weight: 700; padding: .15rem .4rem; border-radius: 3px; white-space: nowrap; }
+.vp-kev  { background: #7f1d1d; color: #fca5a5; }
+.vp-epss { background: #1e3a5f; color: #93c5fd; }
+.vp-wl   { background: #1a2a1a; color: #86efac; }
+.vp-crit-badge { font-size: .72rem; font-weight: 600; }
+.vp-crit-high .vp-name { color: var(--crit-high, #f87171); }
+.vp-crit-med  .vp-name { color: var(--crit-med,  #fbbf24); }
+.vp-crit-low  .vp-name { color: var(--text-muted); }
+.vp-detail { padding: .4rem .5rem .6rem 1.2rem; display: flex; flex-direction: column; gap: .3rem; }
+.vp-article { display: flex; align-items: baseline; gap: .4rem; font-size: .8rem; flex-wrap: wrap; }
+.vp-ac { font-size: .7rem; }
+.vp-article-title { color: var(--text); text-decoration: none; flex: 1; min-width: 200px; }
+.vp-article-title:hover { text-decoration: underline; color: var(--accent, #60a5fa); }
+.vp-article-src { font-size: .65rem; color: var(--text-muted); white-space: nowrap; }
