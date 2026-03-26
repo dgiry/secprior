@@ -201,6 +201,10 @@ const App = (() => {
     // ── Dashboard statistiques ────────────────────────────────────────────────
     StatsPanel.init();
 
+    // ── Panneau Briefing ──────────────────────────────────────────────────────
+    BriefingPanel.init();
+    document.getElementById("btn-briefing")?.addEventListener("click", () => BriefingPanel.toggle());
+
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();
 

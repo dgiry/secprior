@@ -76,6 +76,10 @@
       📊 Stats
     </button>
 
+    <button id="btn-briefing" class="btn" title="Aperçu du briefing serveur (sélection moteur digest)">
+      📰 Briefing
+    </button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -167,6 +171,18 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Panneau Briefing (collapsible) ──────────────────────────────────── -->
+  <div id="briefing-panel" class="briefing-panel" style="display:none">
+    <div class="stats-panel-inner">
+      <div class="bp-header">
+        <h3 class="bp-title-h3">📰 Briefing — Sélection du moteur digest</h3>
+        <span id="briefing-meta" class="bp-meta"></span>
+        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="BriefingPanel.refresh()">↻ Rafraîchir</button>
+      </div>
+      <div id="briefing-list"></div>
     </div>
   </div>
 
@@ -510,6 +526,7 @@
   <script src="js/config.js?v=13"></script>
   <script src="js/feed-manager.js?v=13"></script>
   <script src="js/stats.js?v=13"></script>
+  <script src="js/briefing-panel.js?v=14"></script>
   <script src="js/demo-data.js?v=13"></script>
   <script src="js/scorer.js?v=13"></script>
   <script src="js/storage.js?v=13"></script>

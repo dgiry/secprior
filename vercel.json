@@ -26,6 +26,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/briefing-preview", "destination": "/api/briefing-preview" },
     { "source": "/api/feeds",       "destination": "/api/feeds" },
     { "source": "/api/fetch-feeds", "destination": "/api/fetch-feeds" },
     { "source": "/api/nvd",         "destination": "/api/nvd" },

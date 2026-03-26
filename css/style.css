@@ -1406,3 +1406,130 @@ body.modal-open { overflow: hidden; }
   padding-top: .85rem;
 }
 }
+
+/* ── Panneau Briefing ─────────────────────────────────────────────────────── */
+
+.briefing-panel {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+/* En-tête du panneau */
+.bp-header {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin-bottom: .85rem;
+}
+.bp-title-h3 {
+  font-size: .95rem; font-weight: 700; color: var(--text);
+  white-space: nowrap;
+}
+.bp-meta {
+  font-size: .72rem; color: var(--text2); flex: 1;
+}
+
+/* États de chargement */
+.bp-state {
+  padding: 1.5rem; text-align: center;
+  font-size: .85rem; color: var(--text2);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+.bp-loading { color: var(--accent); }
+.bp-error   { color: var(--err); }
+.bp-empty   { color: var(--text2); }
+
+/* Carte article top */
+.bp-card {
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  padding: .85rem 1rem;
+  margin-bottom: .75rem;
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.bp-card-head {
+  display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+  font-size: .75rem;
+}
+.bp-rank   { color: var(--text2); font-weight: 700; }
+.bp-crit   { font-weight: 700; font-size: .8rem; }
+.bp-src    { color: var(--text2); margin-right: auto; }
+.bp-score-line { font-size: .72rem; color: var(--text2); }
+.bp-score-line strong { color: var(--accent); }
+.bp-bd     { color: var(--text2); font-size: .68rem; }
+
+/* Titre */
+.bp-title-row { font-size: .88rem; line-height: 1.4; }
+.bp-title-row a { color: var(--accent); }
+.bp-title-row a:hover { text-decoration: underline; }
+
+/* Badges signaux */
+.bp-signals { display: flex; gap: .4rem; flex-wrap: wrap; }
+.bp-badge {
+  font-size: .68rem; padding: .15rem .45rem;
+  border-radius: 4px; font-weight: 600; white-space: nowrap;
+}
+.bp-kev   { background: #3d1a1a; color: var(--err);    border: 1px solid var(--err); }
+.bp-epss  { background: #1a2a3d; color: #79c0ff;       border: 1px solid #79c0ff; }
+.bp-cvss  { background: #2d1f0a; color: var(--warn);   border: 1px solid var(--warn); }
+.bp-trend { background: #2d1a00; color: #ffa657;       border: 1px solid #ffa657; }
+.bp-group { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+
+/* Étiquettes de sélection */
+.bp-reasons { display: flex; gap: .3rem; flex-wrap: wrap; font-size: .72rem; }
+.bp-reason {
+  background: #0d2036; color: #79c0ff;
+  border-radius: 4px; padding: .1rem .4rem;
+  border: 1px solid #1f4068;
+}
+
+/* Clé de sujet */
+.bp-topic {
+  font-size: .72rem; color: var(--text2);
+}
+.bp-topic code {
+  color: #d2a8ff; background: #1e1530;
+  padding: .1rem .3rem; border-radius: 3px; font-size: .7rem;
+}
+
+/* Pourquoi important */
+.bp-why {
+  font-size: .78rem; color: var(--text2);
+  background: var(--surface); border-left: 3px solid var(--border);
+  padding: .5rem .75rem; border-radius: 0 4px 4px 0;
+}
+
+/* Watchpoints */
+.bp-watchpoints {
+  margin: 0; padding-left: 1.2rem;
+  font-size: .75rem; color: var(--text2);
+  display: flex; flex-direction: column; gap: .2rem;
+}
+.bp-watchpoints li { list-style: disc; }
+
+/* Section rest */
+.bp-rest { margin-top: 1rem; }
+.bp-rest-h4 {
+  font-size: .8rem; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: .5rem;
+}
+.bp-rest-table {
+  width: 100%; border-collapse: collapse;
+  font-size: .75rem; font-family: var(--font);
+}
+.bp-rest-table td {
+  padding: .35rem .5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.bp-rt-rank  { color: var(--text2); white-space: nowrap; width: 2.5rem; }
+.bp-rt-title { word-break: break-word; }
+.bp-rt-title a { color: var(--accent); }
+.bp-rt-src   { color: var(--text2); white-space: nowrap; }
+.bp-rt-ds    { color: var(--accent); white-space: nowrap; font-weight: 600; text-align: right; }
+
+@media (max-width: 600px) {
+  .bp-card-head { flex-direction: column; gap: .25rem; }
+  .bp-rt-src, .bp-rt-ds { display: none; }
+}
