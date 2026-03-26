@@ -403,10 +403,11 @@ const VendorPanel = (() => {
 
   /** Handler recherche : met à jour _searchQuery et re-rend en restaurant le focus. */
   function _onSearch(e) {
+    const pos = e.target.selectionStart;
     _searchQuery = e.target.value;
     _render();
     const inp = document.getElementById("vp-search-input");
-    if (inp) inp.focus();
+    if (inp) { inp.focus(); inp.setSelectionRange(pos, pos); }
   }
 
   function _escHtml(s) {
