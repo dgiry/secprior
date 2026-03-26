@@ -37,6 +37,11 @@ const CONFIG = {
   ALERT_COOLDOWN_MIN: 30,      // Minutes entre deux alertes (évite le spam)
   ALERT_BATCH_SIZE:   5,       // Max articles par alerte envoyée
 
+  // ── Feeds — FALLBACK STATIQUE ─────────────────────────────────────────────
+  // Sur Vercel (USE_API=true), cette liste est remplacée au démarrage par
+  // les données de GET /api/feeds (api/lib/feeds.js — source canonique unique).
+  // Sur Hostinger / mode statique (USE_API=false), cette liste est utilisée
+  // directement.  NE MODIFIER QUE api/lib/feeds.js pour changer les feeds.
   FEEDS: [
     {
       id: "thehackernews",

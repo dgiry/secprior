@@ -108,8 +108,38 @@ const App = (() => {
     }, CONFIG.REFRESH_INTERVAL);
   }
 
+  // ─── Chargement des feeds depuis l'API ────────────────────────────────────
+  /**
+   * Charge la liste des flux depuis GET /api/feeds et met à jour CONFIG.FEEDS
+   * en place (splice) pour que FeedManager et tous les modules voient les
+   * changements sans rechargement.
+   *
+   * Fallback silencieux : si USE_API est false (mode statique Hostinger) ou si
+   * /api/feeds est indisponible, CONFIG.FEEDS conserve sa valeur statique
+   * définie dans config.js — aucun comportement ne change.
+   */
+  async function _loadFeedsFromAPI() {
+    if (!CONFIG.USE_API) return; // mode statique → fallback CONFIG.FEEDS suffisant
+    try {
+      const res = await fetch("/api/feeds", { signal: AbortSignal.timeout(5_000) });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (Array.isArray(json.feeds) && json.feeds.length > 0) {
+        // Mise à jour EN PLACE : toutes les références à CONFIG.FEEDS voient le changement
+        CONFIG.FEEDS.splice(0, CONFIG.FEEDS.length, ...json.feeds);
+        console.log("[App] Feeds chargés depuis /api/feeds (%d sources)", json.feeds.length);
+      }
+    } catch (e) {
+      console.warn("[App] /api/feeds indisponible — fallback CONFIG.FEEDS statique :", e.message);
+    }
+  }
+
   // ─── Initialisation ────────────────────────────────────────────────────────
   async function init() {
+    // ── Charger les feeds depuis l'API (source canonique) ─────────────────
+    // await garantit que CONFIG.FEEDS est à jour AVANT tout appel à FeedManager
+    await _loadFeedsFromAPI();
+
     // Demander permission notifications
     UI.requestNotificationPermission();
 

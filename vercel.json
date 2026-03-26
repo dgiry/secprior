@@ -26,6 +26,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/feeds",       "destination": "/api/feeds" },
     { "source": "/api/fetch-feeds", "destination": "/api/fetch-feeds" },
     { "source": "/api/nvd",         "destination": "/api/nvd" },
     { "source": "/api/epss",        "destination": "/api/epss" },
