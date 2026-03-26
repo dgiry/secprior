@@ -11,6 +11,7 @@ const VendorPanel = (() => {
   let _rendered          = false;   // true après le premier rendu
   let _sortBy            = "default"; // tri actif
   let _filterBy          = "all";   // "all" | "briefing" | "kev" | "watchlist"
+  let _searchQuery       = "";      // texte de recherche libre (nom/alias)
   let _briefingAvailable = false;   // true si BriefingPanel cache chargé
   let _lastBriefingIds   = null;    // Set<id> partagé avec _renderDetail
 
@@ -220,9 +221,13 @@ const VendorPanel = (() => {
 
     // ── Filtre rapide ────────────────────────────────────────────────────────
     let vendors = allVendors;
-    if (_filterBy === "briefing")  vendors = allVendors.filter(v => v.briefingCount > 0);
-    if (_filterBy === "kev")       vendors = allVendors.filter(v => v.kev > 0);
-    if (_filterBy === "watchlist") vendors = allVendors.filter(v => v.hasWatchlist);
+    if (_filterBy === "briefing")  vendors = vendors.filter(v => v.briefingCount > 0);
+    if (_filterBy === "kev")       vendors = vendors.filter(v => v.kev > 0);
+    if (_filterBy === "watchlist") vendors = vendors.filter(v => v.hasWatchlist);
+
+    // ── Recherche (sur le sous-ensemble déjà filtré par catégorie) ──────────
+    const q = _searchQuery.trim().toLowerCase();
+    if (q) vendors = vendors.filter(v => _matchesSearch(v, q));
 
     _rendered = true;
 
@@ -245,6 +250,12 @@ const VendorPanel = (() => {
       }
     }
 
+    const searchBar = `<div class="vp-search-bar">
+  <input id="vp-search-input" class="vp-search-input" type="search"
+    placeholder="🔍 Rechercher un vendor ou produit…"
+    value="${_escHtml(_searchQuery)}" autocomplete="off" spellcheck="false">
+</div>`;
+
     const filterBar = `<div class="vp-filter-bar">
   <button class="vp-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">Tous (${allVendors.length})</button>
   <button class="vp-filter-btn${_filterBy==="briefing"  ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
@@ -253,14 +264,17 @@ const VendorPanel = (() => {
 </div>`;
 
     if (vendors.length === 0) {
-      const emptyMsg = _filterBy === "briefing" && !_briefingAvailable
-        ? "Ouvre l\'onglet Briefing d\'abord pour activer ce filtre."
-        : _filterBy === "watchlist"
-          ? "Aucun vendor en watchlist — configure des mots-clés dans l\'app."
-          : "Aucun vendor pour ce filtre.";
-      listEl.innerHTML = filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
+      const emptyMsg = q
+        ? `Aucun résultat pour « ${_escHtml(_searchQuery.trim())} ».`
+        : _filterBy === "briefing" && !_briefingAvailable
+          ? "Ouvre l\'onglet Briefing d\'abord pour activer ce filtre."
+          : _filterBy === "watchlist"
+            ? "Aucun vendor en watchlist — configure des mots-clés dans l\'app."
+            : "Aucun vendor pour ce filtre.";
+      listEl.innerHTML = searchBar + filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
       listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
         btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
+      document.getElementById("vp-search-input")?.addEventListener("input", _onSearch);
       return;
     }
 
@@ -279,7 +293,7 @@ const VendorPanel = (() => {
   ${hint}
 </div>`;
 
-    listEl.innerHTML = filterBar + sortBar + vendors.map(v => _renderVendorCard(v)).join("");
+    listEl.innerHTML = searchBar + filterBar + sortBar + vendors.map(v => _renderVendorCard(v)).join("");
 
     // Filtre : boutons
     listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
@@ -290,6 +304,9 @@ const VendorPanel = (() => {
       _sortBy = e.target.value;
       _render();
     });
+
+    // Recherche : mise à jour avec restauration de focus
+    document.getElementById("vp-search-input")?.addEventListener("input", _onSearch);
 
     // Expand/collapse vendor detail
     listEl.querySelectorAll(".vp-row").forEach(row => {
@@ -374,6 +391,22 @@ const VendorPanel = (() => {
     const isOpen = detailEl.style.display !== "none";
     detailEl.style.display = isOpen ? "none" : "flex";
     row.classList.toggle("vp-row-open", !isOpen);
+  }
+
+  /** Recherche : vérifie si un vendor correspond au terme (nom ou alias). */
+  function _matchesSearch(v, q) {
+    if (!q) return true;
+    if (v.name.toLowerCase().includes(q)) return true;
+    const entry = VENDOR_MAP.find(e => e.canonical === v.name);
+    return entry ? entry.variants.some(alias => alias.includes(q)) : false;
+  }
+
+  /** Handler recherche : met à jour _searchQuery et re-rend en restaurant le focus. */
+  function _onSearch(e) {
+    _searchQuery = e.target.value;
+    _render();
+    const inp = document.getElementById("vp-search-input");
+    if (inp) inp.focus();
   }
 
   function _escHtml(s) {
