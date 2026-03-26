@@ -46,6 +46,119 @@ const VendorPanel = (() => {
     { canonical: "MOVEit",       variants: ["moveit"] },
   ];
 
+  // ── Product map : canonical vendor → détectable product families ────────
+  const PRODUCT_MAP = {
+    "Microsoft":   [
+      { label: "Exchange",         term: "exchange" },
+      { label: "SharePoint",       term: "sharepoint" },
+      { label: "Azure",            term: "azure" },
+      { label: "Windows",          term: "windows" },
+      { label: "Active Directory", term: "active directory" },
+      { label: "Outlook",          term: "outlook" },
+      { label: "Teams",            term: "teams" },
+      { label: "Defender",         term: "defender" },
+      { label: "Hyper-V",          term: "hyper-v" },
+      { label: "SQL Server",       term: "sql server" },
+      { label: "IIS",              term: "iis" },
+      { label: ".NET",             term: ".net" },
+    ],
+    "Google":      [
+      { label: "Chrome",     term: "chrome" },
+      { label: "Android",    term: "android" },
+      { label: "Chromium",   term: "chromium" },
+      { label: "Workspace",  term: "workspace" },
+    ],
+    "Apple":       [
+      { label: "iOS",     term: "ios" },
+      { label: "macOS",   term: "macos" },
+      { label: "Safari",  term: "safari" },
+      { label: "iPhone",  term: "iphone" },
+      { label: "watchOS", term: "watchos" },
+      { label: "tvOS",    term: "tvos" },
+    ],
+    "Cisco":       [
+      { label: "IOS XE",    term: "ios xe" },
+      { label: "NX-OS",     term: "nx-os" },
+      { label: "Webex",     term: "webex" },
+      { label: "ASA",       term: " asa " },
+      { label: "Firepower", term: "firepower" },
+      { label: "Meraki",    term: "meraki" },
+    ],
+    "Apache":      [
+      { label: "Log4j",       term: "log4j" },
+      { label: "Tomcat",      term: "tomcat" },
+      { label: "Struts",      term: "struts" },
+      { label: "HTTP Server", term: "httpd" },
+    ],
+    "VMware":      [
+      { label: "ESXi",          term: "esxi" },
+      { label: "vCenter",       term: "vcenter" },
+      { label: "Workspace ONE", term: "workspace one" },
+      { label: "Horizon",       term: "horizon" },
+      { label: "NSX",           term: "nsx" },
+    ],
+    "Fortinet":    [
+      { label: "FortiGate",          term: "fortigate" },
+      { label: "FortiOS",            term: "fortios" },
+      { label: "FortiClient",        term: "forticlient" },
+      { label: "FortiWeb",           term: "fortiweb" },
+      { label: "FortiAuthenticator", term: "fortiauthenticator" },
+    ],
+    "Palo Alto":   [
+      { label: "PAN-OS",        term: "pan-os" },
+      { label: "GlobalProtect", term: "globalprotect" },
+      { label: "Prisma",        term: "prisma" },
+      { label: "Cortex",        term: "cortex" },
+    ],
+    "Atlassian":   [
+      { label: "Confluence", term: "confluence" },
+      { label: "Jira",       term: "jira" },
+      { label: "Bitbucket",  term: "bitbucket" },
+      { label: "Bamboo",     term: "bamboo" },
+    ],
+    "Linux":       [
+      { label: "Kernel",  term: "kernel" },
+      { label: "Ubuntu",  term: "ubuntu" },
+      { label: "Debian",  term: "debian" },
+      { label: "Red Hat", term: "red hat" },
+      { label: "RHEL",    term: "rhel" },
+      { label: "CentOS",  term: "centos" },
+    ],
+    "Oracle":      [
+      { label: "Java",      term: "java" },
+      { label: "WebLogic",  term: "weblogic" },
+      { label: "Solaris",   term: "solaris" },
+    ],
+    "Ivanti":      [
+      { label: "Connect Secure", term: "connect secure" },
+      { label: "Policy Secure",  term: "policy secure" },
+      { label: "Avalanche",      term: "avalanche" },
+      { label: "MobileIron",     term: "mobileiron" },
+    ],
+    "Citrix":      [
+      { label: "NetScaler",    term: "netscaler" },
+      { label: "ADC",          term: "netscaler adc" },
+      { label: "Virtual Apps", term: "virtual apps" },
+    ],
+    "F5":          [
+      { label: "BIG-IP", term: "big-ip" },
+      { label: "NGINX",  term: "nginx" },
+    ],
+    "Juniper":     [
+      { label: "JunOS", term: "junos" },
+      { label: "SRX",   term: "srx" },
+    ],
+    "OpenSSL":     [
+      { label: "OpenSSL", term: "openssl" },
+      { label: "OpenSSH", term: "openssh" },
+    ],
+    "Check Point": [
+      { label: "Quantum",    term: "quantum" },
+      { label: "Harmony",    term: "harmony" },
+      { label: "CloudGuard", term: "cloudguard" },
+    ],
+  };
+
   // ── Criticality ordering ─────────────────────────────────────────────────
   const CRIT_ORDER = { high: 3, medium: 2, low: 1 };
 
@@ -349,13 +462,64 @@ const VendorPanel = (() => {
 </div>`;
   }
 
+  // ── Produits détectés pour un vendor ────────────────────────────────────
+  function _computeProducts(vendorName, articles, briefingIds) {
+    const terms = PRODUCT_MAP[vendorName];
+    if (!terms || terms.length === 0) return [];
+    const pMap = new Map();
+    for (const a of articles) {
+      const titleLower = (a.title || "").toLowerCase();
+      for (const { label, term } of terms) {
+        if (titleLower.includes(term)) {
+          if (!pMap.has(label)) {
+            pMap.set(label, { label, count: 0, topics: new Set(), kev: 0, epssMax: 0, briefingCount: 0 });
+          }
+          const p = pMap.get(label);
+          p.count++;
+          p.topics.add(_topicKey(a));
+          if (a.isKEV) p.kev++;
+          if (typeof a.epssScore === "number" && a.epssScore > p.epssMax) p.epssMax = a.epssScore;
+          if (briefingIds && briefingIds.has(a.id)) p.briefingCount++;
+        }
+      }
+    }
+    return [...pMap.values()]
+      .map(p => ({ ...p, topics: p.topics.size }))
+      .sort((a, b) => b.count - a.count || b.kev - a.kev || b.epssMax - a.epssMax);
+  }
+
+  function _renderProducts(v) {
+    const products = _computeProducts(v.name, v.articles, _lastBriefingIds);
+    if (products.length === 0) return "";
+    const rows = products.map(p => {
+      const kevBadge     = p.kev > 0
+        ? `<span class="vp-badge vp-kev">KEV ×${p.kev}</span>` : "";
+      const epssBadge    = p.epssMax > 0
+        ? `<span class="vp-badge vp-epss">EPSS ${(p.epssMax * 100).toFixed(0)}%</span>` : "";
+      const briefingBadge = (_briefingAvailable && p.briefingCount > 0)
+        ? `<span class="vp-badge vp-briefing">📬 ${p.briefingCount}</span>` : "";
+      return `<div class="vp-prod-row">
+  <span class="vp-prod-name">${_escHtml(p.label)}</span>
+  <span class="vp-prod-stat">📄 ${p.count}</span>
+  <span class="vp-prod-stat">🧩 ${p.topics}</span>
+  ${kevBadge}${epssBadge}${briefingBadge}
+</div>`;
+    }).join("");
+    return `<div class="vp-prod-block">
+  <div class="vp-prod-head">📦 Produits détectés (${products.length})</div>
+  ${rows}
+</div>`;
+  }
+
   function _renderDetail(v, slug) {
     // Sort articles by criticality desc
     const sorted = [...v.articles].sort((a, b) => {
       return (CRIT_ORDER[b.criticality] || 0) - (CRIT_ORDER[a.criticality] || 0);
     });
 
-    return sorted.map(a => {
+    const prodBlock = _renderProducts(v);
+
+    return prodBlock + sorted.map(a => {
       const inBriefing = _lastBriefingIds && _lastBriefingIds.has(a.id);
       const critIcon   = a.criticality === "high"   ? '<span class="vp-ac" style="color:var(--crit-high,#f87171)">🔴</span>'
                        : a.criticality === "medium" ? '<span class="vp-ac" style="color:var(--crit-med,#fbbf24)">🟡</span>'
