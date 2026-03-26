@@ -57,7 +57,13 @@ const UI = (() => {
          </div>`
       : "";
 
-    const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges]
+    // Badge résumé IOC — compteur rapide dans la rangée principale des signaux
+    const iocSummaryBadge = (article.iocCount || 0) > 0
+      ? `<span class="badge badge-ioc-summary"
+               title="IOCs détectés : ${article.iocCount} indicateur${article.iocCount > 1 ? 's' : ''} (IPs, domaines, hashes, URLs)">🔗 ${article.iocCount} IOC</span>`
+      : "";
+
+    const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges, iocSummaryBadge]
       .filter(Boolean).join("");
 
     // ── Badges IOCs (max 3 sur la carte, click-to-copy) ──────────────────────

@@ -235,6 +235,18 @@ const App = (() => {
     // ── Filtre Risque Réel ────────────────────────────────────────────────────
     RiskFilter.init(() => render());
 
+    // ── Raccourci navbar "🔗 IOC" — active directement la pill IOC du RiskFilter ─
+    document.getElementById("btn-ioc-filter")?.addEventListener("click", () => {
+      // Ouvrir la barre Risque si elle est masquée (pour que l'état soit visible)
+      const bar = document.getElementById("risk-filter-bar");
+      if (bar && bar.style.display === "none") RiskFilter.toggle();
+      // Toggle la pill IOC — déclenche render() via _notify()
+      RiskFilter.togglePill("ioc");
+      // Synchroniser l'état actif du bouton navbar
+      const btn = document.getElementById("btn-ioc-filter");
+      if (btn) btn.classList.toggle("active", RiskFilter.getFilters().active.has("ioc"));
+    });
+
     // ── Modal détail article ──────────────────────────────────────────────────
     ArticleModal.init();
 

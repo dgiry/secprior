@@ -709,6 +709,14 @@ a:hover { text-decoration: underline; }
   .risk-filter-end { margin-left: 0; }
 }
 
+/* Badge résumé IOC dans card-tags (rangée principale signaux) */
+.badge-ioc-summary {
+  background: rgba(121,192,255,.10);
+  color: #79c0ff;
+  border: 1px solid rgba(121,192,255,.3);
+  cursor: default;
+}
+
 /* ── IOC Badges (cartes) ─────────────────────────────────────────────────── */
 .card-iocs {
   display: flex; flex-wrap: wrap; gap: .3rem;

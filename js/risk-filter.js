@@ -265,5 +265,18 @@ const RiskFilter = (() => {
     if (_onChange) _onChange();
   }
 
-  return { init, toggle, getFilters, hasActive, setCount };
+  // ── Activer / désactiver une pill depuis l'extérieur (ex: bouton navbar IOC) ─
+  function togglePill(id) {
+    if (_active.has(id)) {
+      _active.delete(id);
+      _deactivatePill(id);
+    } else {
+      _active.add(id);
+      _activatePill(id);
+    }
+    _updateDesc();
+    _notify();
+  }
+
+  return { init, toggle, getFilters, hasActive, setCount, togglePill };
 })();
