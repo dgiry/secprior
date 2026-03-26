@@ -99,11 +99,16 @@ const HealthPanel = (() => {
   <div class="hp-row hp-row-ok">✅ Tous les feeds OK</div>
 </div>`;
     }
-    const rows = feedErrors.map(f => `
+    const rows = feedErrors.map(f => {
+      const idTag = f.id && f.name && f.id !== f.name
+        ? ` <code class="hp-feed-id">${f.id}</code>`
+        : "";
+      return `
   <div class="hp-feed-err-row">
-    <span class="hp-feed-name">${f.name || f.id}</span>
+    <span class="hp-feed-name">${f.name || f.id}${idTag}</span>
     <span class="hp-feed-err-msg">${f.error || "erreur inconnue"}</span>
-  </div>`).join("");
+  </div>`;
+    }).join("");
     return `
 <div class="hp-section">
   <div class="hp-section-head">📡 Feeds en erreur (dernier run) <span class="hp-err-count">${feedErrors.length}</span></div>
@@ -131,6 +136,7 @@ const HealthPanel = (() => {
 
       const d   = new Date(r.lastRunAt);
       const ts  = isNaN(d) ? r.lastRunAt : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      const slotStr = r.slot ? `<br><span class="hp-hist-slot">${r.slot}</span>` : "";
       const ls  = r.lastStats || {};
       const errBadge = ls.feedsErr > 0
         ? `<span class="hp-pill hp-warn hp-pill-sm">${ls.feedsErr} err</span>`
@@ -139,7 +145,7 @@ const HealthPanel = (() => {
         ? `<span class="hp-hist-reason" title="${r.lastReason}">${r.lastReason.slice(0, 60)}${r.lastReason.length > 60 ? "…" : ""}</span>`
         : "";
       return `<tr class="${isLast ? "hp-hist-last" : ""}">
-  <td class="hp-hist-ts">${ts}</td>
+  <td class="hp-hist-ts">${ts}${slotStr}</td>
   <td>${badge}</td>
   <td class="hp-hist-stats">${ls.rawArticles ?? "—"} bruts · ${ls.uniqueArticles ?? "—"} uniq · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
   <td>${reason}</td>

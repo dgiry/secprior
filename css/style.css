@@ -1635,6 +1635,7 @@ body.modal-open { overflow: hidden; }
 }
 .hp-feed-err-row:last-child { border-bottom: none; }
 .hp-feed-name  { font-size: .78rem; font-weight: 600; white-space: nowrap; min-width: 9rem; }
+.hp-feed-id    { font-size: .68rem; color: var(--text2); font-family: var(--font); opacity: .75; }
 .hp-feed-err-msg { font-size: .73rem; color: var(--err); word-break: break-all; }
 
 /* Historique des runs */
@@ -1647,6 +1648,8 @@ body.modal-open { overflow: hidden; }
 .hp-hist-table td { padding: .25rem .3rem; vertical-align: top; }
 .hp-hist-last td  { background: rgba(255,255,255,.03); }
 .hp-hist-ts    { white-space: nowrap; color: var(--text2); font-size: .7rem; }
+.hp-hist-slot  { display: inline-block; font-size: .64rem; color: var(--text2); opacity: .6;
+                 font-family: var(--font); margin-top: .1rem; }
 .hp-hist-stats { color: var(--text2); }
 .hp-hist-reason { color: var(--warn); font-size: .7rem; }
 .hp-pill-sm    { font-size: .62rem; padding: .1rem .35rem; }
