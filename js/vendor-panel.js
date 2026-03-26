@@ -316,8 +316,8 @@ const VendorPanel = (() => {
     <span class="vp-name">${v.name}</span>
     <span class="vp-badges">${badges.join("") || ""}</span>
     <span class="vp-meta">
-      <span class="vp-stat">📄 ${v.count}</span>
-      <span class="vp-stat">🔑 ${v.topics}</span>
+      <span class="vp-stat" title="Nombre d'articles">📄 ${v.count} article${v.count > 1 ? "s" : ""}</span>
+      <span class="vp-stat" title="Sujets/CVE uniques">🔑 ${v.topics} sujet${v.topics > 1 ? "s" : ""}</span>
       ${critLabel}
     </span>
     <span class="vp-chevron">▶</span>
