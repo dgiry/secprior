@@ -1795,3 +1795,65 @@ body.modal-open { overflow: hidden; }
 .vp-prod-row + .vp-prod-row { border-top:1px solid var(--border); }
 .vp-prod-name   { min-width:7rem; color:var(--text); font-weight:500; }
 .vp-prod-stat   { color:var(--text2); font-size:.67rem; white-space:nowrap; }
+
+/* ── CVE Panel ────────────────────────────────────────────────────────────── */
+
+/* Barre de filtres */
+.cp-filter-bar    { display:flex; gap:.4rem; padding:.5rem 1rem .75rem; flex-wrap:wrap; }
+.cp-filter-btn    { background:var(--card); border:1px solid var(--border); color:var(--text2);
+                    border-radius:4px; padding:.25rem .65rem; font-size:.75rem; cursor:pointer;
+                    transition:border-color .15s, color .15s; }
+.cp-filter-btn:hover { border-color:var(--accent); color:var(--text); }
+.cp-filter-btn.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
+
+/* Table principale */
+.cp-table         { width:100%; border-collapse:collapse; font-size:.78rem; }
+.cp-thead th      { text-align:left; padding:.4rem .6rem; color:var(--text2);
+                    font-size:.68rem; font-weight:600; text-transform:uppercase;
+                    letter-spacing:.04em; border-bottom:1px solid var(--border); }
+.cp-th-num        { text-align:right !important; }
+
+/* Ligne CVE cliquable */
+.cp-row           { cursor:pointer; border-bottom:1px solid var(--border);
+                    transition:background .12s; }
+.cp-row:hover     { background:rgba(88,166,255,.06); }
+.cp-row.cp-row-open { background:rgba(88,166,255,.1); }
+.cp-row td        { padding:.45rem .6rem; vertical-align:middle; }
+
+/* Détail expandable */
+.cp-detail-row td { padding:0; background:var(--bg); }
+.cp-detail-inner  { padding:.6rem 1rem .8rem 2rem;
+                    border-left:2px solid var(--accent);
+                    border-bottom:1px solid var(--border); }
+.cp-detail-head   { margin:0 0 .5rem; font-size:.75rem; color:var(--text2); }
+
+/* Ligne article dans le détail */
+.cp-art-row       { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+                    padding:.25rem 0; border-top:1px solid var(--border); font-size:.74rem; }
+.cp-art-row:first-of-type { border-top:none; }
+.cp-art-date      { min-width:7rem; white-space:nowrap; font-family:monospace; }
+.cp-art-cri       { font-size:.8rem; }
+.cp-art-src       { min-width:9rem; white-space:nowrap; overflow:hidden;
+                    text-overflow:ellipsis; max-width:12rem; }
+.cp-art-badges    { display:flex; gap:.25rem; flex-shrink:0; }
+.cp-art-title     { color:var(--link); text-decoration:none; font-size:.74rem;
+                    flex:1; min-width:0; word-break:break-word; }
+.cp-art-title:hover { text-decoration:underline; }
+
+/* Badges signaux */
+.cp-badge         { display:inline-block; font-size:.62rem; padding:.1rem .35rem;
+                    border-radius:3px; font-weight:600; white-space:nowrap; }
+.cp-kev           { background:#2d1515; color:#f85149; }
+.cp-wl            { background:#0d2818; color:#3fb950; }
+.cp-tr            { background:#1a1300; color:#f0883e; }
+.cp-epss          { background:#1a1a2e; color:#c4b5fd; font-family:monospace; }
+
+/* Typo utilitaires */
+.cp-cve-id        { font-family:monospace; font-size:.77rem;
+                    color:var(--accent); background:transparent; }
+.cp-num           { text-align:right; font-family:monospace; font-size:.75rem; }
+.cp-dim           { color:var(--text2); }
+.cp-vendors-cell  { max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* État vide */
+.cp-empty         { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }

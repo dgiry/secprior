@@ -86,6 +86,10 @@
 
     <button id="btn-vendors" class="btn" title="Vendors et assets exposés dans la veille">🏢 Vendors</button>
 
+    <button id="btn-cve" class="btn" title="Corrélation CVE ↔ articles détectés">
+      🔍 CVEs
+    </button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -256,6 +260,15 @@
       <span class="bp-meta" id="vendor-meta"></span>
     </div>
     <div id="vendor-list"></div>
+  </div>
+
+  <!-- ── Panneau Corrélation CVE ↔ Articles (collapsible) ────────────────── -->
+  <div id="cve-panel" class="vendor-panel" style="display:none">
+    <div class="bp-header">
+      <h3 class="bp-title-h3">🔍 Corrélation CVE ↔ Articles</h3>
+      <span class="bp-meta" id="cve-meta"></span>
+    </div>
+    <div id="cve-list"></div>
   </div>
 
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
@@ -637,6 +650,7 @@
   <script src="js/pdf-report.js?v=13"></script>
   <script src="js/app.js?v=13"></script>
   <script src="js/vendor-panel.js?v=17"></script>
+  <script src="js/cve-panel.js?v=1"></script>
 
 </body>
 </html>
