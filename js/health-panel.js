@@ -225,6 +225,57 @@ const HealthPanel = (() => {
 </div>`;
   }
 
+  // ── Historique des briefings envoyés ────────────────────────────────────────
+  function _renderBriefingHistory(history) {
+    if (!Array.isArray(history) || history.length === 0) {
+      return `
+<div class="hp-section">
+  <div class="hp-section-head">📬 Briefings envoyés</div>
+  <div class="hp-row hp-null-row">Aucun briefing enregistré (KV requis, ou aucun envoi encore)</div>
+</div>`;
+    }
+
+    const cards = history.map((b, i) => {
+      const d   = new Date(b.sentAt);
+      const ts  = isNaN(d) ? b.sentAt
+        : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      const subj = b.subject
+        ? b.subject.replace(/^[^\x20-\x7E]*/, "").trim().slice(0, 70) + (b.subject.length > 70 ? "…" : "")
+        : "—";
+
+      const arts = Array.isArray(b.topArticles) ? b.topArticles : [];
+      const artRows = arts.map(a => {
+        const crit = a.criticality === "high"   ? '🔴'
+                   : a.criticality === "medium" ? '🟠' : '🟢';
+        const kev  = a.isKEV ? ' <span class="hp-pill hp-err hp-pill-sm">KEV</span>' : "";
+        const epss = a.epssScore != null && a.epssScore > 0
+          ? ` <span class="hp-pill hp-pill-sm" style="background:#1e3a5f;color:#93c5fd">EPSS ${Math.round(a.epssScore * 100)}%</span>` : "";
+        const cve  = a.cveId ? ` <code class="hp-feed-id">${a.cveId}</code>` : "";
+        const title = a.link
+          ? `<a href="${a.link}" target="_blank" rel="noopener" class="hp-bh-link">${a.title || "—"}</a>`
+          : (a.title || "—");
+        return `<div class="hp-bh-art">${crit} ${title}${kev}${epss}${cve}</div>`;
+      }).join("");
+
+      const isFirst = i === 0;
+      return `
+<div class="hp-bh-card${isFirst ? " hp-bh-card-last" : ""}">
+  <div class="hp-bh-head">
+    <span class="hp-bh-ts">${ts}</span>
+    <span class="hp-bh-count"><strong>${b.topCount ?? arts.length}</strong> alerte${(b.topCount ?? arts.length) > 1 ? "s" : ""}</span>
+    <span class="hp-bh-subj">${subj}</span>
+  </div>
+  ${artRows}
+</div>`;
+    }).join("");
+
+    return `
+<div class="hp-section">
+  <div class="hp-section-head">📬 Briefings envoyés (${history.length})</div>
+  <div class="hp-bh-list">${cards}</div>
+</div>`;
+  }
+
   // ── Rendu principal ─────────────────────────────────────────────────────────
   function _render(d) {
     const el = document.getElementById("health-list");
@@ -318,7 +369,10 @@ ${_renderSummary(d)}
 ${_renderFeedErrors(d.feedErrors, d.feeds?.count)}
 
 <!-- ── Historique des runs ────────────────────────────────────────────── -->
-${_renderRunHistory(d.runHistory)}`;
+${_renderRunHistory(d.runHistory)}
+
+<!-- ── Historique des briefings envoyés ──────────────────────────────── -->
+${_renderBriefingHistory(d.briefingHistory)}`;
   }
 
   return { init, toggle, refresh };

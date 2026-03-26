@@ -19,7 +19,7 @@
 "use strict";
 
 const { FEEDS }       = require("./_lib/feeds");
-const { loadLastRun, loadRunHistory } = require("./_lib/dedup-store");
+const { loadLastRun, loadRunHistory, loadBriefingHistory } = require("./_lib/dedup-store");
 
 // Cron configuré dans vercel.json → toutes les minutes, décision dans le handler
 const CRON_SCHEDULE = "* * * * *";
@@ -76,7 +76,9 @@ module.exports = async (req, res) => {
 
   // ── Dernier run + historique (depuis KV) ─────────────────────────────────
   // null / [] si KV non configuré ou si aucun run n'a encore eu lieu.
-  const [lastRun, runHistory] = await Promise.all([loadLastRun(), loadRunHistory()]);
+  const [lastRun, runHistory, briefingHistory] = await Promise.all([
+    loadLastRun(), loadRunHistory(), loadBriefingHistory()
+  ]);
 
   // ── Réponse ───────────────────────────────────────────────────────────────
   return res.status(200).json({
@@ -101,6 +103,8 @@ module.exports = async (req, res) => {
     feedErrors: (lastRun?.lastStats?.feedErrors || []),
     // Historique des N derniers runs ([] si KV absent)
     runHistory,
+    // Historique des N derniers briefings envoyés ([] si KV absent ou aucun envoi)
+    briefingHistory,
     feeds: {
       count:   FEEDS.length,
       sources: FEEDS.map(f => f.id)

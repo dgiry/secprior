@@ -18,10 +18,11 @@
 
 const { parseRSS }           = require("./_lib/rss-parser");
 const { enrichArticles }     = require("./_lib/enricher");
-const { loadSentIds,    saveSentIds,
-        loadSentTopics, saveSentTopics,
-        loadLastSlot,   saveLastSlot,
-        saveLastRun,    saveRunHistory } = require("./_lib/dedup-store");
+const { loadSentIds,      saveSentIds,
+        loadSentTopics,   saveSentTopics,
+        loadLastSlot,     saveLastSlot,
+        saveLastRun,      saveRunHistory,
+        saveBriefingHistory }            = require("./_lib/dedup-store");
 const { digestPriorityScore,
         selectTopArticles,
         formatBriefingHTML,
@@ -662,6 +663,23 @@ module.exports = async (req, res) => {
     });
     await saveLastRun(_stateSent);
     await saveRunHistory(_stateSent);
+    await saveBriefingHistory({
+      sentAt:      new Date().toISOString(),
+      slot:        mtl.slot,
+      subject,
+      topCount:    top.length,
+      topArticles: top.slice(0, 5).map((a, i) => ({
+        rank:        i + 1,
+        title:       a.title,
+        topicKey:    a._topicKey || _topicKey(a),
+        criticality: a.criticality,
+        isKEV:       a.isKEV ?? false,
+        cveId:       a.cveIds?.[0] || null,
+        epssScore:   a.epssScore  ?? null,
+        cvssScore:   a.cvssScore  ?? null,
+        link:        a.link       || null
+      }))
+    });
 
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",

@@ -286,10 +286,63 @@ async function loadRunHistory() {
   }
 }
 
+// ── Historique des briefings envoyés ─────────────────────────────────────────
+
+const BRIEFING_HIST_KEY = "digest:briefing_history"; // JSON array des N derniers briefings
+const BRIEFING_HIST_TTL = 60 * 24 * 3600;            // TTL 60 j
+const BRIEFING_HIST_MAX = 10;                         // 10 derniers briefings envoyés
+
+/**
+ * Persiste un briefing envoyé dans l'historique (TTL 60 j, max 10 entrées).
+ * Silencieux en cas d'erreur — ne bloque jamais le cron.
+ *
+ * @param {{ sentAt, slot, subject, topCount, topArticles }} entry
+ *   topArticles : tableau de { rank, title, topicKey, criticality, isKEV,
+ *                              cveId, epssScore, cvssScore, link }
+ */
+async function saveBriefingHistory(entry) {
+  if (!_kvAvailable()) return;
+  try {
+    let history = [];
+    try {
+      const existing = await _kvGet("get", BRIEFING_HIST_KEY);
+      if (existing.result) history = JSON.parse(existing.result);
+    } catch (_) { /* repart d'un tableau vide */ }
+
+    history.unshift(entry);
+    if (history.length > BRIEFING_HIST_MAX) history = history.slice(0, BRIEFING_HIST_MAX);
+
+    await _kvPipeline([
+      ["setex", BRIEFING_HIST_KEY, BRIEFING_HIST_TTL, JSON.stringify(history)]
+    ]);
+    console.log("[dedup] briefingHistory persisté (%d entrées)", history.length);
+  } catch (e) {
+    console.warn("[dedup] saveBriefingHistory échoué (non bloquant) :", e.message);
+  }
+}
+
+/**
+ * Charge l'historique des briefings envoyés depuis KV.
+ * Retourne un tableau vide si KV non configuré ou en cas d'erreur.
+ *
+ * @returns {Promise<object[]>}
+ */
+async function loadBriefingHistory() {
+  if (!_kvAvailable()) return [];
+  try {
+    const json = await _kvGet("get", BRIEFING_HIST_KEY);
+    return json.result ? JSON.parse(json.result) : [];
+  } catch (e) {
+    console.warn("[dedup] loadBriefingHistory échoué :", e.message);
+    return [];
+  }
+}
+
 module.exports = {
   loadSentIds, saveSentIds,
   loadSentTopics, saveSentTopics,
   loadLastSlot, saveLastSlot,
   saveLastRun, loadLastRun,
-  saveRunHistory, loadRunHistory
+  saveRunHistory, loadRunHistory,
+  saveBriefingHistory, loadBriefingHistory
 };
