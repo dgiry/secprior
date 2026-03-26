@@ -582,5 +582,17 @@ const VendorPanel = (() => {
       .replace(/"/g, "&quot;");
   }
 
-  return { init, toggle, update };
+  // ── API publique filtres (pour SavedFilters) ──────────────────────────────
+  function getFilters() {
+    return { filterBy: _filterBy, sortBy: _sortBy, searchQuery: _searchQuery };
+  }
+  function setFilters(f) {
+    if (f.filterBy    !== undefined) _filterBy    = f.filterBy;
+    if (f.sortBy      !== undefined) _sortBy      = f.sortBy;
+    if (f.searchQuery !== undefined) _searchQuery = f.searchQuery;
+    _rendered = true;
+    _render();
+  }
+
+  return { init, toggle, update, getFilters, setFilters };
 })();

@@ -1948,3 +1948,35 @@ body.modal-open { overflow: hidden; }
 /* État vide */
 .ip-empty          { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }
 .cp-nvd-link:hover{ opacity:1; color:var(--accent); }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Saved Filters modal (.sf-*)                                                 */
+/* ─────────────────────────────────────────────────────────────────────────── */
+.sf-save-row        { display:flex; gap:.5rem; padding:.75rem 1.25rem;
+                      border-bottom:1px solid var(--border); align-items:center; }
+.sf-save-input      { flex:1; background:var(--card); border:1px solid var(--border);
+                      border-radius:6px; padding:.4rem .7rem; font-size:.85rem;
+                      color:var(--text); min-width:0; }
+.sf-save-input:focus      { outline:none; border-color:var(--accent); }
+.sf-save-input.sf-input-error { border-color:#f85149; }
+
+.sf-preset-list     { padding:.25rem 0; max-height:400px; overflow-y:auto; }
+.sf-empty           { text-align:center; color:var(--text2); font-size:.82rem;
+                      padding:2rem 1rem; }
+.sf-preset-row      { display:flex; align-items:center; gap:.65rem;
+                      padding:.55rem 1.25rem; border-bottom:1px solid var(--border);
+                      flex-wrap:wrap; }
+.sf-preset-row:last-child { border-bottom:none; }
+
+.sf-view-badge      { font-size:.67rem; padding:.15rem .45rem; border-radius:4px;
+                      background:rgba(88,166,255,.15); color:var(--accent);
+                      white-space:nowrap; flex-shrink:0; }
+.sf-preset-info     { display:flex; flex-direction:column; gap:.1rem; flex:1; min-width:0; }
+.sf-preset-name     { font-size:.84rem; font-weight:600; color:var(--text);
+                      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sf-preset-meta     { font-size:.71rem; color:var(--text2);
+                      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sf-preset-actions  { display:flex; gap:.35rem; flex-shrink:0; }
+.sf-apply-btn       { font-size:.75rem; padding:.2rem .6rem; }
+.sf-delete-btn      { font-size:.75rem; padding:.2rem .45rem; opacity:.5; }
+.sf-delete-btn:hover { opacity:1; color:#f85149; border-color:#f85149; }

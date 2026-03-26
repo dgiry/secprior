@@ -420,5 +420,15 @@ const IncidentPanel = (() => {
     if (panel?.style.display !== "none") _render();
   }
 
-  return { init, toggle, update, buildIncidentIndex };
+  // ── API publique filtres (pour SavedFilters) ──────────────────────────────
+  function getFilters() {
+    return { filterBy: _filterBy, searchQuery: _searchQuery };
+  }
+  function setFilters(f) {
+    if (f.filterBy    !== undefined) _filterBy    = f.filterBy;
+    if (f.searchQuery !== undefined) _searchQuery = f.searchQuery;
+    _render();
+  }
+
+  return { init, toggle, update, buildIncidentIndex, getFilters, setFilters };
 })();

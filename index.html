@@ -94,6 +94,10 @@
       🎯 Incidents
     </button>
 
+    <button id="btn-saved-filters" class="btn" title="Sauvegarder / rappeler une vue filtrée">
+      💾 Vues
+    </button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -634,6 +638,26 @@
     </div><!-- /modal-box -->
   </div><!-- /modal-settings -->
 
+  <!-- ── Modal Vues sauvegardées ────────────────────────────────────────────── -->
+  <div id="modal-saved-filters" class="modal-overlay" style="display:none"
+       onclick="if(event.target===this)SavedFilters.close()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>💾 Vues sauvegardées</h2>
+        <button class="modal-close" onclick="SavedFilters.close()">✕</button>
+      </div>
+      <div class="sf-save-row">
+        <input id="sf-name-input" type="text" class="sf-save-input"
+               placeholder="Nom de la vue (ex : Cisco critiques KEV)" maxlength="60">
+        <button id="sf-save-btn" class="btn btn-primary">💾 Sauvegarder la vue actuelle</button>
+      </div>
+      <div id="sf-preset-list" class="sf-preset-list"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="SavedFilters.close()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Conteneur rapport PDF (caché à l'écran, visible à l'impression) ──── -->
   <div id="pdf-report"></div>
 
@@ -665,6 +689,7 @@
   <script src="js/vendor-panel.js?v=17"></script>
   <script src="js/cve-panel.js?v=2"></script>
   <script src="js/incident-panel.js?v=1"></script>
+  <script src="js/saved-filters.js?v=1"></script>
 
 </body>
 </html>

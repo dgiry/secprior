@@ -225,6 +225,9 @@ const App = (() => {
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();
 
+    // ── Vues / filtres sauvegardés ────────────────────────────────────────────
+    SavedFilters.init();
+
     // ── Filtre Risque Réel ────────────────────────────────────────────────────
     RiskFilter.init(() => render());
 
@@ -243,7 +246,61 @@ const App = (() => {
     scheduleRefresh();
   }
 
-  return { init, refreshForced: () => refresh(true) };
+  // ── API publique filtres (pour SavedFilters) ──────────────────────────────
+  function getFilters() {
+    return {
+      query:       state.query,
+      criticality: state.criticality,
+      source:      state.source,
+      date:        state.date,
+      showFavOnly: state.showFavOnly
+    };
+  }
+  function setFilters(f) {
+    if (f.query !== undefined) {
+      state.query = f.query;
+      const el = document.getElementById("search-input");
+      if (el) el.value = f.query;
+    }
+    if (f.criticality !== undefined) {
+      state.criticality = f.criticality;
+      const el = document.getElementById("filter-criticality");
+      if (el) el.value = f.criticality;
+    }
+    if (f.source !== undefined) {
+      state.source = f.source;
+      const el = document.getElementById("filter-source");
+      if (el) el.value = f.source;
+    }
+    if (f.date !== undefined) {
+      state.date = f.date;
+      const el = document.getElementById("filter-date");
+      if (el) el.value = f.date;
+    }
+    if (f.showFavOnly !== undefined) {
+      state.showFavOnly = f.showFavOnly;
+      const btn = document.getElementById("btn-favs");
+      if (btn) btn.classList.toggle("active", f.showFavOnly);
+    }
+    render();
+  }
+  function getActivePanel() {
+    const panels = [
+      { id: "cve-panel",      view: "cves" },
+      { id: "incident-panel", view: "incidents" },
+      { id: "vendor-panel",   view: "vendors" },
+      { id: "stats-panel",    view: "stats" },
+      { id: "briefing-panel", view: "briefing" },
+      { id: "health-panel",   view: "health" }
+    ];
+    for (const { id, view } of panels) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== "none") return view;
+    }
+    return "main";
+  }
+
+  return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel };
 })();
 
 // Démarrer quand le DOM est prêt
