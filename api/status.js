@@ -19,7 +19,7 @@
 "use strict";
 
 const { FEEDS }       = require("./_lib/feeds");
-const { loadLastRun } = require("./_lib/dedup-store");
+const { loadLastRun, loadRunHistory } = require("./_lib/dedup-store");
 
 // Cron configuré dans vercel.json → toutes les minutes, décision dans le handler
 const CRON_SCHEDULE = "* * * * *";
@@ -74,9 +74,9 @@ module.exports = async (req, res) => {
   if (!dedup.kvAvailable)
     warnings.push("KV_REST_API_URL / KV_REST_API_TOKEN absents — déduplication inter-digest désactivée");
 
-  // ── Dernier run (depuis KV) ───────────────────────────────────────────────
-  // null si KV non configuré ou si aucun run significatif n'a encore eu lieu.
-  const lastRun = await loadLastRun();
+  // ── Dernier run + historique (depuis KV) ─────────────────────────────────
+  // null / [] si KV non configuré ou si aucun run n'a encore eu lieu.
+  const [lastRun, runHistory] = await Promise.all([loadLastRun(), loadRunHistory()]);
 
   // ── Réponse ───────────────────────────────────────────────────────────────
   return res.status(200).json({
@@ -97,6 +97,10 @@ module.exports = async (req, res) => {
     dedup,
     // État du dernier run significatif (null si KV absent ou jamais exécuté)
     lastRun,
+    // Feeds en erreur lors du dernier run (extrait de lastRun.lastStats.feedErrors)
+    feedErrors: (lastRun?.lastStats?.feedErrors || []),
+    // Historique des N derniers runs ([] si KV absent)
+    runHistory,
     feeds: {
       count:   FEEDS.length,
       sources: FEEDS.map(f => f.id)

@@ -236,9 +236,60 @@ async function loadLastRun() {
   }
 }
 
+// ── Historique des derniers runs ──────────────────────────────────────────────
+
+const HISTORY_KEY = "digest:run_history"; // JSON array des N derniers runs
+const HISTORY_TTL = 30 * 24 * 3600;       // TTL 30 j
+const HISTORY_MAX = 10;                    // on garde les 10 derniers runs
+
+/**
+ * Ajoute un run au début de l'historique et le persiste dans KV (TTL 30 j).
+ * Conserve au maximum HISTORY_MAX entrées. Silencieux en cas d'erreur.
+ *
+ * @param {object} run — objet identique à ce que saveLastRun() reçoit
+ */
+async function saveRunHistory(run) {
+  if (!_kvAvailable()) return;
+  try {
+    let history = [];
+    try {
+      const existing = await _kvGet("get", HISTORY_KEY);
+      if (existing.result) history = JSON.parse(existing.result);
+    } catch (_) { /* repart d'un tableau vide */ }
+
+    history.unshift(run);
+    if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+
+    await _kvPipeline([
+      ["setex", HISTORY_KEY, HISTORY_TTL, JSON.stringify(history)]
+    ]);
+    console.log("[dedup] runHistory persisté (%d entrées)", history.length);
+  } catch (e) {
+    console.warn("[dedup] saveRunHistory échoué (non bloquant) :", e.message);
+  }
+}
+
+/**
+ * Charge l'historique des derniers runs depuis KV.
+ * Retourne un tableau vide si KV non configuré ou en cas d'erreur.
+ *
+ * @returns {Promise<object[]>}
+ */
+async function loadRunHistory() {
+  if (!_kvAvailable()) return [];
+  try {
+    const json = await _kvGet("get", HISTORY_KEY);
+    return json.result ? JSON.parse(json.result) : [];
+  } catch (e) {
+    console.warn("[dedup] loadRunHistory échoué :", e.message);
+    return [];
+  }
+}
+
 module.exports = {
   loadSentIds, saveSentIds,
   loadSentTopics, saveSentTopics,
   loadLastSlot, saveLastSlot,
-  saveLastRun, loadLastRun
+  saveLastRun, loadLastRun,
+  saveRunHistory, loadRunHistory
 };

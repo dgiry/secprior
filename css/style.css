@@ -1620,8 +1620,40 @@ body.modal-open { overflow: hidden; }
 .hp-loading { color: var(--accent); }
 .hp-error   { color: var(--err); }
 
+/* Feeds en erreur */
+.hp-row-ok    { color: var(--ok); font-size: .78rem; padding: .3rem 0; }
+.hp-null-row  { color: var(--text2); font-size: .78rem; opacity: .6; padding: .3rem 0; }
+.hp-err-count {
+  display: inline-block; background: var(--err); color: #fff;
+  font-size: .62rem; padding: .05rem .35rem;
+  border-radius: 20px; margin-left: .35rem; vertical-align: middle;
+}
+.hp-feed-err-row {
+  display: flex; gap: .5rem; align-items: baseline;
+  padding: .25rem 0; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.hp-feed-err-row:last-child { border-bottom: none; }
+.hp-feed-name  { font-size: .78rem; font-weight: 600; white-space: nowrap; min-width: 9rem; }
+.hp-feed-err-msg { font-size: .73rem; color: var(--err); word-break: break-all; }
+
+/* Historique des runs */
+.hp-hist-table {
+  width: 100%; border-collapse: collapse; font-size: .73rem;
+  margin-top: .35rem;
+}
+.hp-hist-table tr { border-bottom: 1px solid var(--border); }
+.hp-hist-table tr:last-child { border-bottom: none; }
+.hp-hist-table td { padding: .25rem .3rem; vertical-align: top; }
+.hp-hist-last td  { background: rgba(255,255,255,.03); }
+.hp-hist-ts    { white-space: nowrap; color: var(--text2); font-size: .7rem; }
+.hp-hist-stats { color: var(--text2); }
+.hp-hist-reason { color: var(--warn); font-size: .7rem; }
+.hp-pill-sm    { font-size: .62rem; padding: .1rem .35rem; }
+
 @media (max-width: 600px) {
   #health-list { grid-template-columns: 1fr; }
+  .hp-hist-stats { display: none; }
 }
 
 /* ── Vendor Panel ──────────────────────────────────────────────────────── */
@@ -1642,6 +1674,7 @@ body.modal-open { overflow: hidden; }
 .vp-kev  { background: #7f1d1d; color: #fca5a5; }
 .vp-epss { background: #1e3a5f; color: #93c5fd; }
 .vp-wl   { background: #1a2a1a; color: #86efac; }
+.vp-cve  { background: #1a1a2e; color: #c4b5fd; font-family: monospace; letter-spacing: .01em; }
 .vp-crit-badge { font-size: .72rem; font-weight: 600; }
 .vp-crit-high .vp-name { color: var(--crit-high, #f87171); }
 .vp-crit-med  .vp-name { color: var(--crit-med,  #fbbf24); }

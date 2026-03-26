@@ -21,7 +21,7 @@ const { enrichArticles }     = require("./_lib/enricher");
 const { loadSentIds,    saveSentIds,
         loadSentTopics, saveSentTopics,
         loadLastSlot,   saveLastSlot,
-        saveLastRun }                    = require("./_lib/dedup-store");
+        saveLastRun,    saveRunHistory } = require("./_lib/dedup-store");
 const { digestPriorityScore,
         selectTopArticles,
         formatBriefingHTML,
@@ -353,20 +353,20 @@ function _previewArticle(a, rank) {
 
 // ── Helper état du run pour /api/status ──────────────────────────────────────
 /**
- * Construit l'objet d'état à passer à saveLastRun().
+ * Construit l'objet d'état à passer à saveLastRun() / saveRunHistory().
  * @param {"sent"|"failed"|"noArticles"} result
  * @param {string|null} reason  — message d'erreur ou raison
  * @param {string} slot         — créneau Montreal ex: "2026-03-25T08:30"
- * @param {{ feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }} stats
+ * @param {{ feedsOk, feedsErr, feedErrors, rawArticles, uniqueArticles, topCount }} stats
  * @returns {object}
  */
-function _makeRunState(result, reason, slot, { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }) {
+function _makeRunState(result, reason, slot, { feedsOk, feedsErr, feedErrors, rawArticles, uniqueArticles, topCount }) {
   return {
     lastRunAt:  new Date().toISOString(),
     slot,
     lastResult: result,
     lastReason: reason || null,
-    lastStats:  { feedsOk, feedsErr, rawArticles, uniqueArticles, topCount }
+    lastStats:  { feedsOk, feedsErr, feedErrors: feedErrors || [], rawArticles, uniqueArticles, topCount }
   };
 }
 
@@ -460,12 +460,12 @@ module.exports = async (req, res) => {
     if (r.status === "fulfilled") {
       allArticles.push(...r.value);
       fetchOk++;
-      feedDetails.push({ id: FEEDS[i].id, ok: true,  articles: r.value.length });
+      feedDetails.push({ id: FEEDS[i].id, name: FEEDS[i].name, ok: true,  articles: r.value.length });
       console.log("[scheduled-digest] ✓ %-30s %d articles", FEEDS[i].name, r.value.length);
     } else {
       fetchErr++;
       const errMsg = r.reason?.message || "erreur inconnue";
-      feedDetails.push({ id: FEEDS[i].id, ok: false, error: errMsg });
+      feedDetails.push({ id: FEEDS[i].id, name: FEEDS[i].name, ok: false, error: errMsg });
       console.warn("[scheduled-digest] ✗ %-30s %s", FEEDS[i].name, errMsg);
     }
   });
@@ -521,10 +521,13 @@ module.exports = async (req, res) => {
   if (queue.length === 0) {
     console.log("[scheduled-digest] Aucun article dans les 48 h. Briefing non envoyé.");
     if (!isTestMode) {
-      await saveLastRun(_makeRunState("noArticles", "Aucun article dans les 48 dernières heures", mtl.slot, {
+      const _state0 = _makeRunState("noArticles", "Aucun article dans les 48 dernières heures", mtl.slot, {
         feedsOk: fetchOk, feedsErr: fetchErr,
+        feedErrors: feedDetails.filter(d => !d.ok),
         rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: 0
-      }));
+      });
+      await saveLastRun(_state0);
+      await saveRunHistory(_state0);
     }
     return res.status(200).json({
       success: false,
@@ -652,10 +655,13 @@ module.exports = async (req, res) => {
     await saveSentIds(top.map(a => a.id));
     await saveSentTopics(top.map(a => a._topicKey || _topicKey(a)));
     await saveLastSlot(mtl.slot);
-    await saveLastRun(_makeRunState("sent", null, mtl.slot, {
+    const _stateSent = _makeRunState("sent", null, mtl.slot, {
       feedsOk: fetchOk, feedsErr: fetchErr,
+      feedErrors: feedDetails.filter(d => !d.ok),
       rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
-    }));
+    });
+    await saveLastRun(_stateSent);
+    await saveRunHistory(_stateSent);
 
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",
@@ -668,10 +674,13 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error("[scheduled-digest] ❌ Erreur envoi email :", err.message);
-    await saveLastRun(_makeRunState("failed", err.message, mtl.slot, {
+    const _stateFail = _makeRunState("failed", err.message, mtl.slot, {
       feedsOk: fetchOk, feedsErr: fetchErr,
+      feedErrors: feedDetails.filter(d => !d.ok),
       rawArticles: allArticles.length, uniqueArticles: unique.length, topCount: top.length
-    }));
+    });
+    await saveLastRun(_stateFail);
+    await saveRunHistory(_stateFail);
     return res.status(502).json({ error: `Envoi email échoué : ${err.message}` });
   }
 };

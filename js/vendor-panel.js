@@ -10,7 +10,7 @@ const VendorPanel = (() => {
   let _articles          = [];      // dernière liste d'articles reçue
   let _rendered          = false;   // true après le premier rendu
   let _sortBy            = "default"; // tri actif
-  let _filterBy          = "all";   // "all" | "briefing" | "kev"
+  let _filterBy          = "all";   // "all" | "briefing" | "kev" | "watchlist"
   let _briefingAvailable = false;   // true si BriefingPanel cache chargé
   let _lastBriefingIds   = null;    // Set<id> partagé avec _renderDetail
 
@@ -220,8 +220,9 @@ const VendorPanel = (() => {
 
     // ── Filtre rapide ────────────────────────────────────────────────────────
     let vendors = allVendors;
-    if (_filterBy === "briefing") vendors = allVendors.filter(v => v.briefingCount > 0);
-    if (_filterBy === "kev")      vendors = allVendors.filter(v => v.kev > 0);
+    if (_filterBy === "briefing")  vendors = allVendors.filter(v => v.briefingCount > 0);
+    if (_filterBy === "kev")       vendors = allVendors.filter(v => v.kev > 0);
+    if (_filterBy === "watchlist") vendors = allVendors.filter(v => v.hasWatchlist);
 
     _rendered = true;
 
@@ -245,15 +246,18 @@ const VendorPanel = (() => {
     }
 
     const filterBar = `<div class="vp-filter-bar">
-  <button class="vp-filter-btn${_filterBy==="all"      ?" active":""}" data-filter="all">Tous (${allVendors.length})</button>
-  <button class="vp-filter-btn${_filterBy==="briefing" ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
-  <button class="vp-filter-btn${_filterBy==="kev"      ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
+  <button class="vp-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">Tous (${allVendors.length})</button>
+  <button class="vp-filter-btn${_filterBy==="briefing"  ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
+  <button class="vp-filter-btn${_filterBy==="kev"       ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
+  <button class="vp-filter-btn${_filterBy==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist (${allVendors.filter(v=>v.hasWatchlist).length})</button>
 </div>`;
 
     if (vendors.length === 0) {
       const emptyMsg = _filterBy === "briefing" && !_briefingAvailable
         ? "Ouvre l\'onglet Briefing d\'abord pour activer ce filtre."
-        : "Aucun vendor pour ce filtre.";
+        : _filterBy === "watchlist"
+          ? "Aucun vendor en watchlist — configure des mots-clés dans l\'app."
+          : "Aucun vendor pour ce filtre.";
       listEl.innerHTML = filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
       listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
         btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
@@ -317,7 +321,7 @@ const VendorPanel = (() => {
     <span class="vp-badges">${badges.join("") || ""}</span>
     <span class="vp-meta">
       <span class="vp-stat" title="Nombre d'articles">📄 ${v.count} article${v.count > 1 ? "s" : ""}</span>
-      <span class="vp-stat" title="Sujets/CVE uniques">🔑 ${v.topics} sujet${v.topics > 1 ? "s" : ""}</span>
+      <span class="vp-stat" title="Sujets/CVE uniques">🧩 ${v.topics} sujet${v.topics > 1 ? "s" : ""}</span>
       ${critLabel}
     </span>
     <span class="vp-chevron">▶</span>
@@ -345,10 +349,18 @@ const VendorPanel = (() => {
         ? ` <span class="vp-badge vp-epss">EPSS ${(a.epssScore * 100).toFixed(0)}%</span>` : "";
       const srcName      = a.source || a.feedName || "";
 
+      // CVE badges : on utilise a.cveIds (enrichi par le pipeline) ou fallback regex sur le titre
+      const rawCves = Array.isArray(a.cveIds) && a.cveIds.length
+        ? a.cveIds
+        : ((a.title || "").match(/CVE-\d{4}-\d+/gi) || []).map(c => c.toUpperCase());
+      const cveBadges = [...new Set(rawCves)].slice(0, 3)
+        .map(c => `<span class="vp-badge vp-cve">${_escHtml(c)}</span>`)
+        .join("");
+
       return `<div class="vp-article${inBriefing ? " vp-article-top" : ""}">
   ${critIcon}
   <a class="vp-article-title" href="${a.link || "#"}" target="_blank" rel="noopener noreferrer">${_escHtml(a.title || "Sans titre")}</a>
-  ${briefingMark}${kevBadge}${epssBadge}
+  ${briefingMark}${kevBadge}${epssBadge}${cveBadges}
   ${srcName ? `<span class="vp-article-src">${_escHtml(srcName)}</span>` : ""}
 </div>`;
     }).join("");

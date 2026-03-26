@@ -90,6 +90,69 @@ const HealthPanel = (() => {
     return map[result] || `<span class="hp-pill hp-null">${result}</span>`;
   }
 
+  // ── Feeds en erreur ─────────────────────────────────────────────────────────
+  function _renderFeedErrors(feedErrors) {
+    if (!Array.isArray(feedErrors) || feedErrors.length === 0) {
+      return `
+<div class="hp-section">
+  <div class="hp-section-head">📡 Feeds en erreur (dernier run)</div>
+  <div class="hp-row hp-row-ok">✅ Tous les feeds OK</div>
+</div>`;
+    }
+    const rows = feedErrors.map(f => `
+  <div class="hp-feed-err-row">
+    <span class="hp-feed-name">${f.name || f.id}</span>
+    <span class="hp-feed-err-msg">${f.error || "erreur inconnue"}</span>
+  </div>`).join("");
+    return `
+<div class="hp-section">
+  <div class="hp-section-head">📡 Feeds en erreur (dernier run) <span class="hp-err-count">${feedErrors.length}</span></div>
+  ${rows}
+</div>`;
+  }
+
+  // ── Historique des runs ──────────────────────────────────────────────────────
+  function _renderRunHistory(history) {
+    if (!Array.isArray(history) || history.length === 0) {
+      return `
+<div class="hp-section">
+  <div class="hp-section-head">📋 Historique des runs</div>
+  <div class="hp-row hp-null-row">Aucun historique disponible (KV requis)</div>
+</div>`;
+    }
+
+    const rows = history.map((r, i) => {
+      const isLast  = i === 0;
+      const badge   = r.lastResult === "sent"
+        ? '<span class="hp-pill hp-ok hp-pill-sm">✅ sent</span>'
+        : r.lastResult === "failed"
+          ? '<span class="hp-pill hp-err hp-pill-sm">❌ failed</span>'
+          : '<span class="hp-pill hp-warn hp-pill-sm">⚠️ noArt</span>';
+
+      const d   = new Date(r.lastRunAt);
+      const ts  = isNaN(d) ? r.lastRunAt : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      const ls  = r.lastStats || {};
+      const errBadge = ls.feedsErr > 0
+        ? `<span class="hp-pill hp-warn hp-pill-sm">${ls.feedsErr} err</span>`
+        : "";
+      const reason = r.lastReason
+        ? `<span class="hp-hist-reason" title="${r.lastReason}">${r.lastReason.slice(0, 60)}${r.lastReason.length > 60 ? "…" : ""}</span>`
+        : "";
+      return `<tr class="${isLast ? "hp-hist-last" : ""}">
+  <td class="hp-hist-ts">${ts}</td>
+  <td>${badge}</td>
+  <td class="hp-hist-stats">${ls.rawArticles ?? "—"} bruts · ${ls.uniqueArticles ?? "—"} uniq · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
+  <td>${reason}</td>
+</tr>`;
+    }).join("");
+
+    return `
+<div class="hp-section">
+  <div class="hp-section-head">📋 Historique des runs (${history.length})</div>
+  <table class="hp-hist-table"><tbody>${rows}</tbody></table>
+</div>`;
+  }
+
   // ── Rendu principal ─────────────────────────────────────────────────────────
   function _render(d) {
     const el = document.getElementById("health-list");
@@ -174,7 +237,13 @@ const HealthPanel = (() => {
 <div class="hp-section">
   <div class="hp-section-head">🔁 Déduplication KV</div>
   <div class="hp-row"><span class="hp-lbl">Vercel KV</span><span>${_bool(dd.kvAvailable, "disponible", "non configuré")}</span></div>
-</div>`;
+</div>
+
+<!-- ── Feeds en erreur ────────────────────────────────────────────────── -->
+${_renderFeedErrors(d.feedErrors)}
+
+<!-- ── Historique des runs ────────────────────────────────────────────── -->
+${_renderRunHistory(d.runHistory)}`;
   }
 
   return { init, toggle, refresh };
