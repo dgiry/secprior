@@ -23,6 +23,9 @@ function digestPriorityScore(article) {
   bd.kev       = article.isKEV ? 50 : 0;
   const epss   = article.epssScore ?? null;
   bd.epss      = epss != null ? (epss >= 0.70 ? 35 : epss >= 0.40 ? 15 : 0) : 0;
+  // CVSS — signal fort quand extrait par enricher.js (regex ou NVD futur)
+  const cvss   = article.cvssScore ?? null;
+  bd.cvss      = cvss != null ? (cvss >= 9 ? 30 : cvss >= 7 ? 15 : cvss >= 4 ? 5 : 0) : 0;
   bd.trending  = article.isTrending ? 20 : 0;
   bd.sources   = Math.min(((article.sourceCount || 1) - 1) * 5, 20);
   bd.zeroDay   = /zero.?day|0.?day/i.test(article.title || "") ? 30 : 0;
@@ -53,7 +56,11 @@ function _whyImportant(a) {
     r.push(`à très haute probabilité d'exploitation (EPSS ${Math.round(a.epssScore * 100)} %)`);
   else if (a.epssScore != null && a.epssScore >= 0.40)
     r.push(`à risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
-  if (a.score != null && a.score >= 90)      r.push("de criticité maximale");
+  if (a.cvssScore != null && a.cvssScore >= 9.0)
+    r.push(`de score CVSS ${a.cvssScore} (critique)`);
+  else if (a.cvssScore != null && a.cvssScore >= 7.0)
+    r.push(`de score CVSS ${a.cvssScore}`);
+  else if (a.score != null && a.score >= 90) r.push("de criticité maximale");
   else if (a.score != null && a.score >= 80) r.push("de très haute criticité");
   if (a.isTrending)     r.push("en forte circulation sur les plateformes de threat intel");
   if (a.cveIds?.length) r.push(`référencée sous ${a.cveIds.slice(0, 2).join(", ")}`);
@@ -74,6 +81,8 @@ function _watchpoints(a) {
     pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
   if (a.epssScore != null && a.epssScore >= 0.70)
     pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
+  if (a.cvssScore != null && a.cvssScore >= 9.0 && !a.isKEV)
+    pts.push(`Score CVSS ${a.cvssScore} — évaluer et réduire la fenêtre d'exposition immédiatement`);
   if (pts.length === 0 && a.criticality === "high")
     pts.push("Vérifier l'exposition de vos actifs concernés");
   if (a.isTrending)

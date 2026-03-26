@@ -15,6 +15,7 @@
 "use strict";
 
 const { parseRSS }           = require("./lib/rss-parser");
+const { enrichArticles }     = require("./lib/enricher");
 const { selectTopArticles,
         formatBriefingHTML,
         formatBriefingText } = require("./lib/digest-engine");
@@ -80,6 +81,8 @@ function _scoreComposite(article) {
 }
 
 // ── Fetch d'un seul flux RSS (direct serveur — pas de CORS) ──────────────────
+// Le scoring est intentionnellement absent ici : il sera appliqué APRÈS
+// l'enrichissement KEV/EPSS/CVSS dans _scoreAll(), ce qui garantit des scores exacts.
 async function _fetchFeed(feed) {
   const res = await fetch(feed.url, {
     headers: {
@@ -91,18 +94,25 @@ async function _fetchFeed(feed) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const xml = await res.text();
+  // Retourne les articles bruts — isKEV/epssScore/cvssScore remplis par enricher.js
+  return parseRSS(xml, feed.name);
+}
 
-  const articles = parseRSS(xml, feed.name);
-
-  // Score composite heuristique (NVD/EPSS non disponibles côté serveur cron)
-  return articles.map(a => {
-    const kw = _keywordSignal(a.title, a.description);
-    return {
-      ...a,
-      score:       _scoreComposite(a),
-      criticality: kw === "high" ? "high" : kw === "medium" ? "medium" : "low"
-    };
-  });
+// ── Scoring post-enrichissement ───────────────────────────────────────────────
+// Appelé après enrichArticles() pour que _scoreComposite() utilise les vraies
+// valeurs KEV/EPSS/CVSS plutôt que des nulls.
+function _scoreAll(articles) {
+  for (const a of articles) {
+    a.score = _scoreComposite(a);
+    // criticality : seuils identiques à classifyScore() dans scorer.js
+    if      (a.score >= 65) a.criticality = "high";
+    else if (a.score >= 30) a.criticality = "medium";
+    else                    a.criticality = "low";
+    // Promotion : article avec KEV ou EPSS élevé mais texte peu explicite
+    if (a.criticality === "low" && (a.isKEV || (a.epssScore != null && a.epssScore >= 0.40))) {
+      a.criticality = "medium";
+    }
+  }
 }
 
 // ── Envoi email (Resend ou SendGrid) ─────────────────────────────────────────
@@ -205,6 +215,24 @@ module.exports = async (req, res) => {
     });
   }
 
+  // ── 1.5. Enrichissement KEV / EPSS / CVSS ─────────────────────────────────
+  // Fetch CISA KEV list + scores EPSS en parallèle, puis CVSS par extraction texte.
+  // Les articles sont modifiés en place avant le scoring.
+  let enrichStats = { kevHits: 0, epssHits: 0, cvssHits: 0 };
+  try {
+    const enrichResult = await enrichArticles(allArticles);
+    enrichStats = enrichResult.stats;
+    console.log("[scheduled-digest] ✓ Enrichissement — KEV:%d EPSS:%d CVSS:%d",
+      enrichStats.kevHits, enrichStats.epssHits, enrichStats.cvssHits);
+  } catch (e) {
+    // Fallback propre : l'enrichissement est optionnel
+    console.warn("[scheduled-digest] Enrichissement échoué (fallback mots-clés) :", e.message);
+  }
+
+  // ── 1.6. Scoring post-enrichissement ──────────────────────────────────────
+  // Calcule score + criticality maintenant que KEV/EPSS/CVSS sont disponibles.
+  _scoreAll(allArticles);
+
   // ── 2. Déduplique par id ──────────────────────────────────────────────────
   const seen   = new Set();
   const unique = allArticles.filter(a => {
@@ -266,6 +294,7 @@ module.exports = async (req, res) => {
         totalUnique:   unique.length,
         feedsOk:       fetchOk,
         feedsErr:      fetchErr,
+        enrichment:    enrichStats,
         elapsedMs:     elapsed
       }
     });
