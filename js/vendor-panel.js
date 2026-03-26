@@ -217,9 +217,22 @@ const VendorPanel = (() => {
     _rendered = true;
 
     if (metaEl) {
-      metaEl.textContent = vendors.length
-        ? `${vendors.length} vendors détectés · ${_articles.length} articles analysés`
-        : "";
+      if (!vendors.length) {
+        metaEl.innerHTML = "";
+      } else {
+        const globalEpssMax  = vendors.reduce((m, v) => Math.max(m, v.epssMax), 0);
+        const vendorsWithKev = vendors.filter(v => v.kev > 0).length;
+        const briefingKpiVal = _briefingAvailable
+          ? vendors.filter(v => v.briefingCount > 0).length
+          : "—";
+        const epssStr = globalEpssMax > 0 ? `${(globalEpssMax * 100).toFixed(0)} %` : "—";
+        metaEl.innerHTML = `<div class="vp-kpi-bar">
+  <span class="vp-kpi"><span class="vp-kpi-val">${vendors.length}</span><span class="vp-kpi-lbl">vendors détectés</span></span>
+  <span class="vp-kpi"><span class="vp-kpi-val">${briefingKpiVal}</span><span class="vp-kpi-lbl">dans le briefing</span></span>
+  <span class="vp-kpi"><span class="vp-kpi-val">${vendorsWithKev}</span><span class="vp-kpi-lbl">avec KEV</span></span>
+  <span class="vp-kpi"><span class="vp-kpi-val">${epssStr}</span><span class="vp-kpi-lbl">EPSS max global</span></span>
+</div>`;
+      }
     }
 
     if (vendors.length === 0) {
