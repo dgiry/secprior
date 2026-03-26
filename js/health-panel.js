@@ -79,24 +79,86 @@ const HealthPanel = (() => {
       : `<span class="hp-pill hp-no">${labelNo}</span>`;
   }
 
-  /** Badge de résultat du dernier run. */
+  /** Badge de résultat du dernier run (libellés humains). */
   function _resultBadge(result) {
-    if (!result) return '<span class="hp-pill hp-null">aucun run</span>';
+    if (!result) return '<span class="hp-pill hp-null">Aucun run</span>';
     const map = {
-      sent:       '<span class="hp-pill hp-ok">✅ sent</span>',
-      failed:     '<span class="hp-pill hp-err">❌ failed</span>',
-      noArticles: '<span class="hp-pill hp-warn">⚠️ noArticles</span>'
+      sent:       '<span class="hp-pill hp-ok">✅ Envoyé</span>',
+      failed:     '<span class="hp-pill hp-err">❌ Échec d\'envoi</span>',
+      noArticles: '<span class="hp-pill hp-warn">⚠️ Aucun article</span>'
     };
     return map[result] || `<span class="hp-pill hp-null">${result}</span>`;
   }
 
+  /** Calcule l'heure du prochain run attendu à partir de la config digest. */
+  function _nextRunLabel(dg) {
+    if (!dg || !dg.hour) return "—";
+    const parts  = String(dg.hour).split(":");
+    const targetH = parseInt(parts[0], 10);
+    const targetM = parseInt(parts[1] || "0", 10);
+    if (isNaN(targetH)) return dg.hour;
+    const pad      = n => String(n).padStart(2, "0");
+    const timeStr  = `${pad(targetH)}h${pad(targetM)}`;
+    if (dg.mode === "weekly" && dg.weekday != null) {
+      const days = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
+      return `${days[dg.weekday] || "?"} à ${timeStr}`;
+    }
+    if (!dg.nowMontreal) return `à ${timeStr}`;
+    const nowTime = dg.nowMontreal.split(" ")[1] || "";
+    const [curH, curM] = nowTime.split(":").map(Number);
+    const ahead = curH * 60 + curM < targetH * 60 + targetM;
+    return `${ahead ? "aujourd'hui" : "demain"} à ${timeStr}`;
+  }
+
+  /** Bandeau résumé : état global + impact + prochain run en un coup d'œil. */
+  function _renderSummary(d) {
+    const lr = d.lastRun  || {};
+    const ls = lr.lastStats || {};
+    const dg = d.digest   || {};
+    const globalOk = d.status === "ok";
+
+    // Impact lisible du dernier run
+    const impactMap = {
+      sent:       `Briefing envoyé${ls.topCount != null ? `, ${ls.topCount} article${ls.topCount > 1 ? "s" : ""} sélectionné${ls.topCount > 1 ? "s" : ""}` : ""}`,
+      failed:     "Échec d'envoi — vérifier la configuration email",
+      noArticles: "Aucun article dans les 48 h — briefing non envoyé"
+    };
+    const impact = lr.lastResult ? (impactMap[lr.lastResult] || lr.lastResult) : "Aucun run enregistré";
+
+    // Cause principale (1re alerte ou raison d'échec)
+    const cause = Array.isArray(d.warnings) && d.warnings.length
+      ? d.warnings[0]
+      : (lr.lastResult === "failed" && lr.lastReason) ? lr.lastReason : "";
+
+    const statusLabel = globalOk
+      ? '<span class="hp-sum-status hp-sum-ok">✅ Système opérationnel</span>'
+      : '<span class="hp-sum-status hp-sum-warn">⚠️ Dégradé</span>';
+
+    return `
+<div class="hp-summary ${globalOk ? "hp-summary-ok" : "hp-summary-warn"}">
+  ${statusLabel}
+  <div class="hp-sum-grid">
+    <span class="hp-sum-lbl">📤 Dernier résultat</span><span class="hp-sum-val">${impact}</span>
+    <span class="hp-sum-lbl">⏭ Prochain run</span><span class="hp-sum-val">${_nextRunLabel(dg)}</span>
+    ${cause ? `<span class="hp-sum-lbl">⚠️ Alerte</span><span class="hp-sum-val hp-sum-cause">${cause}</span>` : ""}
+  </div>
+</div>`;
+
   // ── Feeds en erreur ─────────────────────────────────────────────────────────
-  function _renderFeedErrors(feedErrors) {
-    if (!Array.isArray(feedErrors) || feedErrors.length === 0) {
+  function _renderFeedErrors(feedErrors, totalFeeds) {
+    const errCount = Array.isArray(feedErrors) ? feedErrors.length : 0;
+    const total    = totalFeeds > 0 ? totalFeeds : (errCount || "?");
+    const okCount  = typeof totalFeeds === "number" && totalFeeds > 0
+      ? totalFeeds - errCount : "—";
+
+    if (errCount === 0) {
+      const okLabel = typeof okCount === "number"
+        ? `✅ ${okCount}/${total} OK`
+        : "✅ Tous les feeds OK";
       return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 Feeds en erreur (dernier run)</div>
-  <div class="hp-row hp-row-ok">✅ Tous les feeds OK</div>
+  <div class="hp-section-head">📡 Flux RSS (dernier run)</div>
+  <div class="hp-row hp-row-ok">${okLabel}</div>
 </div>`;
     }
     const rows = feedErrors.map(f => {
@@ -109,9 +171,12 @@ const HealthPanel = (() => {
     <span class="hp-feed-err-msg">${f.error || "erreur inconnue"}</span>
   </div>`;
     }).join("");
+    const errLabel = typeof okCount === "number"
+      ? `${okCount}/${total} OK`
+      : `${errCount} en erreur`;
     return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 Feeds en erreur (dernier run) <span class="hp-err-count">${feedErrors.length}</span></div>
+  <div class="hp-section-head">📡 Flux RSS (dernier run) <span class="hp-err-count">${errLabel}</span></div>
   ${rows}
 </div>`;
   }
@@ -183,24 +248,27 @@ const HealthPanel = (() => {
 
     el.innerHTML = `
 
+<!-- ── Bandeau résumé ────────────────────────────────────────────────── -->
+${_renderSummary(d)}
+
 <!-- ── Statut global ─────────────────────────────────────────────────── -->
 <div class="hp-section">
   <div class="hp-section-head">🩺 État global</div>
   <div class="hp-row"><span class="hp-lbl">Statut</span><span>${globalBadge}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Horodatage</span><span>${_ts(d.timestamp)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Vérifié le</span><span>${_ts(d.timestamp)}</span></div>
   ${warnings}
 </div>
 
 <!-- ── Dernier run ────────────────────────────────────────────────────── -->
 <div class="hp-section">
   <div class="hp-section-head">🕐 Dernier run</div>
-  <div class="hp-row"><span class="hp-lbl">lastRunAt</span><span>${_ts(lr.lastRunAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">slot (Montréal)</span><span class="hp-code">${lr.slot || "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">lastResult</span><span>${_resultBadge(lr.lastResult)}</span></div>
-  ${lr.lastReason ? `<div class="hp-row"><span class="hp-lbl">lastReason</span><span class="hp-reason-txt">${lr.lastReason}</span></div>` : ""}
-  <div class="hp-row"><span class="hp-lbl">lastSentAt</span><span>${_ts(lr.lastSentAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">lastSuccessAt</span><span>${_ts(lr.lastSuccessAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">lastFailureAt</span><span>${_ts(lr.lastFailureAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Exécuté le</span><span>${_ts(lr.lastRunAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Créneau (Montréal)</span><span class="hp-code">${lr.slot || "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Résultat</span><span>${_resultBadge(lr.lastResult)}</span></div>
+  ${lr.lastReason ? `<div class="hp-row"><span class="hp-lbl">Motif</span><span class="hp-reason-txt">${lr.lastReason}</span></div>` : ""}
+  <div class="hp-row"><span class="hp-lbl">Dernier envoi</span><span>${_ts(lr.lastSentAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Dernier succès</span><span>${_ts(lr.lastSuccessAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Dernier échec</span><span>${_ts(lr.lastFailureAt)}</span></div>
 </div>
 
 <!-- ── Stats du dernier run ───────────────────────────────────────────── -->
@@ -246,7 +314,7 @@ const HealthPanel = (() => {
 </div>
 
 <!-- ── Feeds en erreur ────────────────────────────────────────────────── -->
-${_renderFeedErrors(d.feedErrors)}
+${_renderFeedErrors(d.feedErrors, d.feeds?.count)}
 
 <!-- ── Historique des runs ────────────────────────────────────────────── -->
 ${_renderRunHistory(d.runHistory)}`;

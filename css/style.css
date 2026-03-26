@@ -1563,6 +1563,25 @@ body.modal-open { overflow: hidden; }
   gap: .75rem;
 }
 
+/* Bandeau résumé */
+.hp-summary {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: .75rem 1rem; margin-bottom: .25rem;
+}
+.hp-summary-ok   { border-color: var(--ok);  background: rgba(22,163,74,.07); }
+.hp-summary-warn { border-color: var(--warn); background: rgba(245,158,11,.07); }
+.hp-sum-status   { display: block; font-weight: 700; font-size: .85rem; margin-bottom: .45rem; }
+.hp-sum-ok   { color: var(--ok); }
+.hp-sum-warn { color: var(--warn); }
+.hp-sum-grid {
+  display: grid; grid-template-columns: max-content 1fr;
+  gap: .2rem .75rem; align-items: baseline;
+}
+.hp-sum-lbl  { font-size: .72rem; color: var(--text2); white-space: nowrap; }
+.hp-sum-val  { font-size: .78rem; color: var(--text); }
+.hp-sum-cause { color: var(--warn); }
+
 /* Section */
 .hp-section {
   background: var(--surface2);
