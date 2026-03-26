@@ -135,9 +135,10 @@ function _groupByTopic(articles) {
     const key   = _topicKey(a);
     const entry = groups.get(key);
     if (!entry) {
-      groups.set(key, { best: a, sources: new Set([a.sourceName]) });
+      groups.set(key, { best: a, sources: new Set([a.sourceName]), count: 1 });
     } else {
       entry.sources.add(a.sourceName);
+      entry.count++;
       // Promouvoir si meilleur score composite
       if ((a.score ?? 0) > (entry.best.score ?? 0)) {
         entry.best = a;
@@ -146,9 +147,10 @@ function _groupByTopic(articles) {
   }
 
   return [...groups.values()]
-    .map(({ best, sources }) => ({
+    .map(({ best, sources, count }) => ({
       ...best,
       _topicKey:   _topicKey(best),
+      _groupSize:  count,                               // nb articles fusionnés dans ce représentant
       // Si plusieurs sources couvrent le même sujet, on amplifie sourceCount
       sourceCount: Math.max(best.sourceCount || 1, sources.size)
     }))
@@ -322,8 +324,10 @@ function _previewArticle(a, rank) {
     cveIds:           (a.cveIds          || []).slice(0, 3),
     watchlistMatches: (a.watchlistMatches || []).slice(0, 5),
 
-    // ── Déduplication ─────────────────────────────────────────────────────────
-    topicKey: a._topicKey || _topicKey(a),    // clé utilisée pour l'anti-doublon inter-digest
+    // ── Déduplication / regroupement ─────────────────────────────────────────
+    topicKey:             a._topicKey || _topicKey(a), // clé anti-doublon inter-digest
+    selectedRepresentative: true,                      // toujours le meilleur de son groupe
+    groupedFrom:          a._groupSize || 1,           // nb articles fusionnés dans ce représentant
 
     // ── Étiquettes courtes de sélection (lecture rapide en un coup d'œil) ──────
     selectionReasons: [
@@ -605,6 +609,7 @@ module.exports = async (req, res) => {
         digestScore: digestPriorityScore(a).score,
         criticality: a.criticality,
         topicKey:    a._topicKey || _topicKey(a),
+        groupedFrom: a._groupSize || 1,
         isKEV:       a.isKEV ?? false,
         epssPercent: a.epssScore != null ? `${Math.round(a.epssScore * 100)} %` : null,
         cvssScore:   a.cvssScore ?? null
