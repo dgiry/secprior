@@ -205,6 +205,10 @@ const App = (() => {
     BriefingPanel.init();
     document.getElementById("btn-briefing")?.addEventListener("click", () => BriefingPanel.toggle());
 
+    // ── Panneau Santé / Ops ───────────────────────────────────────────────────
+    HealthPanel.init();
+    document.getElementById("btn-health")?.addEventListener("click", () => HealthPanel.toggle());
+
     // ── Rapport PDF hebdomadaire ──────────────────────────────────────────────
     PDFReport.init();
 

@@ -80,6 +80,10 @@
       📰 Briefing
     </button>
 
+    <button id="btn-health" class="btn" title="État opérationnel du moteur serveur">
+      🩺 Santé
+    </button>
+
     <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
       📄 Rapport PDF
     </button>
@@ -183,6 +187,17 @@
         <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="BriefingPanel.refresh()">↻ Rafraîchir</button>
       </div>
       <div id="briefing-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Panneau Santé / Ops (collapsible) ───────────────────────────────── -->
+  <div id="health-panel" class="health-panel" style="display:none">
+    <div class="stats-panel-inner">
+      <div class="bp-header">
+        <h3 class="bp-title-h3">🩺 Santé — État opérationnel du moteur serveur</h3>
+        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="HealthPanel.refresh()">↻ Rafraîchir</button>
+      </div>
+      <div id="health-list"></div>
     </div>
   </div>
 
@@ -527,6 +542,7 @@
   <script src="js/feed-manager.js?v=13"></script>
   <script src="js/stats.js?v=13"></script>
   <script src="js/briefing-panel.js?v=14"></script>
+  <script src="js/health-panel.js?v=14"></script>
   <script src="js/demo-data.js?v=13"></script>
   <script src="js/scorer.js?v=13"></script>
   <script src="js/storage.js?v=13"></script>

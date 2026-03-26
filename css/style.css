@@ -1533,3 +1533,81 @@ body.modal-open { overflow: hidden; }
   .bp-card-head { flex-direction: column; gap: .25rem; }
   .bp-rt-src, .bp-rt-ds { display: none; }
 }
+
+/* ── Panneau Santé / Ops ──────────────────────────────────────────────────── */
+
+.health-panel {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Grille de sections côte à côte */
+.health-panel .stats-panel-inner {
+  display: flex; flex-direction: column; gap: .75rem;
+}
+#health-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: .75rem;
+}
+
+/* Section */
+.hp-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  display: flex; flex-direction: column; gap: .35rem;
+}
+.hp-section-head {
+  font-size: .72rem; font-weight: 700;
+  color: var(--text2); text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: .2rem; padding-bottom: .35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Ligne clé / valeur */
+.hp-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: .5rem; font-size: .78rem; flex-wrap: wrap;
+}
+.hp-lbl  { color: var(--text2); white-space: nowrap; }
+
+/* Valeurs spéciales */
+.hp-code { color: #d2a8ff; font-family: var(--font); font-size: .75rem; }
+.hp-ts   { color: var(--text); }
+.hp-null { color: var(--text2); opacity: .5; }
+.hp-reason-txt { color: var(--warn); font-size: .75rem; word-break: break-word; }
+.hp-val-err    { color: var(--err); }
+
+/* Pills */
+.hp-pill {
+  font-size: .68rem; padding: .15rem .5rem;
+  border-radius: 4px; font-weight: 600; white-space: nowrap;
+}
+.hp-ok   { background: #0d2d12; color: var(--ok);  border: 1px solid var(--ok); }
+.hp-no   { background: #2d0d0d; color: var(--err); border: 1px solid var(--err); }
+.hp-warn { background: #2d1a00; color: var(--warn); border: 1px solid var(--warn); }
+.hp-err  { background: #2d0d0d; color: var(--err); border: 1px solid var(--err); }
+
+/* Warnings */
+.hp-warnings {
+  margin: .25rem 0 0; padding-left: 1.1rem;
+  font-size: .75rem; color: var(--warn);
+  display: flex; flex-direction: column; gap: .2rem;
+}
+.hp-warnings li { list-style: disc; }
+
+/* États loading/error */
+.hp-state {
+  grid-column: 1 / -1;
+  padding: 1.5rem; text-align: center;
+  font-size: .85rem; border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.hp-loading { color: var(--accent); }
+.hp-error   { color: var(--err); }
+
+@media (max-width: 600px) {
+  #health-list { grid-template-columns: 1fr; }
+}
