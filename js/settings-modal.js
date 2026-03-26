@@ -76,6 +76,7 @@ const SettingsModal = (() => {
     _showChannelSection(s.channel);
     _bindChannelRadios();
     _bindModeSelect();
+    _renderAlertHistory("all");
   }
 
   function save() {
@@ -552,6 +553,81 @@ const SettingsModal = (() => {
     UI.initSourceFilter();
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 3b — Historique des alertes
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** Rend la liste des entrées d'historique selon le filtre actif. */
+  function _renderAlertHistory(filter) {
+    const listEl  = document.getElementById("alert-history-list");
+    const countEl = document.getElementById("alert-hist-count");
+    if (!listEl) return;
+
+    const history = AlertManager.loadAlertHistory();
+
+    if (countEl) {
+      countEl.textContent = history.length > 0 ? `(${history.length})` : "";
+    }
+
+    if (history.length === 0) {
+      listEl.innerHTML = '<div class="ah-empty">Aucun envoi enregistré.</div>';
+      return;
+    }
+
+    const filtered = filter === "success" ? history.filter(e => e.success)
+                   : filter === "error"   ? history.filter(e => !e.success)
+                   : history;
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="ah-empty">Aucune entrée pour ce filtre.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(e => {
+      const d  = new Date(e.sentAt);
+      const ts = isNaN(d) ? (e.sentAt || "—")
+        : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      const icon    = e.success ? "✅" : "❌";
+      const channel = _esc((e.channel || "—").charAt(0).toUpperCase() + (e.channel || "—").slice(1));
+      const reason  = _esc(e.reason || e.mode || "—");
+      const count   = `${e.articleCount ?? 0} art.`;
+      const errHtml = (!e.success && e.errorMessage)
+        ? `<span class="ah-err" title="${_esc(e.errorMessage)}">${_esc(e.errorMessage.slice(0, 60))}${e.errorMessage.length > 60 ? "…" : ""}</span>`
+        : "";
+      const titlesHtml = Array.isArray(e.titles) && e.titles.length
+        ? `<div class="ah-titles">${e.titles.map(t => `<span class="ah-title">${_esc(t)}</span>`).join("")}</div>`
+        : "";
+      return `<div class="ah-entry${e.success ? "" : " ah-entry-err"}">
+  <div class="ah-row">
+    <span class="ah-icon">${icon}</span>
+    <span class="ah-ts">${ts}</span>
+    <span class="ah-channel">${channel}</span>
+    <span class="ah-reason">${reason}</span>
+    <span class="ah-count">${count}</span>
+    ${errHtml}
+  </div>
+  ${titlesHtml}
+</div>`;
+    }).join("");
+  }
+
+  /** Vide l'historique après confirmation. */
+  function clearAlertHistoryUI() {
+    if (!confirm("Vider tout l'historique des alertes ?")) return;
+    AlertManager.clearAlertHistory();
+    _renderAlertHistory("all");
+    document.querySelectorAll(".ah-filter-btn").forEach(b =>
+      b.classList.toggle("active", b.dataset.filter === "all"));
+    UI.showToast("Historique vidé", "success");
+  }
+
+  /** Change le filtre et met à jour l'affichage. */
+  function filterAlertHistory(filter, btn) {
+    document.querySelectorAll(".ah-filter-btn").forEach(b => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    _renderAlertHistory(filter);
+  }
+
   /** Temps relatif à partir d'un timestamp ISO. */
   function _relTime(iso) {
     if (!iso) return "—";
@@ -596,6 +672,8 @@ const SettingsModal = (() => {
     open, close, switchTab, init,
     // Alertes
     save, testWebhook, testEmailJS, testResend, testSendGrid,
+    // Historique des alertes
+    clearAlertHistoryUI, filterAlertHistory,
     // Flux RSS
     renderFeeds, testFeedUI, toggleFeedUI,
     deleteFeed, editFeedToggle, saveEditFeed,

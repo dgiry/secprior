@@ -527,6 +527,24 @@
           <button class="btn btn-primary" onclick="SettingsModal.save()">💾 Enregistrer</button>
         </div>
 
+        <!-- ── Historique des alertes ─────────────────────────────────── -->
+        <div class="settings-group">
+          <div class="ah-header">
+            <span class="settings-label" style="margin:0;display:inline">📋 Historique des alertes</span>
+            <span id="alert-hist-count" class="ah-count-badge"></span>
+            <button class="btn ah-clear-btn" onclick="SettingsModal.clearAlertHistoryUI()">🗑 Vider</button>
+          </div>
+          <div class="ah-filter-bar">
+            <button class="ah-filter-btn active" data-filter="all"
+              onclick="SettingsModal.filterAlertHistory('all',this)">Tous</button>
+            <button class="ah-filter-btn" data-filter="success"
+              onclick="SettingsModal.filterAlertHistory('success',this)">✅ Succès</button>
+            <button class="ah-filter-btn" data-filter="error"
+              onclick="SettingsModal.filterAlertHistory('error',this)">❌ Erreurs</button>
+          </div>
+          <div id="alert-history-list"></div>
+        </div>
+
       </div><!-- /settings-tab-alerts -->
 
       <!-- ══════════════════════════════════════════════════════════════════ -->
@@ -611,8 +629,8 @@
   <script src="js/risk-filter.js?v=13"></script>
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
-  <script src="js/email-alerts.js?v=13"></script>
-  <script src="js/settings-modal.js?v=13"></script>
+  <script src="js/email-alerts.js?v=14"></script>
+  <script src="js/settings-modal.js?v=14"></script>
   <script src="js/watchlist-modal.js?v=13"></script>
   <script src="js/ui.js?v=13"></script>
   <script src="js/pdf-report.js?v=13"></script>

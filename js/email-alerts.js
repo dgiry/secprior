@@ -20,6 +20,8 @@ const AlertManager = (() => {
   const STORAGE_KEY   = "cv_alerted_ids";
   const SETTINGS_KEY  = "cv_alert_settings";
   const DIGEST_KEY    = "cv_alert_digest";   // file d'attente pour les digests
+  const HISTORY_KEY   = "cv_alert_history";  // historique des envois
+  const HISTORY_MAX   = 200;                 // entrées conservées
 
   // ── Paramètres par défaut ─────────────────────────────────────────────────
 
@@ -112,6 +114,55 @@ const AlertManager = (() => {
 
   function _clearDigest() {
     try { localStorage.removeItem(DIGEST_KEY); } catch {}
+  }
+
+  // ── Historique des alertes envoyées ──────────────────────────────────────
+
+  function loadAlertHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+
+  function saveAlertHistory(history) {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_MAX)));
+    } catch (e) { console.warn("[Alerts] Sauvegarde historique échouée:", e.message); }
+  }
+
+  function appendAlertHistory(entry) {
+    const h = loadAlertHistory();
+    h.unshift(entry);            // plus récent en tête
+    saveAlertHistory(h);
+  }
+
+  function clearAlertHistory() {
+    try { localStorage.removeItem(HISTORY_KEY); } catch {}
+  }
+
+  /** Construit une entrée d'historique normalisée. */
+  function _makeHistoryEntry(articles, settings, reason, success, errorMessage, meta) {
+    return {
+      id:           `alert_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      sentAt:       new Date().toISOString(),
+      channel:      settings.channel,
+      mode:         settings.mode,
+      success,
+      articleCount: articles.length,
+      reason,
+      titles:       articles.slice(0, 3).map(a => a.title || "").filter(Boolean),
+      errorMessage: errorMessage || "",
+      meta:         meta || {}
+    };
+  }
+
+  /** Raison métier détaillée pour urgent_only. */
+  function _urgentReason(batch) {
+    if (batch.some(a => a.isKEV))                              return "urgent_only: kev";
+    if (batch.some(a => a.epssScore >= 0.70))                  return "urgent_only: epss≥70%";
+    if (batch.some(a => a.score !== undefined && a.score >= 80)) return "urgent_only: score≥80";
+    return "urgent_only";
   }
 
   /**
@@ -436,36 +487,38 @@ const AlertManager = (() => {
 
   // ── Envoi digest (toute la file, puis nettoyage) ──────────────────────────
 
-  async function _sendDigest(settings) {
+  async function _sendDigest(settings, isManual = false) {
     const queue = _loadDigest();
     if (queue.length === 0) {
       console.log("[Alerts] Digest dû mais file vide — rien à envoyer");
       return;
     }
 
-    const label = settings.mode === "weekly_digest" ? "hebdomadaire" : "quotidien";
-
-    // Sélectionner les top articles et le reste pour le briefing
-    const top    = _selectTopArticles(queue, 5);
-    const topIds = new Set(top.map(a => a.id));
-    const rest   = queue.filter(a => !topIds.has(a.id));
-    const total  = top.length + rest.length;
+    const label   = settings.mode === "weekly_digest" ? "hebdomadaire" : "quotidien";
+    const top     = _selectTopArticles(queue, 5);
+    const topIds  = new Set(top.map(a => a.id));
+    const rest    = queue.filter(a => !topIds.has(a.id));
+    const total   = top.length + rest.length;
+    const allArts = [...top, ...rest];
+    const reason  = isManual ? "manual_digest_flush" : settings.mode;
 
     const subject = `☀️ Briefing Cybersécurité ${label} — ${top.length} alertes prioritaires · ${new Date().toLocaleDateString("fr-FR")}`;
     const html    = _formatBriefingHTML(top, rest, label);
     const text    = _formatBriefingText(top, rest, label);
 
-    await _dispatch([...top, ...rest], { ...settings }, subject, html, text);
-
-    // Nettoyage : marquer tous comme alertés, MAJ lastDigestAt
-    _clearDigest();
-    markAsAlerted(queue.map(a => a.id));
-    saveSettings({ ...settings, lastDigestAt: Date.now(), lastSentAt: Date.now() });
-
-    if (window.UI) {
-      UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
+    try {
+      await _dispatch(allArts, { ...settings }, subject, html, text);
+      // Nettoyage : marquer tous comme alertés, MAJ lastDigestAt
+      _clearDigest();
+      markAsAlerted(queue.map(a => a.id));
+      saveSettings({ ...settings, lastDigestAt: Date.now(), lastSentAt: Date.now() });
+      appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, true, "", { digest: true, manualFlush: isManual }));
+      if (window.UI) UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
+      console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
+    } catch (err) {
+      appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, false, err.message, { digest: true, manualFlush: isManual }));
+      throw err; // re-throw → caller affiche le toast d'erreur
     }
-    console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
   }
 
   /** Dispatch vers le bon canal avec subject/html/text optionnels (digest override). */
@@ -691,7 +744,7 @@ const AlertManager = (() => {
         return;
       }
       if (candidates.length === 0) { console.log("[Alerts] Aucune nouvelle alerte"); return; }
-      await _sendImmediate(candidates.slice(0, settings.batchSize), settings);
+      await _sendImmediate(candidates.slice(0, settings.batchSize), settings, "immediate");
       return;
     }
 
@@ -700,7 +753,7 @@ const AlertManager = (() => {
       const urgent = candidates.filter(_isUrgent);
       if (urgent.length === 0) { console.log("[Alerts] Aucun article urgent (KEV/EPSS/score)"); return; }
       console.log(`[Alerts] ${urgent.length} article(s) urgent(s) détecté(s)`);
-      await _sendImmediate(urgent.slice(0, settings.batchSize), settings);
+      await _sendImmediate(urgent.slice(0, settings.batchSize), settings, _urgentReason(urgent));
       return;
     }
 
@@ -721,16 +774,18 @@ const AlertManager = (() => {
   }
 
   /** Envoi immédiat (modes immediate et urgent_only). */
-  async function _sendImmediate(batch, settings) {
+  async function _sendImmediate(batch, settings, reason) {
     console.log(`[Alerts] ${batch.length} article(s) → ${settings.channel}`);
     try {
       await _dispatch(batch, settings);
       markAsAlerted(batch.map(a => a.id));
       saveSettings({ ...settings, lastSentAt: Date.now() });
+      appendAlertHistory(_makeHistoryEntry(batch, settings, reason || settings.mode, true, ""));
       if (window.UI) {
         UI.showToast(`📧 Alerte envoyée — ${batch.length} article(s) via ${settings.channel}`, "success");
       }
     } catch (err) {
+      appendAlertHistory(_makeHistoryEntry(batch, settings, reason || settings.mode, false, err.message));
       console.error("[Alerts] Échec envoi:", err.message);
       if (window.UI) UI.showToast(`⚠️ Alerte échouée : ${err.message}`, "error");
     }
@@ -743,7 +798,7 @@ const AlertManager = (() => {
     const queue = _loadDigest();
     if (queue.length === 0) { UI.showToast("File de digest vide", "info"); return; }
     try {
-      await _sendDigest({ ...settings, lastDigestAt: 0 }); // force l'envoi
+      await _sendDigest({ ...settings, lastDigestAt: 0 }, true); // isManual = true
       UI.showToast(`📋 Digest forcé — ${queue.length} article(s) envoyé(s)`, "success");
     } catch (err) {
       UI.showToast(`⚠️ Digest échoué : ${err.message}`, "error");
@@ -757,7 +812,9 @@ const AlertManager = (() => {
     loadSettings,
     saveSettings,
     flushDigest,
-    getDigestCount: () => _loadDigest().length,
+    getDigestCount:    () => _loadDigest().length,
+    loadAlertHistory,
+    clearAlertHistory,
     DEFAULTS
   };
 })();

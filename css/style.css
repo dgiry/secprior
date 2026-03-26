@@ -331,6 +331,36 @@ a:hover { text-decoration: underline; }
 }
 .settings-hint-inline { font-size: .7rem; font-weight: 400; color: var(--text2); }
 
+/* ── Historique des alertes (onglet Alertes) ── */
+.ah-header      { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; flex-wrap:wrap; }
+.ah-count-badge { font-size:.7rem; color:var(--text2); opacity:.7; }
+.ah-clear-btn   { font-size:.7rem; padding:.2rem .55rem; margin-left:auto; color:var(--text2);
+                  border-color:var(--border); }
+.ah-clear-btn:hover { border-color:var(--err,#f85149); color:var(--err,#f85149); }
+.ah-filter-bar  { display:flex; gap:.35rem; margin-bottom:.5rem; flex-wrap:wrap; }
+.ah-filter-btn  { font-size:.7rem; padding:.18rem .5rem; border-radius:10px;
+                  border:1px solid var(--border); background:transparent;
+                  color:var(--text2); cursor:pointer; }
+.ah-filter-btn:hover { border-color:var(--accent); color:var(--text); }
+.ah-filter-btn.active { background:var(--accent); border-color:var(--accent);
+                        color:#000; font-weight:600; }
+.ah-entry       { padding:.35rem .1rem; border-bottom:1px solid var(--border); }
+.ah-entry:last-child { border-bottom:none; }
+.ah-entry-err   { background:rgba(248,81,73,.04); }
+.ah-row         { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; font-size:.72rem; }
+.ah-icon        { font-size:.75rem; flex-shrink:0; }
+.ah-ts          { color:var(--text2); white-space:nowrap; min-width:6rem; }
+.ah-channel     { font-weight:600; color:var(--text); }
+.ah-reason      { color:var(--text2); font-family:var(--font); font-size:.68rem; }
+.ah-count       { color:var(--text2); font-size:.68rem; margin-left:auto; white-space:nowrap; }
+.ah-err         { color:var(--err,#f85149); font-size:.67rem; width:100%; margin-top:.1rem;
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ah-titles      { padding-left:1.4rem; margin-top:.15rem; }
+.ah-title       { display:block; font-size:.67rem; color:var(--text2); opacity:.75;
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                  max-width:100%; }
+.ah-empty       { font-size:.75rem; color:var(--text2); opacity:.6; padding:.5rem 0; text-align:center; }
+
 /* Radio group */
 .radio-group { display: flex; flex-direction: column; gap: .5rem; margin-top: .4rem; }
 .radio-label {
