@@ -836,6 +836,18 @@ const AlertManager = (() => {
 
   // ── Canal 3 : Resend ──────────────────────────────────────────────────────
   // Sur Vercel : POST /api/send-alert (clé API sécurisée côté serveur ✅)
+  // Expéditeur sandbox Resend (vérifié par Resend, utilisable sans domaine propre)
+  const RESEND_SANDBOX_FROM = "CyberVeille Pro <onboarding@resend.dev>";
+
+  /**
+   * Retourne l'expéditeur Resend résolu.
+   * - Si resendFrom est renseigné → utiliser tel quel
+   * - Sinon → fallback sandbox identique en local ET en mode API
+   */
+  function _resolvedResendFrom(resendFrom) {
+    return (resendFrom && resendFrom.trim()) ? resendFrom.trim() : RESEND_SANDBOX_FROM;
+  }
+
   // En local   : appel direct Resend API (clé dans le modal — seulement pour dev)
 
   async function sendResend(articles, settings, subjectOverride, htmlOverride, textOverride) {
@@ -854,7 +866,7 @@ const AlertManager = (() => {
         body:    JSON.stringify({
           channel:      "resend",
           to:           recipientEmail,
-          fromOverride: resendFrom || undefined,
+          fromOverride: _resolvedResendFrom(resendFrom),
           subject, html, text
         }),
         signal: AbortSignal.timeout(15_000)
@@ -870,7 +882,7 @@ const AlertManager = (() => {
         method:  "POST",
         headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
         body:    JSON.stringify({
-          from:    resendFrom || "CyberVeille Pro <onboarding@resend.dev>",
+          from:    _resolvedResendFrom(resendFrom),
           to:      [recipientEmail],
           subject, html, text
         }),
