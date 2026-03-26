@@ -166,12 +166,29 @@ async function _sendEmail({ channel, to, subject, html, text }) {
   throw new Error(`Canal '${channel}' non supporté (utiliser "resend" ou "sendgrid")`);
 }
 
+// ── Helper preview : résumé d'un article pour la réponse JSON ────────────────
+function _previewArticle(a) {
+  return {
+    title:       a.title,
+    link:        a.link,
+    sourceName:  a.sourceName,
+    score:       a.score,
+    criticality: a.criticality,
+    isKEV:       a.isKEV,
+    epssScore:   a.epssScore != null ? Math.round(a.epssScore * 1000) / 1000 : null,
+    cvssScore:   a.cvssScore,
+    cveIds:      (a.cveIds || []).slice(0, 3)
+  };
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 module.exports = async (req, res) => {
 
   // ── Authentification ───────────────────────────────────────────────────────
   // Vercel Cron appelle le endpoint en GET avec Authorization: Bearer <CRON_SECRET>
   // Déclenchement manuel : GET /api/scheduled-digest?secret=<CRON_SECRET>
+  // Mode test            : GET /api/scheduled-digest?secret=<CRON_SECRET>&preview=1
+  //                        GET /api/scheduled-digest?secret=<CRON_SECRET>&html=1
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const bearer   = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
@@ -181,39 +198,54 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ── Mode preview / html ────────────────────────────────────────────────────
+  // preview=1 : exécute tout le pipeline sans envoyer d'email ni persister les IDs
+  // html=1    : retourne l'HTML du briefing brut (ouvrir dans un navigateur)
+  const isPreview  = req.query?.preview === "1" || req.query?.preview === "true";
+  const isHtmlOnly = req.query?.html    === "1";
+  const isTestMode = isPreview || isHtmlOnly;
+
   // ── Vérifications env ──────────────────────────────────────────────────────
   const recipient = process.env.DIGEST_RECIPIENT;
-  if (!recipient) {
+  if (!recipient && !isTestMode) {
     return res.status(500).json({
       error: "Variable DIGEST_RECIPIENT manquante. Configurez-la dans Vercel > Settings > Environment Variables."
     });
   }
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
 
-  const started = Date.now();
-  console.log("[scheduled-digest] Démarrage — %d sources — canal : %s — destinataire : %s",
-    FEEDS.length, channel, recipient);
+  const t0 = Date.now();
+  console.log("[scheduled-digest] %s — %d sources — canal:%s",
+    isTestMode ? "PREVIEW" : "Démarrage", FEEDS.length, channel);
 
   // ── 1. Fetch tous les flux en parallèle ───────────────────────────────────
   const results = await Promise.allSettled(FEEDS.map(_fetchFeed));
 
   const allArticles = [];
   let fetchOk = 0, fetchErr = 0;
+  const feedDetails = [];
   results.forEach((r, i) => {
     if (r.status === "fulfilled") {
       allArticles.push(...r.value);
       fetchOk++;
+      feedDetails.push({ id: FEEDS[i].id, ok: true,  articles: r.value.length });
       console.log("[scheduled-digest] ✓ %-30s %d articles", FEEDS[i].name, r.value.length);
     } else {
       fetchErr++;
-      console.warn("[scheduled-digest] ✗ %-30s %s", FEEDS[i].name, r.reason?.message || "erreur");
+      const errMsg = r.reason?.message || "erreur inconnue";
+      feedDetails.push({ id: FEEDS[i].id, ok: false, error: errMsg });
+      console.warn("[scheduled-digest] ✗ %-30s %s", FEEDS[i].name, errMsg);
     }
   });
+
+  const t1 = Date.now();
+  console.log("[scheduled-digest] Fetch %dms — %d articles bruts (%d/%d sources OK)",
+    t1 - t0, allArticles.length, fetchOk, FEEDS.length);
 
   if (allArticles.length === 0) {
     return res.status(503).json({
       error: "Aucun article récupéré — tous les flux ont échoué",
-      feedsErr: fetchErr
+      feeds: feedDetails
     });
   }
 
@@ -224,12 +256,14 @@ module.exports = async (req, res) => {
   try {
     const enrichResult = await enrichArticles(allArticles);
     enrichStats = enrichResult.stats;
-    console.log("[scheduled-digest] ✓ Enrichissement — KEV:%d EPSS:%d CVSS:%d",
-      enrichStats.kevHits, enrichStats.epssHits, enrichStats.cvssHits);
   } catch (e) {
     // Fallback propre : l'enrichissement est optionnel
     console.warn("[scheduled-digest] Enrichissement échoué (fallback mots-clés) :", e.message);
   }
+
+  const t2 = Date.now();
+  console.log("[scheduled-digest] Enrichissement %dms — KEV:%d EPSS:%d CVSS:%d",
+    t2 - t1, enrichStats.kevHits, enrichStats.epssHits, enrichStats.cvssHits);
 
   // ── 1.6. Scoring post-enrichissement ──────────────────────────────────────
   // Calcule score + criticality maintenant que KEV/EPSS/CVSS sont disponibles.
@@ -282,6 +316,32 @@ module.exports = async (req, res) => {
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 20);
 
+  // Log détaillé des top articles sélectionnés (visible dans Vercel Logs)
+  console.log("[scheduled-digest] Sélection — top:%d rest:%d queue:%d",
+    top.length, rest.length, finalQueue.length);
+  top.forEach((a, i) => {
+    const flags = [
+      a.isKEV                        ? "KEV"                                    : "",
+      a.epssScore != null            ? `EPSS:${Math.round(a.epssScore * 100)}%` : "",
+      a.cvssScore != null            ? `CVSS:${a.cvssScore}`                    : "",
+      a.cveIds?.length               ? a.cveIds[0]                              : ""
+    ].filter(Boolean).join(" ");
+    console.log("  %d. [%s|%d%s] %s",
+      i + 1, a.criticality.toUpperCase(), a.score,
+      flags ? ` ${flags}` : "",
+      a.title.substring(0, 80));
+  });
+
+  // ── Stats pipeline (partagées entre mode réel et preview) ─────────────────
+  const pipelineStats = {
+    feeds:      { ok: fetchOk, err: fetchErr, total: FEEDS.length, details: feedDetails },
+    articles:   { raw: allArticles.length, unique: unique.length, queue: queue.length, fresh: finalQueue.length },
+    enrichment: enrichStats,
+    dedup:      { sentKnown: sentIds.size, filtered: queue.length - finalQueue.length },
+    selection:  { top: top.length, rest: rest.length },
+    timings:    { fetchMs: t1 - t0, enrichMs: t2 - t1 }
+  };
+
   // ── 5. Génération du briefing ─────────────────────────────────────────────
   const label = new Date().toLocaleDateString("fr-FR",
     { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -292,30 +352,46 @@ module.exports = async (req, res) => {
   const html    = formatBriefingHTML(top, rest, label);
   const text    = formatBriefingText(top, rest, label);
 
-  // ── 6. Envoi ──────────────────────────────────────────────────────────────
+  // ── 6. Preview / HTML — sortie anticipée sans envoi ──────────────────────
+  // ?html=1 : retourne l'HTML brut pour prévisualisation dans un navigateur
+  if (isHtmlOnly) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  }
+
+  // ?preview=1 : réponse JSON complète, pas d'email, pas de persistance KV
+  if (isPreview) {
+    const elapsed = Date.now() - t0;
+    console.log("[scheduled-digest] ✅ PREVIEW terminé en %dms (email non envoyé)", elapsed);
+    return res.status(200).json({
+      preview:  true,
+      subject,
+      top:      top.map(_previewArticle),
+      rest:     rest.slice(0, 10).map(a => ({
+        title:       a.title,
+        sourceName:  a.sourceName,
+        score:       a.score,
+        criticality: a.criticality
+      })),
+      stats:    { ...pipelineStats, elapsedMs: elapsed }
+    });
+  }
+
+  // ── 7. Envoi réel ─────────────────────────────────────────────────────────
   try {
     const emailResult = await _sendEmail({ channel, to: recipient, subject, html, text });
 
     // Persiste les IDs des top articles pour éviter les répétitions demain
     await saveSentIds(top.map(a => a.id));
 
-    const elapsed = Date.now() - started;
-    console.log("[scheduled-digest] ✅ Envoyé en %d ms — top:%d rest:%d sources:%d/%d",
+    const elapsed = Date.now() - t0;
+    console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",
       elapsed, top.length, rest.length, fetchOk, FEEDS.length);
 
     return res.status(200).json({
       success: true,
       ...emailResult,
-      stats: {
-        topArticles:   top.length,
-        otherArticles: rest.length,
-        totalQueue:    queue.length,
-        totalUnique:   unique.length,
-        feedsOk:       fetchOk,
-        feedsErr:      fetchErr,
-        enrichment:    enrichStats,
-        elapsedMs:     elapsed
-      }
+      stats:   { ...pipelineStats, elapsedMs: elapsed }
     });
   } catch (err) {
     console.error("[scheduled-digest] ❌ Erreur envoi email :", err.message);
