@@ -11,7 +11,9 @@
 
 const SENT_KEY   = "digest:sent_ids";    // Set Redis des IDs d'articles déjà envoyés
 const TOPICS_KEY = "digest:sent_topics"; // Set Redis des topicKeys déjà couverts
+const SLOT_KEY   = "digest:last_sent_slot"; // String Redis du dernier créneau envoyé
 const TTL_SEC    = 48 * 3600;            // TTL 48 h — couvre 2 cycles quotidiens
+const SLOT_TTL   = 8  * 24 * 3600;      // TTL 8 j  — couvre une semaine hebdomadaire
 
 /** Vérifie que les variables KV sont bien configurées. */
 const _kvAvailable = () =>
@@ -133,4 +135,39 @@ async function saveSentTopics(topicKeys) {
   }
 }
 
-module.exports = { loadSentIds, saveSentIds, loadSentTopics, saveSentTopics };
+/**
+ * Charge le dernier créneau d'envoi ("YYYY-MM-DD" heure locale Montréal).
+ * Retourne null si KV non configuré ou clé absente.
+ *
+ * @returns {Promise<string|null>}
+ */
+async function loadLastSlot() {
+  if (!_kvAvailable()) return null;
+  try {
+    const json = await _kvGet("get", SLOT_KEY);
+    return json.result || null;
+  } catch (e) {
+    console.warn("[dedup] loadLastSlot échoué :", e.message);
+    return null;
+  }
+}
+
+/**
+ * Persiste le créneau d'envoi courant pour l'anti-doublon (TTL 8 j).
+ * Silencieux en cas d'erreur — ne bloque jamais le cron.
+ *
+ * @param {string} slot - ex: "2026-03-25"
+ */
+async function saveLastSlot(slot) {
+  if (!_kvAvailable() || !slot) return;
+  try {
+    await _kvPipeline([
+      ["setex", SLOT_KEY, SLOT_TTL, slot] // SETEX key seconds value
+    ]);
+    console.log("[dedup] Créneau persisté : %s (TTL %dj)", slot, SLOT_TTL / 86400);
+  } catch (e) {
+    console.warn("[dedup] saveLastSlot échoué (non bloquant) :", e.message);
+  }
+}
+
+module.exports = { loadSentIds, saveSentIds, loadSentTopics, saveSentTopics, loadLastSlot, saveLastSlot };

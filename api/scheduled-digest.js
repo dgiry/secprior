@@ -6,6 +6,8 @@
 // Variables d'environnement requises (Vercel > Settings > Environment Variables) :
 //   DIGEST_RECIPIENT   — adresse email destinataire du briefing
 //   DIGEST_CHANNEL     — "resend" ou "sendgrid"  (défaut : "resend")
+//   DIGEST_HOUR        — heure d'envoi locale Montréal, ex: "08:00" (défaut "08:00")
+//   DIGEST_WEEKDAY     — jour 0-6 (0=dim) pour mode hebdomadaire ; vide = quotidien
 //   CRON_SECRET        — secret partagé pour sécuriser les appels manuels
 //   RESEND_API_KEY     — clé API Resend    (si DIGEST_CHANNEL=resend)
 //   RESEND_FROM        — expéditeur Resend (ex: "CyberVeille Pro <alerts@...>")
@@ -16,8 +18,9 @@
 
 const { parseRSS }           = require("./lib/rss-parser");
 const { enrichArticles }     = require("./lib/enricher");
-const { loadSentIds,  saveSentIds,
-        loadSentTopics, saveSentTopics } = require("./lib/dedup-store");
+const { loadSentIds,    saveSentIds,
+        loadSentTopics, saveSentTopics,
+        loadLastSlot,   saveLastSlot }   = require("./lib/dedup-store");
 const { selectTopArticles,
         formatBriefingHTML,
         formatBriefingText } = require("./lib/digest-engine");
@@ -233,6 +236,40 @@ async function _sendEmail({ channel, to, subject, html, text }) {
   throw new Error(`Canal '${channel}' non supporté (utiliser "resend" ou "sendgrid")`);
 }
 
+// ── Helper timezone Montreal ──────────────────────────────────────────────────
+
+/**
+ * Retourne les composantes de l'heure courante en timezone America/Montreal.
+ * Gère automatiquement EDT (UTC-4, été) et EST (UTC-5, hiver) via l'API Intl.
+ *
+ * @returns {{ hour, minute, weekday, slot, tz }}
+ *   weekday : 0=dimanche … 6=samedi (même convention que Date.getDay())
+ *   slot    : "YYYY-MM-DD" en heure de Montréal — clé d'anti-doublon quotidien
+ */
+function _montrealNow() {
+  const tz = "America/Montreal";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+      hour12:  false,
+      weekday: "short"  // "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+    })
+      .formatToParts(new Date())
+      .filter(p => p.type !== "literal")
+      .map(p  => [p.type, p.value])
+  );
+  const WD = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  return {
+    hour:    parseInt(parts.hour,   10) % 24, // garde contre "24" rare sur certains runtimes
+    minute:  parseInt(parts.minute, 10),
+    weekday: WD[parts.weekday.toLowerCase().slice(0, 3)] ?? -1,
+    slot:    `${parts.year}-${parts.month}-${parts.day}`, // ex: "2026-03-25"
+    tz
+  };
+}
+
 // ── Helper preview : résumé d'un article pour la réponse JSON ────────────────
 function _previewArticle(a) {
   return {
@@ -281,9 +318,49 @@ module.exports = async (req, res) => {
   }
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
 
+  // ── 0. Vérification heure / jour / créneau (America/Montreal) ─────────────
+  // Le cron Vercel tourne toutes les heures ("0 * * * *").
+  // La décision d'envoi est prise ici selon l'heure locale de Montréal :
+  //   EDT (UTC-4, fin mars → début nov) et EST (UTC-5, reste de l'année)
+  //   sont gérés automatiquement par Intl.DateTimeFormat.
+  const _digestHour    = parseInt((process.env.DIGEST_HOUR || "08:00").split(":")[0], 10);
+  const _digestWeekday = (process.env.DIGEST_WEEKDAY ?? "") !== ""
+    ? parseInt(process.env.DIGEST_WEEKDAY, 10)
+    : null; // null = mode quotidien
+  const mtl = _montrealNow();
+
+  if (!isTestMode) {
+    // Mauvaise heure → skip silencieux (cron reviendra dans 1 h)
+    if (mtl.hour !== _digestHour) {
+      return res.status(200).json({
+        skipped: true,
+        reason:  `Heure Montréal (${mtl.hour}h) ≠ DIGEST_HOUR (${_digestHour}h)`,
+        now:     `${mtl.slot} ${String(mtl.hour).padStart(2,"0")}:${String(mtl.minute).padStart(2,"0")}`,
+        tz:      mtl.tz
+      });
+    }
+    // Mode hebdomadaire : mauvais jour → skip
+    if (_digestWeekday !== null && mtl.weekday !== _digestWeekday) {
+      return res.status(200).json({
+        skipped: true,
+        reason:  `Jour Montréal (${mtl.weekday}) ≠ DIGEST_WEEKDAY (${_digestWeekday})`,
+        now:     mtl.slot, tz: mtl.tz
+      });
+    }
+    // Anti-doublon : briefing déjà envoyé pour ce créneau (nécessite KV)
+    const lastSlot = await loadLastSlot();
+    if (lastSlot === mtl.slot) {
+      return res.status(200).json({
+        skipped:  true,
+        reason:   `Briefing déjà envoyé pour le créneau ${mtl.slot}`,
+        lastSlot, tz: mtl.tz
+      });
+    }
+  }
+
   const t0 = Date.now();
-  console.log("[scheduled-digest] %s — %d sources — canal:%s",
-    isTestMode ? "PREVIEW" : "Démarrage", FEEDS.length, channel);
+  console.log("[scheduled-digest] %s — %d sources — canal:%s — Montréal:%s %dh",
+    isTestMode ? "PREVIEW" : "Démarrage", FEEDS.length, channel, mtl.slot, mtl.hour);
 
   // ── 1. Fetch tous les flux en parallèle ───────────────────────────────────
   const results = await Promise.allSettled(FEEDS.map(_fetchFeed));
@@ -468,9 +545,10 @@ module.exports = async (req, res) => {
   try {
     const emailResult = await _sendEmail({ channel, to: recipient, subject, html, text });
 
-    // Persiste IDs et topicKeys des top articles pour éviter les répétitions demain
+    // Persiste IDs, topicKeys et créneau pour les gardes inter-digest
     await saveSentIds(top.map(a => a.id));
     await saveSentTopics(top.map(a => a._topicKey || _topicKey(a)));
+    await saveLastSlot(mtl.slot);
 
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",

@@ -20,11 +20,21 @@
 
 const { FEEDS } = require("./lib/feeds");
 
-// Cron configuré dans vercel.json → "0 7 * * *"
-const CRON_SCHEDULE = "0 7 * * *";
+// Cron configuré dans vercel.json → toutes les heures, décision dans le handler
+const CRON_SCHEDULE = "0 * * * *";
 
 module.exports = async (req, res) => {
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
+
+  // ── Heure locale Montréal courante (pour affichage) ───────────────────────
+  const mtlParts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Montreal",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false
+    }).formatToParts(new Date()).filter(p => p.type !== "literal").map(p => [p.type, p.value])
+  );
+  const mtlNow = `${mtlParts.year}-${mtlParts.month}-${mtlParts.day} ${mtlParts.hour}:${mtlParts.minute}`;
 
   // ── Vérification des variables d'environnement ────────────────────────────
   const email = {
@@ -69,7 +79,14 @@ module.exports = async (req, res) => {
     timestamp: new Date().toISOString(),
     cron: {
       schedule:    CRON_SCHEDULE,
-      description: "Chaque jour à 07:00 UTC (09:00 Paris heure d'été, 08:00 heure d'hiver)"
+      description: "Toutes les heures — décision d'envoi dans le handler selon l'heure de Montréal"
+    },
+    digest: {
+      hour:        process.env.DIGEST_HOUR    || "08:00",
+      weekday:     process.env.DIGEST_WEEKDAY || null,
+      mode:        (process.env.DIGEST_WEEKDAY ?? "") !== "" ? "weekly" : "daily",
+      tz:          "America/Montreal",
+      nowMontreal: mtlNow
     },
     email,
     dedup,
