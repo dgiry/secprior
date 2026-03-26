@@ -9,8 +9,9 @@
 
 "use strict";
 
-const SENT_KEY = "digest:sent_ids"; // Clé Redis du set d'IDs déjà envoyés
-const TTL_SEC  = 48 * 3600;         // TTL 48 h — couvre 2 cycles quotidiens
+const SENT_KEY   = "digest:sent_ids";    // Set Redis des IDs d'articles déjà envoyés
+const TOPICS_KEY = "digest:sent_topics"; // Set Redis des topicKeys déjà couverts
+const TTL_SEC    = 48 * 3600;            // TTL 48 h — couvre 2 cycles quotidiens
 
 /** Vérifie que les variables KV sont bien configurées. */
 const _kvAvailable = () =>
@@ -94,4 +95,42 @@ async function saveSentIds(ids) {
   }
 }
 
-module.exports = { loadSentIds, saveSentIds };
+/**
+ * Charge les topicKeys déjà couverts dans les digest précédents.
+ * Retourne un Set vide si KV non configuré ou en cas d'erreur.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+async function loadSentTopics() {
+  if (!_kvAvailable()) return new Set();
+  try {
+    const json   = await _kvGet("smembers", TOPICS_KEY);
+    const topics = Array.isArray(json.result) ? json.result : [];
+    console.log("[dedup] %d topicKeys déjà couverts chargés depuis KV", topics.length);
+    return new Set(topics);
+  } catch (e) {
+    console.warn("[dedup] loadSentTopics échoué (fallback Set vide) :", e.message);
+    return new Set();
+  }
+}
+
+/**
+ * Persiste les topicKeys des sujets couverts dans ce digest (TTL 48 h).
+ * Silencieux en cas d'erreur — ne bloque jamais le cron.
+ *
+ * @param {string[]} topicKeys
+ */
+async function saveSentTopics(topicKeys) {
+  if (!_kvAvailable() || !topicKeys.length) return;
+  try {
+    await _kvPipeline([
+      ["sadd",   TOPICS_KEY, ...topicKeys], // ajoute au set existant
+      ["expire", TOPICS_KEY, TTL_SEC]       // repart à 48 h à chaque envoi
+    ]);
+    console.log("[dedup] %d topicKeys persistés dans KV (TTL 48 h)", topicKeys.length);
+  } catch (e) {
+    console.warn("[dedup] saveSentTopics échoué (non bloquant) :", e.message);
+  }
+}
+
+module.exports = { loadSentIds, saveSentIds, loadSentTopics, saveSentTopics };

@@ -16,8 +16,8 @@
 
 const { parseRSS }           = require("./lib/rss-parser");
 const { enrichArticles }     = require("./lib/enricher");
-const { loadSentIds,
-        saveSentIds }        = require("./lib/dedup-store");
+const { loadSentIds,  saveSentIds,
+        loadSentTopics, saveSentTopics } = require("./lib/dedup-store");
 const { selectTopArticles,
         formatBriefingHTML,
         formatBriefingText } = require("./lib/digest-engine");
@@ -64,6 +64,89 @@ function _scoreComposite(article) {
   return Math.round(
     (W.cvss * nCVSS + W.epss * nEPSS + W.kev * kev + W.sources * nSrc + W.keyword * nKW) * 100
   );
+}
+
+// ── Déduplication par sujet ───────────────────────────────────────────────────
+
+// Mots trop génériques pour discriminer un sujet — exclus du topic key titre
+const _STOP = new Set([
+  "the","a","an","in","of","to","for","and","or","is","are","was","were","be",
+  "with","how","new","update","patch","patches","patched","fix","fixes","fixed",
+  "security","advisory","vulnerability","vulnerabilities","vuln","cve","exploit",
+  "exploited","exploiting","critical","high","severe","alert","warning","report",
+  "attack","attacks","threat","threats","flaw","flaws","bug","bugs","issue"
+]);
+
+/**
+ * Normalise un titre en 4 tokens significatifs (stop-words et ponctuation retirés).
+ * @param {string} title
+ * @returns {string} ex: "apache-http-rce-unauthenticated"
+ */
+function _normTitle(title) {
+  const tokens = (title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !_STOP.has(w));
+  return tokens.slice(0, 4).join("-") || "misc";
+}
+
+/**
+ * Calcule une clé de sujet stable pour regrouper les articles similaires.
+ * Règles (par ordre de priorité) :
+ *   1. CVE(s) présents → "cve:CVE-2024-1234" ou "cve:CVE-2024-1234+CVE-2024-5678"
+ *      (triés pour que l'ordre des CVEs n'importe pas)
+ *   2. Sinon → "title:<4 tokens normalisés>"
+ *
+ * @param {object} article
+ * @returns {string}
+ */
+function _topicKey(article) {
+  if (Array.isArray(article.cveIds) && article.cveIds.length > 0) {
+    const sorted = [...article.cveIds].map(c => c.toUpperCase()).sort().slice(0, 2);
+    return "cve:" + sorted.join("+");
+  }
+  return "title:" + _normTitle(article.title);
+}
+
+/**
+ * Regroupe les articles par topicKey et retourne le meilleur représentant
+ * de chaque groupe (score composite le plus élevé).
+ *
+ * Effets secondaires utiles sur le représentant choisi :
+ *   - _topicKey    : clé du groupe (string)
+ *   - sourceCount  : max(sourceCount original, nb sources couvrant ce sujet)
+ *                    → signal multi-source utilisé par digestPriorityScore
+ *
+ * @param {Array} articles
+ * @returns {Array} un article par sujet, trié score décroissant
+ */
+function _groupByTopic(articles) {
+  // Map topicKey → { best: article, sources: Set<string> }
+  const groups = new Map();
+
+  for (const a of articles) {
+    const key   = _topicKey(a);
+    const entry = groups.get(key);
+    if (!entry) {
+      groups.set(key, { best: a, sources: new Set([a.sourceName]) });
+    } else {
+      entry.sources.add(a.sourceName);
+      // Promouvoir si meilleur score composite
+      if ((a.score ?? 0) > (entry.best.score ?? 0)) {
+        entry.best = a;
+      }
+    }
+  }
+
+  return [...groups.values()]
+    .map(({ best, sources }) => ({
+      ...best,
+      _topicKey:   _topicKey(best),
+      // Si plusieurs sources couvrent le même sujet, on amplifie sourceCount
+      sourceCount: Math.max(best.sourceCount || 1, sources.size)
+    }))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 }
 
 // ── Fetch d'un seul flux RSS (direct serveur — pas de CORS) ──────────────────
@@ -279,18 +362,31 @@ module.exports = async (req, res) => {
     });
   }
 
-  // ── 3.5. Filtre les articles déjà envoyés dans les digest précédents ─────
-  // loadSentIds() retourne un Set vide si Vercel KV n'est pas configuré.
-  const sentIds   = await loadSentIds();
-  const freshQueue = sentIds.size > 0
+  // ── 3.5. Filtre les articles déjà envoyés (par ID exact) ─────────────────
+  const sentIds     = await loadSentIds();
+  const afterIdDedup = sentIds.size > 0
     ? queue.filter(a => !sentIds.has(a.id))
     : queue;
-  // Fallback : si trop peu d'articles après dédup, on reprend la queue complète
-  const finalQueue = freshQueue.length >= 3 ? freshQueue : queue;
-  if (sentIds.size > 0) {
-    console.log("[scheduled-digest] Dédup : %d → %d articles (filtrés: %d)",
-      queue.length, finalQueue.length, queue.length - finalQueue.length);
-  }
+  // Fallback ID : si trop peu d'articles, on reprend la queue complète
+  const idQueue = afterIdDedup.length >= 3 ? afterIdDedup : queue;
+
+  // ── 3.6. Déduplication intra-digest par sujet ─────────────────────────────
+  // Regroupe CVE identiques et titres similaires → un représentant par sujet.
+  // Consolide sourceCount pour les sujets couverts par plusieurs sources.
+  const topicQueue = _groupByTopic(idQueue);
+
+  // ── 3.7. Filtre les sujets déjà couverts dans les digest précédents ───────
+  const sentTopics = await loadSentTopics();
+  const afterTopicDedup = sentTopics.size > 0
+    ? topicQueue.filter(a => !sentTopics.has(a._topicKey))
+    : topicQueue;
+  // Fallback topic : si trop peu de sujets frais, on reprend topicQueue entier
+  const finalQueue = afterTopicDedup.length >= 3 ? afterTopicDedup : topicQueue;
+
+  console.log(
+    "[scheduled-digest] Dédup : %d articles → %d IDs uniques → %d sujets → %d frais",
+    queue.length, idQueue.length, topicQueue.length, finalQueue.length
+  );
 
   // ── 4. Sélection des articles du briefing ─────────────────────────────────
   const top    = selectTopArticles(finalQueue, 5);
@@ -319,9 +415,16 @@ module.exports = async (req, res) => {
   // ── Stats pipeline (partagées entre mode réel et preview) ─────────────────
   const pipelineStats = {
     feeds:      { ok: fetchOk, err: fetchErr, total: FEEDS.length, details: feedDetails },
-    articles:   { raw: allArticles.length, unique: unique.length, queue: queue.length, fresh: finalQueue.length },
+    articles:   { raw: allArticles.length, unique: unique.length, queue: queue.length },
     enrichment: enrichStats,
-    dedup:      { sentKnown: sentIds.size, filtered: queue.length - finalQueue.length },
+    dedup: {
+      filteredById:    queue.length - idQueue.length,
+      topicGroups:     topicQueue.length,
+      filteredByTopic: topicQueue.length - finalQueue.length,
+      finalQueue:      finalQueue.length,
+      sentIds:         sentIds.size,
+      sentTopics:      sentTopics.size
+    },
     selection:  { top: top.length, rest: rest.length },
     timings:    { fetchMs: t1 - t0, enrichMs: t2 - t1 }
   };
@@ -365,8 +468,9 @@ module.exports = async (req, res) => {
   try {
     const emailResult = await _sendEmail({ channel, to: recipient, subject, html, text });
 
-    // Persiste les IDs des top articles pour éviter les répétitions demain
+    // Persiste IDs et topicKeys des top articles pour éviter les répétitions demain
     await saveSentIds(top.map(a => a.id));
+    await saveSentTopics(top.map(a => a._topicKey || _topicKey(a)));
 
     const elapsed = Date.now() - t0;
     console.log("[scheduled-digest] ✅ Envoyé en %dms — top:%d rest:%d sources:%d/%d",
