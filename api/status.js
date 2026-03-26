@@ -18,8 +18,8 @@
 
 "use strict";
 
-const { FEEDS }       = require("./lib/feeds");
-const { loadLastRun } = require("./lib/dedup-store");
+const { FEEDS }       = require("./_lib/feeds");
+const { loadLastRun } = require("./_lib/dedup-store");
 
 // Cron configuré dans vercel.json → toutes les minutes, décision dans le handler
 const CRON_SCHEDULE = "* * * * *";

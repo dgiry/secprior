@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "cyberveille-pro",
   "functions": {
     "api/*.js": {
       "maxDuration": 60
@@ -9,7 +8,7 @@
   "crons": [
     {
       "path": "/api/scheduled-digest",
-      "schedule": "* * * * *"
+      "schedule": "0 12 * * *"
     }
   ],
   "headers": [

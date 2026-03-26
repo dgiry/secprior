@@ -11,15 +11,15 @@
 
 "use strict";
 
-const { parseRSS }          = require("./lib/rss-parser");
-const { enrichArticles }    = require("./lib/enricher");
+const { parseRSS }          = require("./_lib/rss-parser");
+const { enrichArticles }    = require("./_lib/enricher");
 const { loadSentIds,
-        loadSentTopics }    = require("./lib/dedup-store");
+        loadSentTopics }    = require("./_lib/dedup-store");
 const { digestPriorityScore,
         selectTopArticles,
         whyImportant,
-        watchpoints }       = require("./lib/digest-engine");
-const { FEEDS }             = require("./lib/feeds");
+        watchpoints }       = require("./_lib/digest-engine");
+const { FEEDS }             = require("./_lib/feeds");
 
 // ── Scoring heuristique (identique à scheduled-digest.js) ────────────────────
 

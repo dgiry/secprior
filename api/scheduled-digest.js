@@ -16,19 +16,19 @@
 
 "use strict";
 
-const { parseRSS }           = require("./lib/rss-parser");
-const { enrichArticles }     = require("./lib/enricher");
+const { parseRSS }           = require("./_lib/rss-parser");
+const { enrichArticles }     = require("./_lib/enricher");
 const { loadSentIds,    saveSentIds,
         loadSentTopics, saveSentTopics,
         loadLastSlot,   saveLastSlot,
-        saveLastRun }                    = require("./lib/dedup-store");
+        saveLastRun }                    = require("./_lib/dedup-store");
 const { digestPriorityScore,
         selectTopArticles,
         formatBriefingHTML,
         formatBriefingText,
         whyImportant,
-        watchpoints }        = require("./lib/digest-engine");
-const { FEEDS }              = require("./lib/feeds"); // source canonique — modifier là-bas
+        watchpoints }        = require("./_lib/digest-engine");
+const { FEEDS }              = require("./_lib/feeds"); // source canonique — modifier là-bas
 
 // ── Scoring heuristique côté serveur (port de config.js + scorer.js) ─────────
 // Utilisé pour attribuer score et criticality aux articles sans enrichissement NVD/EPSS.

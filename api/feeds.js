@@ -11,7 +11,7 @@
 
 "use strict";
 
-const { FEEDS } = require("./lib/feeds");
+const { FEEDS } = require("./_lib/feeds");
 
 module.exports = async (req, res) => {
   // Cache 1 h côté CDN + client (les feeds changent rarement)
