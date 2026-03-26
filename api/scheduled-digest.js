@@ -244,7 +244,7 @@ async function _sendEmail({ channel, to, subject, html, text }) {
  *
  * @returns {{ hour, minute, weekday, slot, tz }}
  *   weekday : 0=dimanche … 6=samedi (même convention que Date.getDay())
- *   slot    : "YYYY-MM-DD" en heure de Montréal — clé d'anti-doublon quotidien
+ *   slot    : "YYYY-MM-DDTHH:MM" en heure de Montréal — clé d'anti-doublon par créneau exact
  */
 function _montrealNow() {
   const tz = "America/Montreal";
@@ -261,11 +261,13 @@ function _montrealNow() {
       .map(p  => [p.type, p.value])
   );
   const WD = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  const h = parseInt(parts.hour, 10) % 24; // garde contre "24" rare sur certains runtimes
+  const m = parseInt(parts.minute, 10);
   return {
-    hour:    parseInt(parts.hour,   10) % 24, // garde contre "24" rare sur certains runtimes
-    minute:  parseInt(parts.minute, 10),
+    hour:    h,
+    minute:  m,
     weekday: WD[parts.weekday.toLowerCase().slice(0, 3)] ?? -1,
-    slot:    `${parts.year}-${parts.month}-${parts.day}`, // ex: "2026-03-25"
+    slot:    `${parts.year}-${parts.month}-${parts.day}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`, // ex: "2026-03-25T08:30"
     tz
   };
 }
@@ -318,24 +320,27 @@ module.exports = async (req, res) => {
   }
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
 
-  // ── 0. Vérification heure / jour / créneau (America/Montreal) ─────────────
-  // Le cron Vercel tourne toutes les heures ("0 * * * *").
-  // La décision d'envoi est prise ici selon l'heure locale de Montréal :
+  // ── 0. Vérification heure / minute / jour / créneau (America/Montreal) ──────
+  // Le cron Vercel tourne toutes les minutes ("* * * * *").
+  // La décision d'envoi est prise ici selon l'heure ET la minute locales de Montréal :
   //   EDT (UTC-4, fin mars → début nov) et EST (UTC-5, reste de l'année)
   //   sont gérés automatiquement par Intl.DateTimeFormat.
-  const _digestHour    = parseInt((process.env.DIGEST_HOUR || "08:00").split(":")[0], 10);
+  // DIGEST_HOUR accepte le format "HH" ou "HH:MM" (ex: "08" ou "08:30") — défaut "08:00".
+  const _digestRaw     = process.env.DIGEST_HOUR || "08:00";
+  const [_digestH, _digestM] = _digestRaw.split(":").map(Number);
+  const _digestMinute  = isNaN(_digestM) ? 0 : _digestM;
   const _digestWeekday = (process.env.DIGEST_WEEKDAY ?? "") !== ""
     ? parseInt(process.env.DIGEST_WEEKDAY, 10)
     : null; // null = mode quotidien
   const mtl = _montrealNow();
 
   if (!isTestMode) {
-    // Mauvaise heure → skip silencieux (cron reviendra dans 1 h)
-    if (mtl.hour !== _digestHour) {
+    // Mauvaise heure ou mauvaise minute → skip silencieux (cron reviendra dans 1 min)
+    if (mtl.hour !== _digestH || mtl.minute !== _digestMinute) {
       return res.status(200).json({
         skipped: true,
-        reason:  `Heure Montréal (${mtl.hour}h) ≠ DIGEST_HOUR (${_digestHour}h)`,
-        now:     `${mtl.slot} ${String(mtl.hour).padStart(2,"0")}:${String(mtl.minute).padStart(2,"0")}`,
+        reason:  `Heure Montréal (${String(mtl.hour).padStart(2,"0")}:${String(mtl.minute).padStart(2,"0")}) ≠ DIGEST_HOUR (${_digestRaw})`,
+        now:     mtl.slot,
         tz:      mtl.tz
       });
     }
@@ -359,8 +364,8 @@ module.exports = async (req, res) => {
   }
 
   const t0 = Date.now();
-  console.log("[scheduled-digest] %s — %d sources — canal:%s — Montréal:%s %dh",
-    isTestMode ? "PREVIEW" : "Démarrage", FEEDS.length, channel, mtl.slot, mtl.hour);
+  console.log("[scheduled-digest] %s — %d sources — canal:%s — Montréal:%s",
+    isTestMode ? "PREVIEW" : "Démarrage", FEEDS.length, channel, mtl.slot);
 
   // ── 1. Fetch tous les flux en parallèle ───────────────────────────────────
   const results = await Promise.allSettled(FEEDS.map(_fetchFeed));

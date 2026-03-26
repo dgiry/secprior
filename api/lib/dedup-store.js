@@ -136,7 +136,7 @@ async function saveSentTopics(topicKeys) {
 }
 
 /**
- * Charge le dernier créneau d'envoi ("YYYY-MM-DD" heure locale Montréal).
+ * Charge le dernier créneau d'envoi ("YYYY-MM-DDTHH:MM" heure locale Montréal).
  * Retourne null si KV non configuré ou clé absente.
  *
  * @returns {Promise<string|null>}
@@ -156,7 +156,7 @@ async function loadLastSlot() {
  * Persiste le créneau d'envoi courant pour l'anti-doublon (TTL 8 j).
  * Silencieux en cas d'erreur — ne bloque jamais le cron.
  *
- * @param {string} slot - ex: "2026-03-25"
+ * @param {string} slot - ex: "2026-03-25T08:30"
  */
 async function saveLastSlot(slot) {
   if (!_kvAvailable() || !slot) return;

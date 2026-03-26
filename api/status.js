@@ -20,8 +20,8 @@
 
 const { FEEDS } = require("./lib/feeds");
 
-// Cron configuré dans vercel.json → toutes les heures, décision dans le handler
-const CRON_SCHEDULE = "0 * * * *";
+// Cron configuré dans vercel.json → toutes les minutes, décision dans le handler
+const CRON_SCHEDULE = "* * * * *";
 
 module.exports = async (req, res) => {
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
@@ -79,10 +79,10 @@ module.exports = async (req, res) => {
     timestamp: new Date().toISOString(),
     cron: {
       schedule:    CRON_SCHEDULE,
-      description: "Toutes les heures — décision d'envoi dans le handler selon l'heure de Montréal"
+      description: "Toutes les minutes — décision d'envoi dans le handler selon l'heure ET la minute de Montréal"
     },
     digest: {
-      hour:        process.env.DIGEST_HOUR    || "08:00",
+      hour:        process.env.DIGEST_HOUR    || "08:00",   // format HH ou HH:MM
       weekday:     process.env.DIGEST_WEEKDAY || null,
       mode:        (process.env.DIGEST_WEEKDAY ?? "") !== "" ? "weekly" : "daily",
       tz:          "America/Montreal",
