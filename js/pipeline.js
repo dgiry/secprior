@@ -60,8 +60,17 @@ const Pipeline = (() => {
     const totalIOCs   = withIOCs.reduce((n, a) => n + (a.iocCount || 0), 0);
     console.log(`[Pipeline] 6. IOCs → ${totalIOCs} IOCs extraits dans ${iocArticles} articles`);
 
+    // ── Étape 7 : Priorité explicable ─────────────────────────────────────
+    // computePriority() est défini dans scorer.js — utilise tous les signaux
+    // enrichis aux étapes 2-6 (EPSS, KEV, watchlist, trending, IOC, CVE).
+    // Ne modifie pas score, criticality ni scoreBreakdown.
+    const withPriority = withIOCs.map(a => ({ ...a, ...computePriority(a) }));
+    const critNow = withPriority.filter(a => a.priorityLevel === "critical_now").length;
+    const invest  = withPriority.filter(a => a.priorityLevel === "investigate").length;
+    console.log(`[Pipeline] 7. Priorité → ${critNow} critical_now · ${invest} investigate`);
+
     console.log("[Pipeline] ✅ Pipeline terminé");
-    return withIOCs;
+    return withPriority;
   }
 
   return { run };

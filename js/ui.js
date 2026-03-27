@@ -57,6 +57,18 @@ const UI = (() => {
          </div>`
       : "";
 
+    // ── Ligne de priorité explicable ─────────────────────────────────────────
+    // Affiche le niveau et la première raison uniquement si non-low.
+    // Tolère l'absence de priorityLevel (articles chargés depuis cache ancien).
+    let priorityLine = "";
+    if (article.priorityLevel && article.priorityLevel !== "low") {
+      const pm     = getPriorityMeta(article.priorityLevel);
+      const reason = article.priorityReasons?.[0] || "";
+      priorityLine = `<div class="card-priority-line prio-${pm.css}" title="${
+        (article.priorityReasons || []).join('\n')
+      }">${pm.icon} <strong>${pm.label}</strong>${reason ? ` · ${reason}` : ""}</div>`;
+    }
+
     // Badge résumé IOC — compteur rapide dans la rangée principale des signaux
     const iocSummaryBadge = (article.iocCount || 0) > 0
       ? `<span class="badge badge-ioc-summary"
@@ -83,6 +95,7 @@ const UI = (() => {
           </button>
         </header>
         ${scoreBar}
+        ${priorityLine}
         <h3 class="card-title">
           <a href="${article.link}" target="_blank" rel="noopener noreferrer">
             ${article.title}

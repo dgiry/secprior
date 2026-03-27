@@ -2159,3 +2159,113 @@ body.modal-open { overflow: hidden; }
 /* Message "aucun IOC" dans le détail */
 .ip-ioc-empty         { margin:.5rem 0 .4rem; font-size:.74rem; color:var(--text2);
                         font-style:italic; padding:.3rem 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRIORITÉ EXPLICABLE — computePriority() — scorer.js V2
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ligne de priorité dans les cartes de la vue principale ───────────────── */
+.card-priority-line {
+  font-size: .71rem;
+  font-weight: 500;
+  padding: 3px 8px 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  line-height: 1.35;
+}
+.card-priority-line strong { font-weight: 700; }
+
+.prio-critical-now {
+  color: #f85149;
+  border-left-color: #f85149;
+  background: rgba(248,81,73,.08);
+}
+.prio-investigate {
+  color: #f0883e;
+  border-left-color: #f0883e;
+  background: rgba(240,136,62,.08);
+}
+.prio-watch {
+  color: #79c0ff;
+  border-left-color: #79c0ff;
+  background: rgba(121,192,255,.07);
+}
+
+/* ── Bloc "Pourquoi cette priorité ?" dans le modal article ──────────────── */
+.art-priority-block {
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.art-priority-level-badge {
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  border: 1px solid transparent;
+}
+.prio-critical-now.art-priority-level-badge { background:#2d1515; color:#f85149; border-color:#f85149; }
+.prio-investigate.art-priority-level-badge  { background:#2d1a00; color:#f0883e; border-color:#f0883e; }
+.prio-watch.art-priority-level-badge        { background:#0d1b2e; color:#79c0ff; border-color:#79c0ff; }
+.prio-low.art-priority-level-badge          { background:#21262d; color:#8b949e; border-color:#30363d; }
+
+/* Liste des raisons */
+.art-priority-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.art-priority-reasons li {
+  font-size: .77rem;
+  color: var(--text2);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.art-priority-reasons li::before {
+  content: '→';
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.art-priority-no-reason {
+  font-size: .77rem;
+  color: var(--text2);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Tableau des signaux bruts */
+.art-priority-signals {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .73rem;
+}
+.art-priority-signals tr + tr td { border-top: 1px solid var(--border); }
+.art-psig-key {
+  color: var(--text2);
+  padding: 3px 10px 3px 0;
+  white-space: nowrap;
+  font-weight: 600;
+  width: 30%;
+}
+.art-psig-val {
+  color: var(--text);
+  padding: 3px 0;
+}

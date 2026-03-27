@@ -157,3 +157,117 @@ function scoreBarClass(score) {
   if (score >= 30) return "score-bar-medium";
   return "score-bar-low";
 }
+
+// ── Priorité explicable ────────────────────────────────────────────────────
+
+/**
+ * computePriority(article) → { priorityScore, priorityLevel, priorityReasons, prioritySignals }
+ *
+ * Transforme le score composite en décision de priorité explicable.
+ * Aucun accès au DOM. Tolère toute donnée manquante.
+ *
+ * Niveaux :
+ *   critical_now → action immédiate requise (KEV / EPSS élevé / watchlist + HIGH)
+ *   investigate  → à analyser dans la journée
+ *   watch        → surveiller, pas urgent
+ *   low          → faible signal, bas de liste
+ *
+ * Ne modifie pas `score`, `criticality` ni `scoreBreakdown`.
+ */
+function computePriority(article) {
+  const score   = article.score ?? 0;
+  const reasons = [];
+
+  // ── Extraction des signaux disponibles ────────────────────────────────────
+  const kev      = !!article.isKEV;
+  const epss     = (typeof article.epssScore === 'number') ? article.epssScore : null;
+  const epssHigh = epss !== null && epss >= 0.50;
+  const epssMed  = epss !== null && epss >= 0.10;
+  const wl       = Array.isArray(article.watchlistMatches) && article.watchlistMatches.length > 0;
+  const trending = !!article.isTrending;
+  const sources  = Math.max(1, article.sourceCount || 1);
+  const iocCount = article.iocCount || 0;
+  const hasCVE   = Array.isArray(article.cves) && article.cves.length > 0;
+  const isZeroDay = (article.attackTags || []).some(t => t.label === '0-Day')
+                  || /zero.?day|0.?day/i.test(article.title || '');
+  const hasAttack = Array.isArray(article.attackTags) && article.attackTags.length > 0;
+
+  // ── Construction des raisons lisibles (ordre : signal fort d'abord) ───────
+  if (kev)
+    reasons.push("Exploitation active confirmée (CISA KEV)");
+  if (epssHigh)
+    reasons.push(`Probabilité d'exploitation élevée : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
+  else if (epssMed)
+    reasons.push(`Probabilité d'exploitation : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
+  if (wl) {
+    const terms = article.watchlistMatches.slice(0, 2).join(', ');
+    reasons.push(`Terme watchlist matché : ${terms}`);
+  }
+  if (isZeroDay)
+    reasons.push("Vulnérabilité 0-day — aucun patch disponible");
+  if (trending)
+    reasons.push(`Couvert par ${article.trendingCount || sources} sources simultanément`);
+  else if (sources > 1)
+    reasons.push(`Couvert par ${sources} sources distinctes`);
+  if (iocCount > 0)
+    reasons.push(`${iocCount} IOC${iocCount > 1 ? 's' : ''} extraits (IPs, domaines, hashes)`);
+  if (hasAttack && !isZeroDay) {
+    const tactics = article.attackTags.slice(0, 2).map(t => t.label).join(', ');
+    reasons.push(`Tactique ATT&CK détectée : ${tactics}`);
+  }
+  if (hasCVE) {
+    const cveStr = article.cves[0] + (article.cves.length > 1 ? ` +${article.cves.length - 1}` : '');
+    reasons.push(`CVE référencé : ${cveStr}`);
+  }
+  if (score > 0 && reasons.length === 0)
+    reasons.push(`Score composite : ${score}/100`);
+
+  // ── Niveau de priorité ────────────────────────────────────────────────────
+  let priorityLevel;
+  if (kev || score >= 80 || (epssHigh && hasCVE) || (score >= 65 && wl)) {
+    priorityLevel = "critical_now";
+  } else if (score >= 45 || epssMed || (trending && score >= 25) || wl || isZeroDay) {
+    priorityLevel = "investigate";
+  } else if (score >= 20 || hasCVE || iocCount > 0) {
+    priorityLevel = "watch";
+  } else {
+    priorityLevel = "low";
+  }
+
+  // ── Score de priorité (non borné à 100, pour tri futur) ──────────────────
+  const priorityScore = score
+    + (kev      ? 40 : 0)
+    + (epssHigh ? 20 : epssMed ? 8 : 0)
+    + (wl       ? 15 : 0)
+    + (isZeroDay? 15 : 0)
+    + (trending ?  8 : 0)
+    + (iocCount ?  5 : 0);
+
+  // ── Signaux structurés (pour usage programmatique) ───────────────────────
+  const prioritySignals = {
+    kev,
+    epss:      epss !== null ? +(epss * 100).toFixed(1) : null,
+    epssHigh,
+    epssMed,
+    watchlist: wl,
+    trending,
+    iocCount,
+    isZeroDay,
+    hasCVE,
+    sources,
+    baseScore: score
+  };
+
+  return { priorityScore, priorityLevel, priorityReasons: reasons, prioritySignals };
+}
+
+// ── Méta d'affichage par niveau de priorité ───────────────────────────────
+
+function getPriorityMeta(level) {
+  switch (level) {
+    case "critical_now": return { icon: "🔴", label: "Action immédiate",   css: "critical-now" };
+    case "investigate":  return { icon: "🟠", label: "À investiguer",      css: "investigate"  };
+    case "watch":        return { icon: "🔵", label: "À surveiller",       css: "watch"        };
+    default:             return { icon: "⚪", label: "Signal faible",       css: "low"          };
+  }
+}

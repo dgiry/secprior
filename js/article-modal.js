@@ -90,8 +90,10 @@ const ArticleModal = (() => {
       <!-- ── CORPS ──────────────────────────────────────────────────── -->
       <div class="art-modal-body">
 
-        <!-- Colonne gauche : métriques, CVEs, ATT&CK -->
+        <!-- Colonne gauche : priorité, métriques, CVEs, ATT&CK -->
         <div class="art-modal-left">
+
+          ${_renderPriorityBlock(article)}
 
           <div class="art-modal-section">
             <h4 class="art-modal-section-title">📊 Métriques sécurité</h4>
@@ -174,6 +176,58 @@ const ArticleModal = (() => {
            class="btn btn-primary art-modal-open-btn">
           ↗ Ouvrir l'article original
         </a>
+      </div>`;
+  }
+
+  // ─── Bloc priorité explicable ──────────────────────────────────────────────
+
+  function _renderPriorityBlock(article) {
+    // Tolère l'absence de priorityLevel (cache ancien, mode démo)
+    if (!article.priorityLevel) return '';
+
+    const pm      = typeof getPriorityMeta === 'function'
+                    ? getPriorityMeta(article.priorityLevel)
+                    : { icon: '⚪', label: article.priorityLevel, css: 'low' };
+    const reasons = article.priorityReasons || [];
+    const signals = article.prioritySignals || {};
+
+    // Tableau de signaux complémentaires (données brutes, lisibles)
+    const sigRows = [];
+    if (signals.kev)
+      sigRows.push(['CISA KEV',  '✅ Exploitation confirmée']);
+    if (signals.epss !== null && signals.epss !== undefined)
+      sigRows.push(['EPSS',      `${signals.epss}% probabilité d'exploitation (30j)`]);
+    if (signals.isZeroDay)
+      sigRows.push(['0-Day',     'Aucun patch officiel disponible']);
+    if (signals.watchlist)
+      sigRows.push(['Watchlist', 'Terme de surveillance détecté']);
+    if (signals.trending)
+      sigRows.push(['Trending',  `${signals.sources} sources simultanées`]);
+    if (signals.iocCount > 0)
+      sigRows.push(['IOCs',      `${signals.iocCount} indicateur${signals.iocCount > 1 ? 's' : ''} extraits`]);
+    if (signals.baseScore != null)
+      sigRows.push(['Score',     `${signals.baseScore}/100`]);
+
+    return `
+      <div class="art-modal-section">
+        <h4 class="art-modal-section-title">🎯 Pourquoi cette priorité ?</h4>
+        <div class="art-priority-block">
+          <div class="art-priority-level-badge prio-${pm.css}">
+            ${pm.icon} ${pm.label}
+          </div>
+          ${reasons.length ? `
+          <ul class="art-priority-reasons">
+            ${reasons.map(r => `<li>${_esc(r)}</li>`).join('')}
+          </ul>` : `<p class="art-priority-no-reason">Aucun signal significatif détecté.</p>`}
+          ${sigRows.length ? `
+          <table class="art-priority-signals">
+            ${sigRows.map(([k, v]) => `
+              <tr>
+                <td class="art-psig-key">${_esc(k)}</td>
+                <td class="art-psig-val">${_esc(v)}</td>
+              </tr>`).join('')}
+          </table>` : ''}
+        </div>
       </div>`;
   }
 
