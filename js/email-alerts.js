@@ -309,24 +309,53 @@ const AlertManager = (() => {
     return last < todaySlot.getTime();
   }
 
-  /** true si l'article est urgent : KEV actif, EPSS ≥ 70 %, ou score ≥ 80. */
+  /** true si l'article est urgent : priorityLevel critique, KEV, EPSS ≥ 70 %, ou score ≥ 80. */
   function _isUrgent(a) {
+    if (a.priorityLevel === "critical_now") return true;  // V2 : niveau priorité explicite
     return !!a.isKEV
       || (a.epssScore !== null && a.epssScore >= 0.70)
       || (a.score     !== undefined && a.score >= 80);
   }
 
+  /**
+   * Retourne { color, badge } pour un article selon son niveau de priorité.
+   * V2 : utilise priorityLevel. Fallback V1 : criticality.
+   */
+  function _alertBadge(a) {
+    if (a.priorityLevel) {
+      switch (a.priorityLevel) {
+        case "critical_now": return { color: "#f85149", badge: "🔴 CRITIQUE" };
+        case "investigate":  return { color: "#f0883e", badge: "🟠 ÉLEVÉE"   };
+        case "watch":        return { color: "#58a6ff", badge: "🔵 MODÉRÉE"  };
+        default:             return { color: "#8b949e", badge: "⚪ FAIBLE"   };
+      }
+    }
+    // Fallback V1 : criticality (articles sans pipeline complet)
+    return a.criticality === "high"
+      ? { color: "#f85149", badge: "🔴 HAUTE"   }
+      : { color: "#f0883e", badge: "🟠 MOYENNE" };
+  }
+
   // ── Filtrage des articles à alerter ───────────────────────────────────────
 
+  /**
+   * Retourne les articles non encore alertés qui dépassent le seuil configuré.
+   * V2 : filtre sur priorityLevel si disponible. Fallback V1 : criticality.
+   */
   function getNewAlertCandidates(articles, threshold) {
     const alerted = getAlertedIds();
-    const levels  = threshold === "medium"
-      ? ["high", "medium"]
-      : ["high"];
-
-    return articles.filter(
-      a => levels.includes(a.criticality) && !alerted.has(a.id)
-    );
+    return articles.filter(a => {
+      if (alerted.has(a.id)) return false;
+      // V2 : priorityLevel disponible (articles passés par le pipeline complet)
+      if (a.priorityLevel) {
+        return threshold === "medium"
+          ? ["critical_now", "investigate"].includes(a.priorityLevel)
+          : a.priorityLevel === "critical_now";
+      }
+      // Fallback V1 : criticality heuristique
+      const levels = threshold === "medium" ? ["high", "medium"] : ["high"];
+      return levels.includes(a.criticality);
+    });
   }
 
   // ── Helpers de sécurité / robustesse pour la génération HTML ─────────────
@@ -353,16 +382,15 @@ const AlertManager = (() => {
 
   function formatAlertBody(articles) {
     return articles.map(a => {
-      const crit = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const { badge } = _alertBadge(a);
       const date = a.pubDate instanceof Date ? a.pubDate.toLocaleString("fr-FR") : String(a.pubDate || "");
-      return `${crit} | ${a.sourceName || "?"} | ${date}\n${a.title || "(sans titre)"}\n${a.link || ""}`;
+      return `${badge} | ${a.sourceName || "?"} | ${date}\n${a.title || "(sans titre)"}\n${a.link || ""}`;
     }).join("\n\n---\n\n");
   }
 
   function formatAlertHTML(articles) {
     const rows = articles.map(a => {
-      const color = a.criticality === "high" ? "#f85149" : "#f0883e";
-      const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const { color, badge } = _alertBadge(a);
       return `
         <tr>
           <td style="padding:8px;border-bottom:1px solid #30363d">
@@ -425,7 +453,10 @@ const AlertManager = (() => {
    */
   function _buildDigestStats(articles) {
     const total          = articles.length;
-    const highCount      = articles.filter(a => a.criticality === "high").length;
+    // V2 : priorityLevel critique, fallback criticality
+    const highCount      = articles.filter(a =>
+      a.priorityLevel ? a.priorityLevel === "critical_now" : a.criticality === "high"
+    ).length;
     const kevCount       = articles.filter(a => a.isKEV).length;
     const watchlistCount = articles.filter(a => a.watchlistMatches?.length > 0).length;
 
@@ -481,7 +512,7 @@ const AlertManager = (() => {
   function _statsBlockHTML(stats) {
     const chips = [
       { label: "Articles",   value: stats.total,        color: "#e6edf3", bg: "#21262d" },
-      { label: "🔴 HIGH",    value: stats.highCount,     color: "#f85149", bg: stats.highCount  > 0 ? "#2d1515" : "#161b22" },
+      { label: "🔴 CRITIQUE", value: stats.highCount,     color: "#f85149", bg: stats.highCount  > 0 ? "#2d1515" : "#161b22" },
       { label: "🚨 KEV",     value: stats.kevCount,      color: stats.kevCount    > 0 ? "#f85149" : "#8b949e", bg: stats.kevCount > 0 ? "#2d1515" : "#161b22" },
     ];
     if (stats.watchlistCount > 0)
@@ -554,9 +585,11 @@ const AlertManager = (() => {
     if (a.isTrending)     r.push("en forte circulation sur les plateformes de threat intel");
     if (a.cveIds?.length) r.push(`référencée sous ${a.cveIds.slice(0, 2).join(", ")}`);
     if (r.length === 0)
-      return a.criticality === "high"
-        ? "Classée haute criticité par l'analyse automatique."
-        : "Identifiée comme menace potentielle.";
+      return a.priorityLevel === "critical_now"
+        ? "Classée priorité critique par l'analyse multi-signaux."
+        : a.criticality === "high"
+          ? "Classée haute criticité par l'analyse automatique."
+          : "Identifiée comme menace potentielle.";
     return "Cette vulnérabilité est " + r.join(", ") + ".";
   }
 
@@ -575,7 +608,7 @@ const AlertManager = (() => {
     if (a.epssScore != null && a.epssScore >= 0.70)
       pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
     // "Vérifier l'exposition" seulement si aucun point plus spécifique n'a été ajouté
-    if (pts.length === 0 && a.criticality === "high")
+    if (pts.length === 0 && (a.priorityLevel === "critical_now" || a.criticality === "high"))
       pts.push("Vérifier l'exposition de vos actifs concernés");
     if (a.isTrending)
       pts.push("Consulter les IoCs publiés par la communauté threat intel");
@@ -598,18 +631,19 @@ const AlertManager = (() => {
       { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const total    = top.length + rest.length;
     const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
-    const highCount= [...top, ...rest].filter(a => a.criticality === "high").length;
+    const highCount= [...top, ...rest].filter(a =>
+      a.priorityLevel ? a.priorityLevel === "critical_now" : a.criticality === "high"
+    ).length;
 
     // Résumé exécutif
     let exec = `${total} menace(s) détectée(s) durant cette période`;
     if (kevCount > 0) exec += `, dont ${kevCount} vulnérabilité(s) KEV activement exploitée(s)`;
-    if (highCount > 0) exec += `. ${highCount} alerte(s) haute criticité nécessitent votre attention`;
+    if (highCount > 0) exec += `. ${highCount} alerte(s) critique(s) nécessitent votre attention`;
     exec += ".";
 
     // Cartes top alertes
     const topHTML = top.map(a => {
-      const color = a.criticality === "high" ? "#f85149" : "#f0883e";
-      const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const { color, badge } = _alertBadge(a);
       const meta  = [
         a.isKEV             ? "🚨 KEV ACTIF"                                     : "",
         a.epssScore != null ? `EPSS ${Math.round(a.epssScore * 100)} %`          : "",
@@ -648,10 +682,9 @@ const AlertManager = (() => {
       <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace">
         <tbody>
           ${rest.map(a => {
-            const c = a.criticality === "high" ? "#f85149" : "#f0883e";
-            const b = a.criticality === "high" ? "🔴" : "🟠";
+            const { color: c, badge: bFull } = _alertBadge(a);
             return `<tr>
-              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${b} ${_escHtml((a.criticality || "?").toUpperCase())}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:${c};white-space:nowrap">${_escHtml(bFull)}</td>
               <td style="padding:5px 8px;border-bottom:1px solid #21262d;color:#8b949e">${_escHtml(a.sourceName || "")}</td>
               <td style="padding:5px 8px;border-bottom:1px solid #21262d;word-break:break-word">
                 <a href="${_safeHref(a.link)}" style="color:#58a6ff;text-decoration:none">${_escHtml(a.title || "(sans titre)")}</a>
@@ -715,7 +748,7 @@ const AlertManager = (() => {
 
     t += `🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep60}\n\n`;
     top.forEach((a, i) => {
-      const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+      const { badge } = _alertBadge(a);
       const kev   = a.isKEV ? " | 🚨 KEV ACTIF" : "";
       const epss  = a.epssScore !== null
         ? ` | EPSS ${Math.round(a.epssScore * 100)} %` : "";
@@ -731,7 +764,7 @@ const AlertManager = (() => {
     if (rest.length > 0) {
       t += `📋 AUTRES ALERTES (${rest.length})\n${"-".repeat(60)}\n`;
       rest.forEach(a => {
-        const b = a.criticality === "high" ? "🔴" : "🟠";
+        const { badge: b } = _alertBadge(a);
         t += `${b} [${a.sourceName || "?"}] ${a.title || "(sans titre)"}\n   ${a.link || ""}\n`;
       });
       t += "\n";
@@ -803,18 +836,20 @@ const AlertManager = (() => {
       count:      articles.length,
       threshold:  settings.threshold,
       articles:   articles.map(a => ({
-        id:          a.id,
-        title:       a.title,
-        source:      a.sourceName,
-        criticality: a.criticality,
-        link:        a.link,
-        pubDate:     a.pubDate instanceof Date ? a.pubDate.toISOString() : String(a.pubDate || ""),
-        description: a.description
+        id:            a.id,
+        title:         a.title,
+        source:        a.sourceName,
+        criticality:   a.criticality,
+        priorityLevel: a.priorityLevel || null,   // V2 : niveau de priorité explicable
+        priorityScore: a.priorityScore  || null,
+        link:          a.link,
+        pubDate:       a.pubDate instanceof Date ? a.pubDate.toISOString() : String(a.pubDate || ""),
+        description:   a.description
       })),
       // Compatibilité Slack
       text:       `🛡️ *CyberVeille Pro* — ${articles.length} nouvelle(s) alerte(s)\n` +
                   articles.slice(0, 3).map(a =>
-                    `>*${a.criticality === "high" ? "🔴" : "🟠"} ${a.title}*\n>${a.link}`
+                    `>*${_alertBadge(a).badge} ${a.title}*\n>${a.link}`
                   ).join("\n")
     };
 
