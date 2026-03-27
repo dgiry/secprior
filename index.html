@@ -347,14 +347,29 @@
 
       <div class="settings-group">
         <p class="settings-hint" style="margin-top:0">
-          Les articles contenant ces termes reçoivent le badge <strong style="color:#d2a8ff">👁 Vous concerne</strong>.
-          Utile pour surveiller un vendeur, un produit, un CVE ou une menace spécifique.
+          Surveillez des vendeurs, produits, technologies ou mots-clés.
+          Les articles correspondants reçoivent le badge <strong style="color:#d2a8ff">👁 Vous concerne</strong>.
         </p>
         <div class="watchlist-items" id="watchlist-items"></div>
-        <div class="watchlist-add-row">
-          <input id="watchlist-input" type="text" class="settings-input"
-                 placeholder="Ex : fortinet, CVE-2024, exchange, ransomware…">
-          <button class="btn btn-primary" onclick="WatchlistModal.add()">+ Ajouter</button>
+        <div class="watchlist-add-form">
+          <div class="watchlist-add-selects">
+            <select id="watchlist-type" class="wl-select" title="Type de terme">
+              <option value="keyword">Mot-clé</option>
+              <option value="vendor">Vendeur</option>
+              <option value="product">Produit</option>
+              <option value="technology">Techno</option>
+            </select>
+            <select id="watchlist-priority" class="wl-select" title="Priorité">
+              <option value="medium">🟡 Moyenne</option>
+              <option value="high">🔴 Haute</option>
+              <option value="low">🟢 Basse</option>
+            </select>
+          </div>
+          <div class="watchlist-add-row">
+            <input id="watchlist-input" type="text" class="settings-input"
+                   placeholder="Ex : Fortinet, CVE-2024, Exchange, ransomware…">
+            <button class="btn btn-primary" onclick="WatchlistModal.add()">+ Ajouter</button>
+          </div>
         </div>
         <p class="settings-hint">Appuyez sur <strong>Entrée</strong> ou cliquez sur + Ajouter. Non sensible à la casse.</p>
       </div>

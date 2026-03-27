@@ -1,15 +1,36 @@
 // contextualizer.js — Stage 5 : Contextualisation intelligente
 //
 // Enrichit chaque article avec :
-//   • watchlistMatches  : mots-clés de la watchlist utilisateur trouvés dans le texte
-//   • attackTags        : tactiques MITRE ATT&CK détectées par mots-clés
-//   • isTrending        : true si sourceCount ≥ 3 (sujet couvert par 3+ sources)
-//   • trendingCount     : nombre de sources (= article.sourceCount)
+//   • watchlistMatches     : labels des items watchlist trouvés (string[] — compat)
+//   • watchlistMatchItems  : items watchlist complets trouvés (object[] — enrichi)
+//   • attackTags           : tactiques MITRE ATT&CK détectées par mots-clés
+//   • isTrending           : true si sourceCount ≥ 3 (sujet couvert par 3+ sources)
+//   • trendingCount        : nombre de sources (= article.sourceCount)
+//
+// Format watchlist V2 (rétrocompatible avec ancien string[]) :
+//   { id, type, label, value, enabled, priority }
+//   Types  : vendor | product | technology | keyword
+//   Priorités : high | medium | low
 
 const Contextualizer = (() => {
   const WATCHLIST_KEY = "cv_watchlist";
 
-  // ── Table de correspondance MITRE ATT&CK (keyword → tactic) ────────────────
+  // ── Méta types et priorités ───────────────────────────────────────────────
+
+  const WL_TYPES = {
+    vendor:     { label: "Vendeur",  css: "wl-type-vendor"     },
+    product:    { label: "Produit",  css: "wl-type-product"    },
+    technology: { label: "Techno",   css: "wl-type-technology" },
+    keyword:    { label: "Mot-clé",  css: "wl-type-keyword"    }
+  };
+
+  const WL_PRIORITIES = {
+    high:   { label: "Haute",   dot: "🔴" },
+    medium: { label: "Moyenne", dot: "🟡" },
+    low:    { label: "Basse",   dot: "🟢" }
+  };
+
+  // ── Table de correspondance MITRE ATT&CK (keyword → tactic) ─────────────
 
   const ATTACK_MAP = [
     { keywords: ["phishing", "spear phishing", "spearphishing"],         tactic: "T1566", label: "Phishing" },
@@ -34,12 +55,51 @@ const Contextualizer = (() => {
     { keywords: ["worm", "self-propagat"],                                  tactic: "T1091", label: "Worm" }
   ];
 
-  // ── Watchlist (persistée en LocalStorage) ─────────────────────────────────
+  // ── Watchlist V2 — normalisation rétrocompatible ──────────────────────────
 
+  function _makeId() {
+    return Math.random().toString(36).slice(2, 10);
+  }
+
+  /**
+   * _normalizeItem(raw) — accepte string (ancien format) OU objet (nouveau).
+   * Garantit : { id, type, label, value (lowercase), enabled, priority }
+   */
+  function _normalizeItem(raw) {
+    if (typeof raw === 'string') {
+      const v = raw.trim().toLowerCase();
+      return { id: _makeId(), type: 'keyword', label: raw.trim(), value: v, enabled: true, priority: 'medium' };
+    }
+    const value = ((raw.value || raw.term || raw.label) || '').trim().toLowerCase();
+    return {
+      id:       raw.id       || _makeId(),
+      type:     WL_TYPES[raw.type] ? raw.type : 'keyword',
+      label:    raw.label    || raw.term  || raw.value || value,
+      value,
+      enabled:  raw.enabled  !== false,
+      priority: WL_PRIORITIES[raw.priority] ? raw.priority : 'medium'
+    };
+  }
+
+  /**
+   * getWatchlist() — retourne toujours un tableau d'items normalisés.
+   * Rétrocompatible : si le localStorage contient un string[], il est normalisé à la volée.
+   * Les items normalisés sont resauvegardés pour migrer silencieusement le format.
+   */
   function getWatchlist() {
     try {
       const raw = localStorage.getItem(WATCHLIST_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const items = parsed.map(_normalizeItem);
+
+      // Migration silencieuse : si au moins un item était un string, on resauvegarde
+      const hadOldFormat = parsed.some(i => typeof i === 'string');
+      if (hadOldFormat) saveWatchlist(items);
+
+      return items;
     } catch { return []; }
   }
 
@@ -49,17 +109,41 @@ const Contextualizer = (() => {
     } catch (e) { console.warn("[Contextualizer] Watchlist save:", e.message); }
   }
 
-  function addToWatchlist(term) {
-    const list = getWatchlist();
-    const t = term.trim().toLowerCase();
-    if (t && !list.includes(t)) {
-      list.push(t);
-      saveWatchlist(list);
-    }
+  /**
+   * addToWatchlist(term, opts) — ajoute un item.
+   * opts = { type, label, priority, enabled }
+   * Déduplique par value (lowercase).
+   */
+  function addToWatchlist(term, opts = {}) {
+    const list  = getWatchlist();
+    const value = (term || '').trim().toLowerCase();
+    if (!value) return;
+    if (list.some(i => i.value === value)) return; // déjà présent
+    list.push({
+      id:       _makeId(),
+      type:     WL_TYPES[opts.type] ? opts.type : 'keyword',
+      label:    (opts.label || term).trim(),
+      value,
+      enabled:  opts.enabled !== false,
+      priority: WL_PRIORITIES[opts.priority] ? opts.priority : 'medium'
+    });
+    saveWatchlist(list);
   }
 
-  function removeFromWatchlist(term) {
-    const list = getWatchlist().filter(t => t !== term.trim().toLowerCase());
+  /**
+   * removeFromWatchlist(idOrValue) — supprime par id (nouveau) ou par value (compat).
+   */
+  function removeFromWatchlist(idOrValue) {
+    const normalized = (idOrValue || '').trim().toLowerCase();
+    const list = getWatchlist().filter(i => i.id !== idOrValue && i.value !== normalized);
+    saveWatchlist(list);
+  }
+
+  /**
+   * updateItem(id, patch) — met à jour un item existant (type, priority, enabled…)
+   */
+  function updateItem(id, patch) {
+    const list = getWatchlist().map(i => i.id !== id ? i : { ...i, ...patch });
     saveWatchlist(list);
   }
 
@@ -76,15 +160,14 @@ const Contextualizer = (() => {
     return hits;
   }
 
-  // ── Stage principal : contextualize(articles) ────────────────────────────
+  // ── Stage principal : contextualize(articles) ─────────────────────────────
 
   function contextualize(articles) {
-    const watchlist = getWatchlist();
+    // Seuls les items activés participent au matching
+    const watchlist = getWatchlist().filter(i => i.enabled);
 
-    // ── Trending CVE-based (signal live) ──────────────────────────────────────
-    // Pour chaque CVE, compter les sources distinctes qui le couvrent.
-    // Si 2+ sources couvrent le même CVE → trending (signal fiable en mode live).
-    const cveSourcesMap = {}; // { "CVE-2024-1234": Set(sourceId) }
+    // ── Trending CVE-based (signal live) ────────────────────────────────────
+    const cveSourcesMap = {};
     articles.forEach(a => {
       (a.cves || []).forEach(cve => {
         if (!cveSourcesMap[cve]) cveSourcesMap[cve] = new Set();
@@ -95,8 +178,12 @@ const Contextualizer = (() => {
     return articles.map(a => {
       const text = (a.title + " " + (a.description || "")).toLowerCase();
 
-      // Watchlist matches
-      const watchlistMatches = watchlist.filter(term => text.includes(term));
+      // Watchlist matches enrichis
+      const matchedItems = watchlist.filter(item => item.value && text.includes(item.value));
+      // string[] pour compat ascendante (article-modal, computePriority, scorer)
+      const watchlistMatches     = matchedItems.map(i => i.label);
+      // object[] pour usage futur (computePriority prioritySignals, briefing, etc.)
+      const watchlistMatchItems  = matchedItems;
 
       // ATT&CK detection
       const attackTags = _detectAttack(a.title + " " + (a.description || ""));
@@ -106,19 +193,22 @@ const Contextualizer = (() => {
       const scCve   = (a.cves || []).reduce((max, cve) => {
         return Math.max(max, cveSourcesMap[cve]?.size || 1);
       }, 1);
-      const sc = Math.max(scDedup, scCve);
+      const sc           = Math.max(scDedup, scCve);
       const isTrending   = scDedup >= 3 || scCve >= 2;
       const trendingCount = sc;
 
-      return {
-        ...a,
-        watchlistMatches,
-        attackTags,
-        isTrending,
-        trendingCount
-      };
+      return { ...a, watchlistMatches, watchlistMatchItems, attackTags, isTrending, trendingCount };
     });
   }
 
-  return { contextualize, getWatchlist, saveWatchlist, addToWatchlist, removeFromWatchlist };
+  return {
+    contextualize,
+    getWatchlist,
+    saveWatchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    updateItem,
+    WL_TYPES,
+    WL_PRIORITIES
+  };
 })();
