@@ -183,7 +183,6 @@ function computePriority(article) {
   const epss     = (typeof article.epssScore === 'number') ? article.epssScore : null;
   const epssHigh = epss !== null && epss >= 0.50;
   const epssMed  = epss !== null && epss >= 0.10;
-  const wl       = Array.isArray(article.watchlistMatches) && article.watchlistMatches.length > 0;
   const trending = !!article.isTrending;
   const sources  = Math.max(1, article.sourceCount || 1);
   const iocCount = article.iocCount || 0;
@@ -192,6 +191,46 @@ function computePriority(article) {
                   || /zero.?day|0.?day/i.test(article.title || '');
   const hasAttack = Array.isArray(article.attackTags) && article.attackTags.length > 0;
 
+  // ── Watchlist structurée V2 (avec fallback compat V1) ────────────────────
+  // V2 : watchlistMatchItems = [{ type, priority, label, enabled, ... }]
+  // V1 : watchlistMatches    = ["cisco", "exchange"] (string[])
+  const wlItems = Array.isArray(article.watchlistMatchItems)
+    ? article.watchlistMatchItems.filter(i => i.enabled !== false)
+    : [];
+  const hasWlItems = wlItems.length > 0;
+  const wl = hasWlItems
+    || (Array.isArray(article.watchlistMatches) && article.watchlistMatches.length > 0);
+
+  // Bonus pondéré : type × priorité (plafonné à 25 pour éviter l'inflation)
+  //   vendor/high=20, product/high=15, keyword/medium=3, keyword/low=1, …
+  const _wlBonus = i => {
+    const t = { vendor: 4, product: 3, technology: 2, keyword: 1 }[i.type]     ?? 1;
+    const p = { high: 5, medium: 3, low: 1            }[i.priority] ?? 1;
+    return t * p;
+  };
+  const wlTotalBonus = Math.min(wlItems.reduce((s, i) => s + _wlBonus(i), 0), 25);
+
+  // Signal fort : au moins un vendor/high (20) ou produit/high (15) → bonus ≥ 15
+  const wlStrong = wlTotalBonus >= 15;
+
+  // ── Raison watchlist enrichie par item (ou fallback compat) ──────────────
+  const _wlReason = i => {
+    const lbl = i.label || i.value || '?';
+    switch (i.type) {
+      case 'vendor':
+        return i.priority === 'high' ? `Vendeur critique surveillé : ${lbl}`
+                                     : `Vendeur surveillé : ${lbl}`;
+      case 'product':
+        return i.priority === 'high' ? `Produit critique surveillé : ${lbl}`
+                                     : `Produit surveillé : ${lbl}`;
+      case 'technology':
+        return `Technologie surveillée : ${lbl}`;
+      default: // keyword
+        return i.priority === 'high' ? `Terme prioritaire : ${lbl}`
+                                     : `Terme watchlist : ${lbl}`;
+    }
+  };
+
   // ── Construction des raisons lisibles (ordre : signal fort d'abord) ───────
   if (kev)
     reasons.push("Exploitation active confirmée (CISA KEV)");
@@ -199,10 +238,19 @@ function computePriority(article) {
     reasons.push(`Probabilité d'exploitation élevée : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
   else if (epssMed)
     reasons.push(`Probabilité d'exploitation : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
-  if (wl) {
-    const terms = article.watchlistMatches.slice(0, 2).join(', ');
+
+  if (hasWlItems) {
+    // Trier par bonus décroissant, afficher les 2 plus importants
+    [...wlItems]
+      .sort((a, b) => _wlBonus(b) - _wlBonus(a))
+      .slice(0, 2)
+      .forEach(i => reasons.push(_wlReason(i)));
+  } else if (wl) {
+    // Fallback compat V1 : pas d'items structurés
+    const terms = (article.watchlistMatches || []).slice(0, 2).join(', ');
     reasons.push(`Terme watchlist matché : ${terms}`);
   }
+
   if (isZeroDay)
     reasons.push("Vulnérabilité 0-day — aucun patch disponible");
   if (trending)
@@ -223,8 +271,12 @@ function computePriority(article) {
     reasons.push(`Score composite : ${score}/100`);
 
   // ── Niveau de priorité ────────────────────────────────────────────────────
+  // wlStrong (vendor/high ≥ 15 pts) + score ≥ 65 → critical_now
+  // score ≥ 40 + bonus très fort (vendor/high seul = 20) → critical_now
   let priorityLevel;
-  if (kev || score >= 80 || (epssHigh && hasCVE) || (score >= 65 && wl)) {
+  if (kev || score >= 80 || (epssHigh && hasCVE)
+      || (score >= 65 && wlStrong)
+      || (score >= 40 && wlTotalBonus >= 20)) {
     priorityLevel = "critical_now";
   } else if (score >= 45 || epssMed || (trending && score >= 25) || wl || isZeroDay) {
     priorityLevel = "investigate";
@@ -238,7 +290,7 @@ function computePriority(article) {
   const priorityScore = score
     + (kev      ? 40 : 0)
     + (epssHigh ? 20 : epssMed ? 8 : 0)
-    + (wl       ? 15 : 0)
+    + wlTotalBonus                          // pondéré type×priorité (max 25)
     + (isZeroDay? 15 : 0)
     + (trending ?  8 : 0)
     + (iocCount ?  5 : 0);
@@ -246,10 +298,17 @@ function computePriority(article) {
   // ── Signaux structurés (pour usage programmatique) ───────────────────────
   const prioritySignals = {
     kev,
-    epss:      epss !== null ? +(epss * 100).toFixed(1) : null,
+    epss:           epss !== null ? +(epss * 100).toFixed(1) : null,
     epssHigh,
     epssMed,
-    watchlist: wl,
+    watchlist:      wl,
+    watchlistBonus: wlTotalBonus,
+    watchlistStrong: wlStrong,
+    watchlistItems: wlItems.map(i => ({
+      type:     i.type,
+      priority: i.priority,
+      label:    i.label || i.value || ''
+    })),
     trending,
     iocCount,
     isZeroDay,
