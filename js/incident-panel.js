@@ -96,7 +96,40 @@ const IncidentPanel = (() => {
       });
     });
 
-    // Phase 3 : Grouper par racine Union-Find
+    // Phase 3 : Union par vendor + attackTag dans une fenêtre de 7 jours
+    // Cible : articles sans CVE couvrant la même surface d'attaque à courte distance.
+    // Ex. : "Cisco — exploitation active" + "Patch Cisco Remote Exec." → même incident.
+    // L'index est mis à jour vers l'article le plus récent pour permettre le chaînage.
+    const vatIndex = new Map(); // "vendor|attacktag" → { id, date }
+    articles.forEach(a => {
+      if ((a.cveIds || a.cves || []).length > 0) return; // déjà traités en phase 1
+      const aDate   = a.pubDate instanceof Date ? a.pubDate : new Date(a.pubDate || 0);
+      const vendors = a.vendors || [];
+      const attacks = (a.attackTags || []).map(t => t.label);
+      vendors.forEach(v => {
+        attacks.forEach(atk => {
+          const key  = v.toLowerCase() + "|" + atk.toLowerCase();
+          const prev = vatIndex.get(key);
+          if (prev) {
+            const diffDays = Math.abs(aDate - prev.date) / 86_400_000;
+            if (diffDays <= 7) {
+              uf.union(a.id, prev.id);
+              // Avance l'index vers le plus récent pour permettre le chaînage
+              if (aDate > prev.date) vatIndex.set(key, { id: a.id, date: aDate });
+            }
+            // Si > 7 jours : on ne fusionne pas mais on remplace l'index par cet article
+            // pour ne pas bloquer les regroupements futurs sur la même clé
+            else if (aDate > prev.date) {
+              vatIndex.set(key, { id: a.id, date: aDate });
+            }
+          } else {
+            vatIndex.set(key, { id: a.id, date: aDate });
+          }
+        });
+      });
+    });
+
+    // Phase 4 : Grouper par racine Union-Find
     const groups = new Map();
     articles.forEach(a => {
       const root = uf.find(a.id);

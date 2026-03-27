@@ -140,6 +140,11 @@ const App = (() => {
 
   // ─── Initialisation ────────────────────────────────────────────────────────
   async function init() {
+    // ── Maintenance préventive du localStorage ─────────────────────────────
+    // Purge les statuts analyste "closed/false_positive" de plus de 90 jours
+    // pour éviter la croissance indéfinie du store EntityStatus.
+    if (typeof EntityStatus !== "undefined") EntityStatus.pruneStale();
+
     // ── Charger les feeds depuis l'API (source canonique) ─────────────────
     // await garantit que CONFIG.FEEDS est à jour AVANT tout appel à FeedManager
     await _loadFeedsFromAPI();

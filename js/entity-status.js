@@ -127,6 +127,50 @@ const EntityStatus = (() => {
     _save(map);
   }
 
+  // ── Maintenance du store ──────────────────────────────────────────────────
+
+  /**
+   * pruneStale({ maxAgeDays, statuses }) → number
+   *
+   * Supprime du localStorage les entrées obsolètes pour limiter la croissance.
+   * Par défaut : statuts "closed" et "false_positive" vieux de plus de 90 jours.
+   * Retourne le nombre d'entrées supprimées.
+   */
+  function pruneStale({ maxAgeDays = 90, statuses = ["closed", "false_positive"] } = {}) {
+    const map    = _load();
+    const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+    let pruned   = 0;
+    for (const key of Object.keys(map)) {
+      const entry = map[key];
+      if (!entry) continue;
+      const age = new Date(entry.updatedAt || 0).getTime();
+      if (statuses.includes(entry.status) && age < cutoff) {
+        delete map[key];
+        pruned++;
+      }
+    }
+    if (pruned > 0) {
+      _save(map);
+      console.log(`[EntityStatus] ${pruned} entrée(s) purgée(s) (>${maxAgeDays}j, statuts : ${statuses.join(", ")})`);
+    }
+    return pruned;
+  }
+
+  /**
+   * getStats() → { total, byStatus }
+   *
+   * Statistiques du store : nombre d'entrées total et par statut.
+   * Utilisé pour la supervision et le debug.
+   */
+  function getStats() {
+    const map  = _load();
+    const all  = Object.values(map);
+    const bySt = {};
+    VALID_STATUSES.forEach(s => { bySt[s] = 0; });
+    all.forEach(e => { if (bySt[e.status] !== undefined) bySt[e.status]++; });
+    return { total: all.length, byStatus: bySt };
+  }
+
   // ── Filtrage ──────────────────────────────────────────────────────────────
 
   /**
@@ -194,6 +238,8 @@ const EntityStatus = (() => {
     getEffectiveStatus,
     setStatus,
     updateNote,
+    pruneStale,
+    getStats,
     filterByStatus,
     badgeHTML,
     statusBlockHTML

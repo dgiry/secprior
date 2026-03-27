@@ -1,4 +1,4 @@
-// scorer.js — Stage 4 : Score composite 0-100
+// scorer.js — Stage 5 : Score composite 0-100
 //
 // Formule :
 //   score = w_cvss    * normalize(cvss, 0, 10)        [0-10 → 0-1]
@@ -6,8 +6,10 @@
 //         + w_kev     * isKEV                          [booléen 0/1]
 //         + w_sources * normalize(sourceCount, 1, 6)   [nb sources]
 //         + w_keyword * keywordSignal                  [heuristique]
+//         + w_ioc     * normalize(iocCount, 0, 10)     [IOCs extraits — pipeline étape 4]
 //
-// Poids : cvss=0.30 | epss=0.25 | kev=0.25 | sources=0.10 | keyword=0.10
+// Poids : cvss=0.30 | epss=0.25 | kev=0.25 | sources=0.10 | keyword=0.05 | ioc=0.05
+// (keyword réduit de 0.10 → 0.05 pour accueillir le signal IOC sans dépasser 1.0)
 //
 // Seuils dynamiques : HIGH ≥ 65 | MEDIUM ≥ 30 | LOW < 30
 // (compatibles avec l'ancien système heuristique pour les articles sans CVE)
@@ -15,7 +17,7 @@
 // ── Score composite ───────────────────────────────────────────────────────
 
 function scoreComposite(article) {
-  const W = { cvss: 0.30, epss: 0.25, kev: 0.25, sources: 0.10, keyword: 0.10 };
+  const W = { cvss: 0.30, epss: 0.25, kev: 0.25, sources: 0.10, keyword: 0.05, ioc: 0.05 };
 
   // CVSS (de nvd.js ou null)
   const cvss = article.cvssScore ?? null;
@@ -36,12 +38,18 @@ function scoreComposite(article) {
   const kwRaw = _keywordSignal(article.title, article.description);
   const normKW = kwRaw === "high" ? 1 : kwRaw === "medium" ? 0.5 : 0;
 
+  // IOC signal — disponible car IOCExtractor tourne avant scoring (pipeline étape 4)
+  // 0 IOC = 0 ; 10+ IOCs = 1 (présence d'indicateurs concrets = signal de gravité réel)
+  const iocCount = article.iocCount || 0;
+  const normIOC  = Math.min(iocCount / 10, 1);
+
   const raw = (
-    W.cvss    * normCVSS  +
-    W.epss    * normEPSS  +
-    W.kev     * kevBonus  +
+    W.cvss    * normCVSS    +
+    W.epss    * normEPSS    +
+    W.kev     * kevBonus    +
     W.sources * normSources +
-    W.keyword * normKW
+    W.keyword * normKW      +
+    W.ioc     * normIOC
   );
 
   const score = Math.round(raw * 100);
@@ -53,7 +61,8 @@ function scoreComposite(article) {
       epss:    Math.round(W.epss    * normEPSS    * 100),
       kev:     Math.round(W.kev     * kevBonus    * 100),
       sources: Math.round(W.sources * normSources * 100),
-      keyword: Math.round(W.keyword * normKW      * 100)
+      keyword: Math.round(W.keyword * normKW      * 100),
+      ioc:     Math.round(W.ioc     * normIOC     * 100)
     }
   };
 }
