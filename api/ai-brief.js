@@ -223,6 +223,13 @@ function _buildSystemPrompt() {
   · iocCount > 0  → "associated indicators have been extracted" (only if directly relevant)
 - If context is poor or signals are weak: use "Limited information is available at this stage — monitor for updates." as sentence 2 if nothing concrete can be said.
 - Tone: sober, measured, decision-ready. Not alarming, not dismissive.
+- ZERO-DAY / NO-PATCH RULE — applies when signals indicate active exploitation with no patch available:
+  · Sentence 1: state that a critical vulnerability in the affected product or vendor is actively exploited and no patch is currently available. Plain language, no mechanics.
+  · Sentence 2: state that immediate internal validation of exposure is warranted and that readiness to apply temporary mitigations should be assessed if affected systems are present.
+  · NEVER include in Executive Brief for zero-day cases: isolation steps, containment instructions, vendor coordination steps, compensating control details, incident response engagement, or any multi-step operational guidance.
+  · All operational actions belong in: Recommended Next Step, Ticket Draft, or Analyst Brief — not here.
+  · Preferred phrasing model: "A zero-day affecting [product/vendor] is being actively exploited with no patch currently available. Immediate validation of internal exposure is warranted, along with readiness to apply temporary mitigations if affected systems are identified."
+  · Forbidden in zero-day Executive Brief: "isolate affected systems", "coordinate with vendor support", "engage incident response immediately", "deploy compensating controls across the environment", "activate your incident response plan".
 
 ── nextStep ── FOR: analyst / responder (first action)
 - Exactly 1 sentence. Starts with action verb. Matches priorityLevel urgency:
@@ -442,6 +449,12 @@ function _qualityCheck(result, ctx) {
   const execSentences = (result.executiveBrief.match(/[^.!?]*[.!?](?:\s|$)/g) || []).filter(s => s.trim().length > 4);
   if (execSentences.length > 2) {
     warnings.push(`executiveBrief has ${execSentences.length} sentences (max 2)`);
+  }
+
+  // Executive brief: operational action language (zero-day / no-patch drift)
+  const execOperational = /\b(isolat(e|ion|ing)|coordinat(e|ing) with vendor|engage incident response|deploy(ing)? compensating control|contain(ment|ing)|activate.{0,20}incident response|vendor support)\b/i;
+  if (execOperational.test(result.executiveBrief)) {
+    warnings.push("executiveBrief contains operational action language (isolation/containment/IR/vendor coordination) — belongs in nextStep or ticketDraft: " + result.executiveBrief.slice(0, 120));
   }
 
   if (warnings.length > 0) {
