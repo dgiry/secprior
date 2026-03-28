@@ -33,7 +33,7 @@
 
 const ANTHROPIC_API   = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VER   = "2023-06-01";
-const MODEL           = "claude-3-haiku-20240307";
+const MODEL           = "claude-3-5-haiku-20241022";
 const MAX_TOKENS      = 1000;  // v3: increased from 700 to accommodate 6 outputs
 const REQUEST_TIMEOUT = 18_000; // 18 s
 
