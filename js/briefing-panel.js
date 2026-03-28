@@ -121,7 +121,7 @@ const BriefingPanel = (() => {
   function _cardHTML(a) {
     const isHigh = a.criticality === "high";
     const color  = isHigh ? "var(--err)" : "var(--warn)";
-    const badge  = isHigh ? "🔴 HAUTE" : "🟠 MOYENNE";
+    const badge  = isHigh ? "🔴 HIGH"  : "🟠 MEDIUM";
 
     // Badges signaux
     const signals = [

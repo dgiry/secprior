@@ -326,16 +326,16 @@ const AlertManager = (() => {
   function _alertBadge(a) {
     if (a.priorityLevel) {
       switch (a.priorityLevel) {
-        case "critical_now": return { color: "#f85149", badge: "🔴 CRITIQUE" };
-        case "investigate":  return { color: "#f0883e", badge: "🟠 ÉLEVÉE"   };
-        case "watch":        return { color: "#58a6ff", badge: "🔵 MODÉRÉE"  };
-        default:             return { color: "#8b949e", badge: "⚪ FAIBLE"   };
+        case "critical_now": return { color: "#f85149", badge: "🔴 CRITICAL" };
+        case "investigate":  return { color: "#f0883e", badge: "🟠 HIGH"     };
+        case "watch":        return { color: "#58a6ff", badge: "🔵 MEDIUM"   };
+        default:             return { color: "#8b949e", badge: "⚪ LOW"      };
       }
     }
     // Fallback V1 : criticality (articles sans pipeline complet)
     return a.criticality === "high"
-      ? { color: "#f85149", badge: "🔴 HAUTE"   }
-      : { color: "#f0883e", badge: "🟠 MOYENNE" };
+      ? { color: "#f85149", badge: "🔴 HIGH"    }
+      : { color: "#f0883e", badge: "🟠 MEDIUM"  };
   }
 
   // ── Filtrage des articles à alerter ───────────────────────────────────────
@@ -514,7 +514,7 @@ const AlertManager = (() => {
   function _statsBlockHTML(stats) {
     const chips = [
       { label: "Articles",   value: stats.total,        color: "#e6edf3", bg: "#21262d" },
-      { label: "🔴 CRITIQUE", value: stats.highCount,     color: "#f85149", bg: stats.highCount  > 0 ? "#2d1515" : "#161b22" },
+      { label: "🔴 CRITICAL", value: stats.highCount,     color: "#f85149", bg: stats.highCount  > 0 ? "#2d1515" : "#161b22" },
       { label: "🚨 KEV",     value: stats.kevCount,      color: stats.kevCount    > 0 ? "#f85149" : "#8b949e", bg: stats.kevCount > 0 ? "#2d1515" : "#161b22" },
     ];
     if (stats.watchlistCount > 0)
@@ -939,7 +939,7 @@ const AlertManager = (() => {
     const { resendFrom, recipientEmail } = settings;
     if (!recipientEmail) throw new Error("Recipient email missing");
 
-    const subject = subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} alerte(s) haute(s)`;
+    const subject = subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} high-severity alert(s)`;
     const html    = htmlOverride    || formatAlertHTML(articles);
     const text    = textOverride    || formatAlertBody(articles);
 
@@ -989,7 +989,7 @@ const AlertManager = (() => {
     const { sendgridFrom, recipientEmail } = settings;
     if (!recipientEmail) throw new Error("Email destinataire manquant");
 
-    const subject = subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} alerte(s) haute(s)`;
+    const subject = subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} high-severity alert(s)`;
     const html    = htmlOverride    || formatAlertHTML(articles);
     const text    = textOverride    || formatAlertBody(articles);
 

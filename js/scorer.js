@@ -153,9 +153,9 @@ function classifyScore(score) {
 
 function getCriticalityMeta(level) {
   switch (level) {
-    case "high":   return { label: "HAUTE",   cssClass: "badge-high",   icon: "🔴" };
-    case "medium": return { label: "MOYENNE", cssClass: "badge-medium", icon: "🟠" };
-    default:       return { label: "BASSE",   cssClass: "badge-low",    icon: "🟢" };
+    case "high":   return { label: "HIGH",    cssClass: "badge-high",   icon: "🔴" };
+    case "medium": return { label: "MEDIUM",  cssClass: "badge-medium", icon: "🟠" };
+    default:       return { label: "LOW",     cssClass: "badge-low",    icon: "🟢" };
   }
 }
 

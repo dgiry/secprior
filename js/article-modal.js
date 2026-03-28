@@ -607,9 +607,9 @@ const ArticleModal = (() => {
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   function _critMeta(c) {
-    if (c === 'high')   return { cssClass: 'badge-high',   icon: '🔴', label: 'HAUTE'   };
-    if (c === 'medium') return { cssClass: 'badge-medium', icon: '🟠', label: 'MOYENNE' };
-    return                     { cssClass: 'badge-low',    icon: '🟢', label: 'BASSE'   };
+    if (c === 'high')   return { cssClass: 'badge-high',   icon: '🔴', label: 'HIGH'    };
+    if (c === 'medium') return { cssClass: 'badge-medium', icon: '🟠', label: 'MEDIUM'  };
+    return                     { cssClass: 'badge-low',    icon: '🟢', label: 'LOW'     };
   }
 
   function _cvssClass(s) {

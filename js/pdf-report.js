@@ -79,7 +79,7 @@ const PDFReport = (() => {
     // Posture globale
     let postureCls, postureLabel;
     if (critCount > 0) {
-      postureCls = "rpt-posture-critical"; postureLabel = "CRITIQUE";
+      postureCls = "rpt-posture-critical"; postureLabel = "CRITICAL";
     } else if (invCount > 5 || kevCount > 2) {
       postureCls = "rpt-posture-high";     postureLabel = "HIGH";
     } else if (kevCount > 0 || invCount > 0) {

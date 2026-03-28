@@ -25,9 +25,9 @@ const Contextualizer = (() => {
   };
 
   const WL_PRIORITIES = {
-    high:   { label: "Haute",   dot: "🔴" },
-    medium: { label: "Moyenne", dot: "🟡" },
-    low:    { label: "Basse",   dot: "🟢" }
+    high:   { label: "High",    dot: "🔴" },
+    medium: { label: "Medium",  dot: "🟡" },
+    low:    { label: "Low",     dot: "🟢" }
   };
 
   // ── Table de correspondance MITRE ATT&CK (keyword → tactic) ─────────────
