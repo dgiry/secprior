@@ -3713,9 +3713,90 @@ body.modal-open { overflow: hidden; }
 .ai-brief-error strong { color: var(--warn); }
 .ai-brief-err-hint { color: var(--text2); }
 
+/* ── Sprint IA v3 — Tab bar ─────────────────────────────────────────────── */
+.ai-brief-tabs {
+  display: flex; gap: .3rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: .55rem;
+  flex-wrap: nowrap; overflow-x: auto;
+}
+.ai-brief-tab {
+  font-size: .72rem; font-weight: 600;
+  background: none; border: 1px solid var(--border);
+  border-radius: 5px; padding: .25rem .65rem;
+  color: var(--text2); cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.ai-brief-tab:hover { color: var(--text); border-color: var(--accent); }
+.ai-brief-tab-active {
+  background: rgba(163,113,247,.12);
+  border-color: #a371f7; color: #a371f7;
+}
+.ai-brief-tab-empty { opacity: .45; }
+.ai-brief-tab-empty.ai-brief-tab-active { opacity: 1; }
+
+/* Tab panels */
+.ai-brief-tab-panel { display: flex; flex-direction: column; gap: .9rem; }
+.ai-brief-tab-panel-hidden { display: none !important; }
+
+/* Per-tab footer (copy button row inside tab) */
+.ai-brief-tab-footer {
+  display: flex; justify-content: flex-end;
+  padding-top: .1rem;
+}
+
+/* Section hint (e.g. "Slack / Teams") */
+.ai-brief-sec-hint {
+  font-size: .65rem; font-weight: 400;
+  color: var(--text2); margin-left: .4rem;
+  text-transform: none; letter-spacing: 0;
+}
+
+/* ── Sprint IA v3 — Line-by-line outputs (Escalate / Share) ─────────────── */
+.ai-brief-lines {
+  display: flex; flex-direction: column; gap: .3rem;
+  margin-bottom: .45rem;
+}
+.ai-brief-line {
+  font-size: .82rem; line-height: 1.6;
+  color: var(--text); margin: 0;
+}
+.ai-brief-share-lines .ai-brief-line {
+  font-weight: 500;
+}
+
+/* ── Sprint IA v3 — Ticket block ────────────────────────────────────────── */
+.ai-ticket-block {
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.ai-ticket-row {
+  display: flex; align-items: baseline;
+  gap: .6rem;
+  padding: .42rem .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.ai-ticket-row:last-child { border-bottom: none; }
+.ai-ticket-row-full { display: block; }
+.ai-ticket-key {
+  font-size: .66rem; font-weight: 700;
+  color: var(--text2); text-transform: uppercase;
+  letter-spacing: .04em; min-width: 5.5rem; flex-shrink: 0;
+}
+.ai-ticket-val {
+  font-size: .82rem; color: var(--text); line-height: 1.55;
+}
+
 @media (max-width: 640px) {
   .ai-brief-box { max-height: 95vh; border-radius: 8px; }
   .ai-brief-footer { flex-direction: column; align-items: flex-start; }
+  .ai-brief-tabs { gap: .2rem; }
+  .ai-brief-tab { font-size: .68rem; padding: .2rem .5rem; }
+  .ai-ticket-key { min-width: 4rem; }
 }
 
 /* ── (suite styles existants) ────────────────────────────────────────────── */

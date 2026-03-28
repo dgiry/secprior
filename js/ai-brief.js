@@ -1,14 +1,18 @@
-// ai-brief.js — AI-assisted brief generation (Sprint IA v1)
+// ai-brief.js — AI-assisted brief generation (Sprint IA v3)
 //
-// Génère 3 sorties IA depuis /api/ai-brief (Claude Haiku via Anthropic) :
-//   🔬 Analyst Brief   — brief technique pour analyste SOC
-//   📊 Executive Brief — résumé risque métier pour RSSI / manager
-//   ▶  Next Step       — action prudente recommandée
+// Génère 6 sorties IA depuis /api/ai-brief (Claude Haiku via Anthropic) :
+//   🔬 Analyst Brief       — brief technique pour analyste SOC
+//   📊 Executive Brief     — résumé risque métier pour RSSI / manager
+//   ▶  Next Step           — action prudente recommandée
+//   🎫 AI Ticket Draft     — ticket Jira/ServiceNow formaté
+//   📢 AI Escalation Note  — note d'escalade 3-4 lignes
+//   📤 AI Share Rewrite    — message Slack/Teams naturel
 //
 // Design :
 //   • Seuls les champs signaux vérifiés sont transmis à l'API (jamais de données brutes libres)
 //   • La description est débarrassée des tags HTML et tronquée à 800 caractères avant envoi
 //   • Les sorties sont affichées telles quelles depuis l'API (validées côté serveur)
+//   • 4 onglets dans la modale — un seul appel API, commutation instantanée
 //   • En cas d'erreur : message explicite, jamais de crash silencieux
 //   • Si l'API n'est pas configurée (503) : message d'aide clair
 //   • Si mode statique / pas de réseau : dégradation gracieuse
@@ -120,7 +124,7 @@ const AIBrief = (() => {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(ctx),
-        signal:  AbortSignal.timeout(22_000)
+        signal:  AbortSignal.timeout(28_000)
       });
 
       if (!res.ok) {
@@ -168,36 +172,125 @@ const AIBrief = (() => {
       ? new Date(result.generatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
       : "";
 
+    const hasTicket   = result.ticketDraft   && result.ticketDraft.trim().length > 0;
+    const hasEscalate = result.escalationNote && result.escalationNote.trim().length > 0;
+    const hasShare    = result.shareRewrite   && result.shareRewrite.trim().length > 0;
+
     return `
       <div class="ai-brief-panel">
 
-        <div class="ai-brief-sec">
-          <div class="ai-brief-sec-title">🔬 Analyst Brief</div>
-          <p class="ai-brief-text">${_esc(result.analystBrief)}</p>
-          <button class="ai-brief-copy-btn" data-ai-copy="analyst" title="Copy analyst brief">⎘ Copy</button>
+        <!-- Tab bar -->
+        <div class="ai-brief-tabs" role="tablist">
+          <button class="ai-brief-tab ai-brief-tab-active" data-tab="brief"    role="tab" aria-selected="true">🔬 Brief</button>
+          <button class="ai-brief-tab${hasTicket   ? '' : ' ai-brief-tab-empty'}" data-tab="ticket"   role="tab" aria-selected="false">🎫 Ticket</button>
+          <button class="ai-brief-tab${hasEscalate ? '' : ' ai-brief-tab-empty'}" data-tab="escalate" role="tab" aria-selected="false">📢 Escalate</button>
+          <button class="ai-brief-tab${hasShare    ? '' : ' ai-brief-tab-empty'}" data-tab="share"    role="tab" aria-selected="false">📤 Share</button>
         </div>
 
-        <div class="ai-brief-sec">
-          <div class="ai-brief-sec-title">📊 Executive Brief</div>
-          <p class="ai-brief-text">${_esc(result.executiveBrief)}</p>
-          <button class="ai-brief-copy-btn" data-ai-copy="exec" title="Copy executive brief">⎘ Copy</button>
+        <!-- Panel: Brief -->
+        <div class="ai-brief-tab-panel" data-panel="brief">
+
+          <div class="ai-brief-sec">
+            <div class="ai-brief-sec-title">🔬 Analyst Brief</div>
+            <p class="ai-brief-text">${_esc(result.analystBrief)}</p>
+            <button class="ai-brief-copy-btn" data-ai-copy="analyst" title="Copy analyst brief">⎘ Copy</button>
+          </div>
+
+          <div class="ai-brief-sec">
+            <div class="ai-brief-sec-title">📊 Executive Brief</div>
+            <p class="ai-brief-text">${_esc(result.executiveBrief)}</p>
+            <button class="ai-brief-copy-btn" data-ai-copy="exec" title="Copy executive brief">⎘ Copy</button>
+          </div>
+
+          <div class="ai-brief-sec ai-brief-nextstep-sec">
+            <div class="ai-brief-sec-title">▶ Recommended Next Step</div>
+            <p class="ai-brief-text ai-brief-nextstep-text">${_esc(result.nextStep)}</p>
+            <button class="ai-brief-copy-btn" data-ai-copy="nextstep" title="Copy next step">⎘ Copy</button>
+          </div>
+
+          <div class="ai-brief-tab-footer">
+            <button class="ai-brief-copy-btn ai-brief-copy-all-btn" data-ai-copy-all="brief">⎘ Copy all</button>
+          </div>
         </div>
 
-        <div class="ai-brief-sec ai-brief-nextstep-sec">
-          <div class="ai-brief-sec-title">▶ Recommended Next Step</div>
-          <p class="ai-brief-text ai-brief-nextstep-text">${_esc(result.nextStep)}</p>
-          <button class="ai-brief-copy-btn" data-ai-copy="nextstep" title="Copy next step">⎘ Copy</button>
+        <!-- Panel: Ticket -->
+        <div class="ai-brief-tab-panel ai-brief-tab-panel-hidden" data-panel="ticket">
+          ${hasTicket
+            ? `<div class="ai-ticket-block">${_renderTicketDraft(result.ticketDraft)}</div>
+               <div class="ai-brief-tab-footer">
+                 <button class="ai-brief-copy-btn ai-brief-copy-all-btn" data-ai-copy-all="ticket">⎘ Copy ticket</button>
+               </div>`
+            : `<div class="ai-brief-error">Ticket draft not available for this context.</div>`
+          }
         </div>
 
+        <!-- Panel: Escalate -->
+        <div class="ai-brief-tab-panel ai-brief-tab-panel-hidden" data-panel="escalate">
+          ${hasEscalate
+            ? `<div class="ai-brief-sec">
+                 <div class="ai-brief-sec-title">📢 Escalation Note</div>
+                 <div class="ai-brief-lines">${_renderLines(result.escalationNote)}</div>
+                 <button class="ai-brief-copy-btn" data-ai-copy="escalate" title="Copy escalation note">⎘ Copy</button>
+               </div>
+               <div class="ai-brief-tab-footer">
+                 <button class="ai-brief-copy-btn ai-brief-copy-all-btn" data-ai-copy-all="escalate">⎘ Copy note</button>
+               </div>`
+            : `<div class="ai-brief-error">Escalation note not available for this context.</div>`
+          }
+        </div>
+
+        <!-- Panel: Share -->
+        <div class="ai-brief-tab-panel ai-brief-tab-panel-hidden" data-panel="share">
+          ${hasShare
+            ? `<div class="ai-brief-sec">
+                 <div class="ai-brief-sec-title">📤 Share Rewrite <span class="ai-brief-sec-hint">Slack / Teams</span></div>
+                 <div class="ai-brief-lines ai-brief-share-lines">${_renderLines(result.shareRewrite)}</div>
+                 <button class="ai-brief-copy-btn" data-ai-copy="share" title="Copy share message">⎘ Copy</button>
+               </div>
+               <div class="ai-brief-tab-footer">
+                 <button class="ai-brief-copy-btn ai-brief-copy-all-btn" data-ai-copy-all="share">⎘ Copy message</button>
+               </div>`
+            : `<div class="ai-brief-error">Share rewrite not available for this context.</div>`
+          }
+        </div>
+
+        <!-- Global footer / disclaimer -->
         <div class="ai-brief-footer">
           <span class="ai-brief-disclaimer">
             ✦ ${_esc(modelLabel)} · ${_esc(signalNote)}${genTime ? " · " + _esc(genTime) : ""}
             · Always verify before action
           </span>
-          <button class="ai-brief-copy-btn ai-brief-copy-all-btn" id="ai-copy-all-btn">⎘ Copy all</button>
         </div>
 
       </div>`;
+  }
+
+  // Render ticketDraft: each line "KEY: value" → labeled row; bare lines → value-only row
+  function _renderTicketDraft(raw) {
+    if (!raw) return "";
+    const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+    return lines.map(line => {
+      const colon = line.indexOf(": ");
+      if (colon > 0 && colon < 30) {
+        const key = line.slice(0, colon).trim();
+        const val = line.slice(colon + 2).trim();
+        return `<div class="ai-ticket-row">
+          <span class="ai-ticket-key">${_esc(key)}</span>
+          <span class="ai-ticket-val">${_esc(val)}</span>
+        </div>`;
+      }
+      return `<div class="ai-ticket-row ai-ticket-row-full"><span class="ai-ticket-val">${_esc(line)}</span></div>`;
+    }).join("");
+  }
+
+  // Render escalationNote / shareRewrite: split on \n, each line → <p>
+  function _renderLines(raw) {
+    if (!raw) return "";
+    return raw.split("\n")
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(l => `<p class="ai-brief-line">${_esc(l)}</p>`)
+      .join("");
   }
 
   // ── Modal ─────────────────────────────────────────────────────────────────
@@ -246,7 +339,10 @@ const AIBrief = (() => {
       const body = document.getElementById("ai-brief-body");
       if (!body) return;
       body.innerHTML = _renderResult(result);
-      if (!result.error) _bindCopyButtons(body, result);
+      if (!result.error) {
+        _bindTabs(body);
+        _bindCopyButtons(body, result);
+      }
     });
   }
 
@@ -259,34 +355,73 @@ const AIBrief = (() => {
 
   function _onEsc(e) { if (e.key === "Escape") closeModal(); }
 
+  // ── Onglets ───────────────────────────────────────────────────────────────
+
+  function _bindTabs(container) {
+    const tabs   = container.querySelectorAll(".ai-brief-tab");
+    const panels = container.querySelectorAll(".ai-brief-tab-panel");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tab;
+
+        tabs.forEach(t => {
+          t.classList.remove("ai-brief-tab-active");
+          t.setAttribute("aria-selected", "false");
+        });
+        panels.forEach(p => p.classList.add("ai-brief-tab-panel-hidden"));
+
+        tab.classList.add("ai-brief-tab-active");
+        tab.setAttribute("aria-selected", "true");
+        const panel = container.querySelector(`[data-panel="${target}"]`);
+        if (panel) panel.classList.remove("ai-brief-tab-panel-hidden");
+      });
+    });
+  }
+
   // ── Boutons Copy ──────────────────────────────────────────────────────────
+
+  function _buildBriefText(result) {
+    return [
+      `🔬 ANALYST BRIEF\n${result.analystBrief}`,
+      `\n📊 EXECUTIVE BRIEF\n${result.executiveBrief}`,
+      `\n▶ RECOMMENDED NEXT STEP\n${result.nextStep}`,
+      `\n[✦ AI-generated by CyberVeille Pro · ${result.model || "AI"} · ${new Date().toLocaleString("en-US")}]`
+    ].join("");
+  }
 
   function _bindCopyButtons(container, result) {
     // Boutons copy individuels
     container.querySelectorAll("[data-ai-copy]").forEach(btn => {
-      if (btn.id === "ai-copy-all-btn") return; // traité séparément
       btn.addEventListener("click", () => {
         const which = btn.dataset.aiCopy;
         const text  = which === "analyst"  ? result.analystBrief
                     : which === "exec"     ? result.executiveBrief
-                    : result.nextStep;
-        _copyText(text, btn);
+                    : which === "nextstep" ? result.nextStep
+                    : which === "escalate" ? result.escalationNote
+                    : which === "share"    ? result.shareRewrite
+                    : "";
+        if (text) _copyText(text, btn);
       });
     });
 
-    // Bouton Copy all
-    const allBtn = document.getElementById("ai-copy-all-btn");
-    if (allBtn) {
-      allBtn.addEventListener("click", () => {
-        const full = [
-          `🔬 ANALYST BRIEF\n${result.analystBrief}`,
-          `\n📊 EXECUTIVE BRIEF\n${result.executiveBrief}`,
-          `\n▶ RECOMMENDED NEXT STEP\n${result.nextStep}`,
-          `\n[✦ AI-generated by CyberVeille Pro · ${result.model || "AI"} · ${new Date().toLocaleString("en-US")}]`
-        ].join("");
-        _copyText(full, allBtn);
+    // Boutons "Copy all" par onglet
+    container.querySelectorAll("[data-ai-copy-all]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const which = btn.dataset.aiCopyAll;
+        let text = "";
+        if (which === "brief") {
+          text = _buildBriefText(result);
+        } else if (which === "ticket") {
+          text = result.ticketDraft || "";
+        } else if (which === "escalate") {
+          text = result.escalationNote || "";
+        } else if (which === "share") {
+          text = result.shareRewrite || "";
+        }
+        if (text) _copyText(text, btn);
       });
-    }
+    });
   }
 
   function _copyText(text, btn) {
