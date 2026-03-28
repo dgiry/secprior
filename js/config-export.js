@@ -23,6 +23,22 @@ const ConfigExport = (() => {
   const SCHEMA  = 'cyberveille-pro-config';
   const VERSION = 1;
 
+  // ── Champs sensibles dans alertSettings ──────────────────────────────────
+  // Ces champs sont exclus de l'export "safe" pour éviter tout partage involontaire.
+
+  const SENSITIVE_FIELDS = [
+    'webhookUrl',          // Webhook endpoint URL (may expose internal infra)
+    'resendApiKey',        // Resend.com API key          (SECRET)
+    'sendgridApiKey',      // SendGrid API key             (SECRET)
+    'emailjsPublicKey',    // EmailJS public key           (SECRET)
+    'emailjsService',      // EmailJS Service ID           (semi-sensitive)
+    'emailjsTemplate',     // EmailJS Template ID          (semi-sensitive)
+    'alertToken',          // ALERT_TOKEN for /api/send-alert (SECRET)
+    'recipientEmail',      // Destination email address    (PII)
+    'resendFrom',          // Sender email address         (PII)
+    'sendgridFrom'         // Sender email address         (PII)
+  ];
+
   // ── Clés localStorage ─────────────────────────────────────────────────────
 
   const KEYS = {
@@ -35,6 +51,13 @@ const ConfigExport = (() => {
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  // Retourne une copie de alertSettings sans les champs sensibles.
+  function _stripSensitive(settings) {
+    const safe = { ...settings };
+    SENSITIVE_FIELDS.forEach(k => delete safe[k]);
+    return safe;
+  }
 
   function _read(key) {
     try   { return JSON.parse(localStorage.getItem(key) ?? 'null'); }
@@ -53,21 +76,29 @@ const ConfigExport = (() => {
   }
 
   // ── Export ────────────────────────────────────────────────────────────────
+  //
+  // includeSensitive = true  → export complet (comportement historique)
+  // includeSensitive = false → export safe : champs sensibles retirés de alertSettings
 
-  function exportConfig() {
+  function exportConfig(includeSensitive = true) {
+    let alertSettings = _read(KEYS.alertSettings) ?? {};
+    if (!includeSensitive) alertSettings = _stripSensitive(alertSettings);
+
     const payload = {
       schema:       SCHEMA,
       version:      VERSION,
       exportedAt:   new Date().toISOString(),
       app:          'CyberVeille Pro',
+      safeExport:   !includeSensitive,   // flag lisible à l'import
       profiles:     _read(KEYS.profiles)      ?? null,
       savedFilters: _read(KEYS.savedFilters)  ?? [],
       customFeeds:  _read(KEYS.customFeeds)   ?? [],
       feedOverrides:_read(KEYS.feedOverrides) ?? {},
-      alertSettings:_read(KEYS.alertSettings) ?? {},
+      alertSettings,
       favorites:    _read(KEYS.favorites)     ?? []
     };
 
+    const suffix = includeSensitive ? '' : '-safe';
     const blob = new Blob(
       [JSON.stringify(payload, null, 2)],
       { type: 'application/json' }
@@ -75,13 +106,16 @@ const ConfigExport = (() => {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `cyberveille-pro-config-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `cyberveille-pro-config-${new Date().toISOString().slice(0,10)}${suffix}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    if (typeof UI !== 'undefined') UI.showToast('✅ Configuration exported', 'success');
+    const msg = includeSensitive
+      ? '📤 Full configuration exported'
+      : '🛡️ Safe export ready (no credentials)';
+    if (typeof UI !== 'undefined') UI.showToast(msg, 'success');
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -195,7 +229,15 @@ const ConfigExport = (() => {
   }
 
   function _replaceAlertSettings(incoming) {
-    if (incoming && typeof incoming === 'object') _write(KEYS.alertSettings, incoming);
+    if (!incoming || typeof incoming !== 'object') return;
+    // Si l'export source était un "safe export", les champs sensibles sont absents.
+    // On les préserve depuis le localStorage local pour ne pas effacer les credentials.
+    const local  = _read(KEYS.alertSettings) ?? {};
+    const merged = { ...incoming };
+    SENSITIVE_FIELDS.forEach(k => {
+      if (!(k in incoming) && k in local) merged[k] = local[k];
+    });
+    _write(KEYS.alertSettings, merged);
   }
 
   function _replaceFavorites(incoming) {
@@ -295,11 +337,25 @@ const ConfigExport = (() => {
               <span class="cex-chip">${filterCount} preset${filterCount !== 1 ? 's' : ''}</span>
               <span class="cex-chip">${feedCount} custom feed${feedCount !== 1 ? 's' : ''}</span>
               <span class="cex-chip">${favCount} favorite${favCount !== 1 ? 's' : ''}</span>
-              ${hasAlerts ? '<span class="cex-chip">alert settings</span>' : ''}
+              ${hasAlerts ? '<span class="cex-chip cex-chip-warn">⚠ alert settings</span>' : ''}
             </div>
-            <button class="btn btn-primary cex-export-btn" id="cex-export-btn">
-              📤 Download configuration
-            </button>
+            ${hasAlerts ? `
+            <div class="cex-security-notice">
+              🔐 <strong>Security notice:</strong> Your configuration contains
+              <strong>credentials</strong> (API keys, webhook URL, token, email addresses).
+              Use <em>Export without credentials</em> to share safely.
+            </div>` : ''}
+            <div class="cex-export-row">
+              <button class="btn cex-btn-safe" id="cex-export-safe-btn"
+                      title="Recommended — excludes API keys, webhook URL, token and email addresses">
+                🛡️ Export without credentials
+              </button>
+              ${hasAlerts ? `
+              <button class="btn cex-btn-full" id="cex-export-full-btn"
+                      title="Full export — includes API keys, webhook URL, token and email addresses">
+                📤 Full export
+              </button>` : ''}
+            </div>
           </div>
 
           <div class="cex-sep"></div>
@@ -325,7 +381,8 @@ const ConfigExport = (() => {
 
     document.getElementById('cex-close')?.addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
-    document.getElementById('cex-export-btn')?.addEventListener('click', exportConfig);
+    document.getElementById('cex-export-safe-btn')?.addEventListener('click', () => exportConfig(false));
+    document.getElementById('cex-export-full-btn')?.addEventListener('click', () => exportConfig(true));
     document.getElementById('cex-file-input')?.addEventListener('change', _onFileSelected);
     document.addEventListener('keydown', _onEsc);
   }
@@ -363,10 +420,14 @@ const ConfigExport = (() => {
           { day: '2-digit', month: '2-digit', year: 'numeric' })
       : '—';
 
+    const safeLabel = data.safeExport
+      ? ' · <span class="cex-badge-safe">🛡️ safe export</span>'
+      : '';
+
     zone.innerHTML = `
       <div class="cex-preview">
         <div class="cex-preview-meta">
-          File from <strong>${_esc(exportDate)}</strong> · version ${data.version}
+          File from <strong>${_esc(exportDate)}</strong> · version ${data.version}${safeLabel}
         </div>
         <div class="cex-chips">
           <span class="cex-chip">${profileCount} profile${profileCount !== 1 ? 's' : ''}</span>

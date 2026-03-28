@@ -3519,9 +3519,63 @@ body.modal-open { overflow: hidden; }
 .cex-success small  { color: var(--text2); }
 .cex-reload-msg { color: var(--text2); font-style: italic; }
 
+/* ── Export security hardening ────────────────────────────────────────────── */
+.cex-security-notice {
+  font-size: .72rem;
+  color: var(--warn);
+  background: rgba(210,153,34,.08);
+  border: 1px solid rgba(210,153,34,.22);
+  border-radius: 6px;
+  padding: .45rem .65rem;
+  margin: .55rem 0 .25rem;
+  line-height: 1.5;
+}
+.cex-security-notice strong { color: var(--warn); }
+.cex-security-notice em { font-style: normal; font-weight: 600; }
+
+.cex-chip-warn { background: rgba(210,153,34,.12); color: var(--warn); }
+
+.cex-export-row { display: flex; gap: .5rem; margin-top: .6rem; flex-wrap: wrap; align-items: center; }
+
+.cex-btn-safe {
+  font-size: .78rem;
+  background: rgba(63,185,80,.1);
+  color: #3fb950;
+  border: 1px solid rgba(63,185,80,.3);
+  padding: .38rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.cex-btn-safe:hover { background: rgba(63,185,80,.2); border-color: #3fb950; }
+
+.cex-btn-full {
+  font-size: .72rem;
+  color: var(--text2);
+  border: 1px solid var(--border);
+  padding: .35rem .65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+}
+.cex-btn-full:hover { border-color: var(--warn); color: var(--warn); }
+
+.cex-badge-safe {
+  display: inline-block;
+  font-size: .68rem;
+  color: #3fb950;
+  background: rgba(63,185,80,.1);
+  border: 1px solid rgba(63,185,80,.25);
+  border-radius: 4px;
+  padding: .05rem .35rem;
+  vertical-align: middle;
+}
+
 @media (max-width: 640px) {
   .cex-mode-row { flex-direction: column; }
   .cex-mode-btn { min-width: 0; }
+  .cex-export-row { flex-direction: column; }
+  .cex-btn-safe, .cex-btn-full { width: 100%; text-align: center; }
 }
 
 /* ── (suite styles existants) ────────────────────────────────────────────── */
