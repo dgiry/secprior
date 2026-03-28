@@ -188,7 +188,7 @@ const SettingsModal = (() => {
     if (!s.emailjsService || !s.emailjsTemplate || !s.emailjsPublicKey) {
       UI.showToast("Fill in Service ID, Template ID and public key", "error"); return;
     }
-    const fakeArticle = [{ id: "test-article", title: "Test ThreatLens — email de test", sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Email de test." }];
+    const fakeArticle = [{ id: "test-article", title: "Test ThreatLens — test email", sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Test email." }];
     const testBtn = document.querySelectorAll(".btn-test")[1];
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = "⏳ Sending…"; }
     const saved = AlertManager.loadSettings();
@@ -243,7 +243,7 @@ const SettingsModal = (() => {
   async function _runTest(channel, overrides, btnLabel, btnSelector) {
     const btn = document.querySelector(btnSelector);
     if (btn) { btn.disabled = true; btn.textContent = "⏳ Sending…"; }
-    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test ThreatLens via ${channel}`, sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Email de test ${channel}.` }];
+    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test ThreatLens via ${channel}`, sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Test email via ${channel}.` }];
     const saved = AlertManager.loadSettings();
     AlertManager.saveSettings({ ...saved, ...overrides, channel, enabled: true, lastSentAt: 0, cooldownMs: 0 });
     try {
@@ -304,8 +304,8 @@ const SettingsModal = (() => {
     // Compteur de statut
     const statsEl = document.getElementById("fm-count-stats");
     if (statsEl) {
-      statsEl.textContent = `${active} actifs · ${all.length} total`
-        + (errors > 0 ? ` · ⚠ ${errors} en erreur` : "");
+      statsEl.textContent = `${active} active · ${all.length} total`
+        + (errors > 0 ? ` · ⚠ ${errors} error(s)` : "");
     }
 
     // Badge sur l'onglet
@@ -415,7 +415,7 @@ const SettingsModal = (() => {
     const btn = row?.querySelector(".fm-btn-test");
     if (btn) { btn.disabled = true; btn.textContent = "⏳"; }
 
-    UI.showToast(`🧪 Test de ${feed.name}…`, "info");
+    UI.showToast(`🧪 Testing ${feed.name}…`, "info");
 
     const result = await FeedManager.testFeed(feed);
 

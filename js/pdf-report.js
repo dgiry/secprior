@@ -114,7 +114,7 @@ const PDFReport = (() => {
         <h2 class="rpt-section-title">📊 Executive Summary</h2>
 
         <div class="rpt-posture-row">
-          <span class="rpt-posture-lbl">Posture globale :</span>
+          <span class="rpt-posture-lbl">Security Posture:</span>
           <span class="rpt-posture ${postureCls}">${postureLabel}</span>
         </div>
 
@@ -141,7 +141,7 @@ const PDFReport = (() => {
           </div>
           <div class="rpt-kpi">
             <div class="rpt-kpi-val">${totalIoc}</div>
-            <div class="rpt-kpi-lbl">IOCs extraits</div>
+            <div class="rpt-kpi-lbl">IOCs Extracted</div>
           </div>
         </div>
 
