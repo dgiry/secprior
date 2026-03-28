@@ -46,10 +46,17 @@ a:hover { text-decoration: underline; }
 }
 
 .navbar-brand {
-  font-size: 1.15rem; font-weight: 700; color: var(--accent);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
   white-space: nowrap; margin-right: auto;
 }
-.navbar-brand span { color: var(--err); }
+.navbar-brand-name {
+  font-size: 1.15rem; font-weight: 700; color: var(--accent); line-height: 1.2;
+}
+.navbar-brand-name > span { color: var(--err); }
+.navbar-brand-sub {
+  font-size: 0.6rem; font-weight: 400; color: var(--muted);
+  letter-spacing: 0.05em; opacity: 0.75; line-height: 1;
+}
 
 .search-input {
   background: var(--surface2);
