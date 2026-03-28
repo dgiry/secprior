@@ -269,7 +269,9 @@ function _buildSystemPrompt() {
 - Tone: collegial, informational, calm.
 
 ═══ POOR CONTEXT RULES ═══
-- description absent or < 40 chars AND no CVE AND no KEV: begin ALL outputs with "Limited context — " and base on metadata only.
+- Use "Limited context — " prefix ONLY when the user prompt explicitly says "Context quality: POOR". Do NOT use it otherwise.
+- When "Context quality: PARTIAL" is indicated: description is minimal but strong signals are present. Write normally using the available signal data. Do NOT use "Limited context" prefix.
+- Strong signals that make "Limited context" inappropriate: KEV confirmed, CVEs present, watchlist hit, ATT&CK tags, trending across ≥2 sources, incident with ≥2 sources, incident with a meaningful summary. If any of these are present, write a normal confident brief based on the signals.
 - priorityLevel "low" or "watch" with no strong signals: calm tone, no urgency.
 - No vendor present: do not mention "vendor exposure" in any output.
 - No IOC present: do not mention IOC blocking or IOC-based detection.
@@ -340,10 +342,22 @@ function _buildUserPrompt(ctx) {
   }
 
   const descLen = String(ctx.description || "").length;
-  if (descLen < 40 && !ctx.cves?.length && !ctx.isKEV) {
-    lines.push("Context quality: POOR — use metadata signals only, acknowledge limited context");
+  // A signal is "strong" if any of these are present — even a sparse description
+  // is sufficient context to write normally when these indicators exist.
+  const hasStrongSignal =
+    ctx.isKEV ||
+    (ctx.cves?.length > 0) ||
+    (ctx.watchlistHit === true) ||
+    (ctx.watchlistHits?.length > 0) ||
+    (ctx.trendingCount || 0) >= 2 ||
+    (ctx.attackTags?.length > 0) ||
+    (ctx.type === "incident" && (ctx.sourceCount || 0) >= 2) ||
+    (ctx.type === "incident" && String(ctx.summary || "").length > 40);
+
+  if (descLen < 40 && !hasStrongSignal) {
+    lines.push("Context quality: POOR — use metadata signals only, acknowledge limited context in all outputs");
   } else if (descLen < 40) {
-    lines.push("Context quality: PARTIAL — description minimal, rely on signal fields");
+    lines.push("Context quality: PARTIAL — description minimal but strong signals are present; write normally from signal data, do NOT use 'Limited context' prefix");
   }
 
   const signalSummary = lines.length > 0
