@@ -1264,6 +1264,11 @@ const QuickActions = (() => {
                   title="Share — Slack/Teams or internal email in one click">
             📤 Share
           </button>
+          <div class="qa-actions-sep" role="separator"></div>
+          <button class="qa-actions-item qa-actions-item-ai" id="art-modal-ai-brief"
+                  title="Generate an AI-assisted analyst brief, executive brief and next step — based on existing signals">
+            ✦ AI Brief
+          </button>
           ${showIoc ? `
           <div class="qa-actions-sep" role="separator"></div>
           <button class="qa-actions-item" id="art-modal-copy-ioc"
@@ -1308,6 +1313,11 @@ const QuickActions = (() => {
             <button class="qa-actions-item qa-json-inc" data-iid="${incidentId}"
                     title="Export enriched JSON payload (webhook / integration)">
               📤 Export JSON
+            </button>
+            <div class="qa-actions-sep" role="separator"></div>
+            <button class="qa-actions-item qa-actions-item-ai qa-ai-brief-inc" data-iid="${incidentId}"
+                    title="Generate an AI-assisted analyst brief, executive brief and next step">
+              ✦ AI Brief
             </button>
           </div>
         </div>
@@ -1363,6 +1373,17 @@ const QuickActions = (() => {
       ?.addEventListener('click', () =>
         _showShareModal(article, 'article'));
 
+    document.getElementById('art-modal-ai-brief')
+      ?.addEventListener('click', e => {
+        e.stopPropagation();
+        // Fermer le dropdown avant d'ouvrir la modale AI
+        const popover = document.getElementById('art-qa-popover');
+        const trigger = document.getElementById('art-qa-trigger');
+        if (popover) popover.style.display = 'none';
+        if (trigger) trigger.classList.remove('qa-actions-open');
+        if (typeof AIBrief !== 'undefined') AIBrief.showModal(article, 'article');
+      });
+
     // Note : art-modal-copy-ioc est bindé dans article-modal.js (accès à _copyIOCs privé)
   }
 
@@ -1409,6 +1430,15 @@ const QuickActions = (() => {
         e.stopPropagation();
         const inc = incidentsCache.find(i => i.incidentId === btn.dataset.iid);
         if (inc) _showShareModal(inc, 'incident');
+      });
+    });
+
+    // ── Sprint IA — AI Brief par incident ────────────────────────────────────
+    container.querySelectorAll('.qa-ai-brief-inc').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const inc = incidentsCache.find(i => i.incidentId === btn.dataset.iid);
+        if (inc && typeof AIBrief !== 'undefined') AIBrief.showModal(inc, 'incident');
       });
     });
 

@@ -1,0 +1,312 @@
+// ai-brief.js — AI-assisted brief generation (Sprint IA v1)
+//
+// Génère 3 sorties IA depuis /api/ai-brief (Claude Haiku via Anthropic) :
+//   🔬 Analyst Brief   — brief technique pour analyste SOC
+//   📊 Executive Brief — résumé risque métier pour RSSI / manager
+//   ▶  Next Step       — action prudente recommandée
+//
+// Design :
+//   • Seuls les champs signaux vérifiés sont transmis à l'API (jamais de données brutes libres)
+//   • La description est débarrassée des tags HTML et tronquée à 800 caractères avant envoi
+//   • Les sorties sont affichées telles quelles depuis l'API (validées côté serveur)
+//   • En cas d'erreur : message explicite, jamais de crash silencieux
+//   • Si l'API n'est pas configurée (503) : message d'aide clair
+//   • Si mode statique / pas de réseau : dégradation gracieuse
+//
+// API publique :
+//   AIBrief.buildContext(entity, type)   — extrait le contexte structuré (article|incident)
+//   AIBrief.generate(entity, type)       — appelle /api/ai-brief, retourne { analystBrief, … }
+//   AIBrief.showModal(entity, type)      — ouvre la modale et déclenche la génération
+//   AIBrief.closeModal()                 — ferme la modale
+
+const AIBrief = (() => {
+
+  // ── Construction du contexte ──────────────────────────────────────────────
+  //
+  // UNIQUEMENT les champs signaux connus et vérifiés.
+  // Pas de champs HTML bruts, pas de contenu libre non contrôlé.
+
+  function buildContext(entity, type) {
+    return type === "incident"
+      ? _buildIncidentContext(entity)
+      : _buildArticleContext(entity);
+  }
+
+  function _buildArticleContext(a) {
+    const ctx = { type: "article" };
+
+    // Identité
+    if (a.title)      ctx.title  = String(a.title).slice(0, 200);
+    if (a.sourceName) ctx.source = String(a.sourceName).slice(0, 80);
+    if (a.pubDate) {
+      ctx.pubDate = a.pubDate instanceof Date
+        ? a.pubDate.toISOString().slice(0, 10)
+        : String(a.pubDate).slice(0, 25);
+    }
+
+    // Description : strip HTML + troncature anti-injection
+    const desc = String(a.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (desc.length > 3) ctx.description = desc.slice(0, 800);
+
+    // Priorité
+    if (a.priorityLevel)             ctx.priorityLevel   = a.priorityLevel;
+    if ((a.priorityScore || 0) > 0)  ctx.priorityScore   = Math.round(a.priorityScore);
+    if (a.priorityReasons?.length)   ctx.priorityReasons = a.priorityReasons.slice(0, 5);
+
+    // Vulnérabilité
+    const cves = a.cveIds || a.cves || [];
+    if (cves.length)          ctx.cves      = cves.slice(0, 6);
+    if (a.isKEV === true)     ctx.isKEV     = true;
+    if (a.epssScore != null)  ctx.epssScore = Math.round(a.epssScore * 1000) / 10; // → %
+    if (a.cvssScore != null)  ctx.cvssScore = a.cvssScore;
+
+    // Couverture & signaux
+    if (a.vendors?.length)          ctx.vendors       = a.vendors.slice(0, 5);
+    if ((a.iocCount || 0) > 0)      ctx.iocCount      = a.iocCount;
+    if (a.isTrending === true)      ctx.trending      = true;
+    if ((a.trendingCount || 0) > 1) ctx.trendingCount = a.trendingCount;
+    if (a.watchlistMatches?.length) ctx.watchlistHits = a.watchlistMatches.slice(0, 5);
+    if (a.attackTags?.length) {
+      ctx.attackTags = a.attackTags.slice(0, 4).map(t => ({
+        label:  String(t.label  || "").slice(0, 30),
+        tactic: String(t.tactic || "").slice(0, 40)
+      }));
+    }
+
+    return ctx;
+  }
+
+  function _buildIncidentContext(inc) {
+    const ctx = { type: "incident" };
+
+    // Identité
+    if (inc.title)         ctx.title        = String(inc.title).slice(0, 200);
+    if (inc.summary)       ctx.summary      = String(inc.summary).slice(0, 500);
+    if (inc.articleCount)  ctx.articleCount = inc.articleCount;
+    if (inc.sourceCount)   ctx.sourceCount  = inc.sourceCount;
+    if (inc.sources?.length) ctx.sources    = inc.sources.slice(0, 5);
+
+    // Priorité
+    if (inc.incidentPriorityLevel)   ctx.priorityLevel   = inc.incidentPriorityLevel;
+    if (inc.incidentPriorityScore)   ctx.priorityScore   = Math.round(inc.incidentPriorityScore);
+    if (inc.priorityReasons?.length) ctx.priorityReasons = inc.priorityReasons.slice(0, 5);
+
+    // Vulnérabilité
+    if (inc.cves?.length)  ctx.cves    = inc.cves.slice(0, 6);
+    if (inc.kev === true)  ctx.isKEV   = true;
+    const epss = inc.maxEpss ?? inc.epssScore;
+    if (epss != null)      ctx.epssScore = Math.round(epss * 1000) / 10;
+    if (inc.vendors?.length) ctx.vendors = inc.vendors.slice(0, 5);
+
+    // Couverture
+    if (inc.watchlistHit === true) ctx.watchlistHit = true;
+    if (inc.trending === true)     ctx.trending     = true;
+    if ((inc.rawIocCount || 0) > 0) ctx.iocCount    = inc.rawIocCount;
+    if (inc.attackTags?.length)    ctx.attackTags   = inc.attackTags.slice(0, 4);
+    if (inc.firstSeen)             ctx.firstSeen    = String(inc.firstSeen).slice(0, 25);
+    if (inc.lastSeen)              ctx.lastSeen     = String(inc.lastSeen).slice(0, 25);
+
+    return ctx;
+  }
+
+  // ── Appel API ─────────────────────────────────────────────────────────────
+
+  async function generate(entity, type) {
+    const ctx = buildContext(entity, type);
+    if (!ctx) return { error: "build_failed", message: "Could not extract context." };
+
+    try {
+      const res = await fetch("/api/ai-brief", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(ctx),
+        signal:  AbortSignal.timeout(22_000)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 503) {
+          return { error: "not_configured", message: err.detail || "ANTHROPIC_API_KEY not set in Vercel environment." };
+        }
+        if (res.status === 504) {
+          return { error: "timeout", message: "AI service timed out — try again." };
+        }
+        return { error: "api_error", message: err.error || `HTTP ${res.status}` };
+      }
+
+      return await res.json();
+
+    } catch (e) {
+      if (e.name === "TimeoutError" || e.name === "AbortError") {
+        return { error: "timeout", message: "Request timed out — try again." };
+      }
+      // Mode statique ou réseau indisponible
+      return {
+        error:   "network_error",
+        message: "AI Brief requires a Vercel deployment (API mode not available in static mode)."
+      };
+    }
+  }
+
+  // ── Rendu HTML ────────────────────────────────────────────────────────────
+
+  function _renderResult(result) {
+    if (result.error) {
+      const msgs = {
+        not_configured: `<strong>AI Brief not configured.</strong><br><small class="ai-brief-err-hint">${_esc(result.message)}</small>`,
+        timeout:        `<strong>⏱ Timeout.</strong> ${_esc(result.message)}`,
+        api_error:      `<strong>⚠ API error:</strong> ${_esc(result.message)}`,
+        network_error:  `<strong>⚠ Not available.</strong><br><small class="ai-brief-err-hint">${_esc(result.message)}</small>`,
+        build_failed:   `<strong>⚠ Context error:</strong> ${_esc(result.message)}`
+      };
+      return `<div class="ai-brief-error">${msgs[result.error] || "⚠ " + _esc(result.message)}</div>`;
+    }
+
+    const signalNote = result.signalCount ? `${result.signalCount} signals` : "";
+    const modelLabel = result.model ? _esc(result.model) : "AI";
+    const genTime    = result.generatedAt
+      ? new Date(result.generatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      : "";
+
+    return `
+      <div class="ai-brief-panel">
+
+        <div class="ai-brief-sec">
+          <div class="ai-brief-sec-title">🔬 Analyst Brief</div>
+          <p class="ai-brief-text">${_esc(result.analystBrief)}</p>
+          <button class="ai-brief-copy-btn" data-ai-copy="analyst" title="Copy analyst brief">⎘ Copy</button>
+        </div>
+
+        <div class="ai-brief-sec">
+          <div class="ai-brief-sec-title">📊 Executive Brief</div>
+          <p class="ai-brief-text">${_esc(result.executiveBrief)}</p>
+          <button class="ai-brief-copy-btn" data-ai-copy="exec" title="Copy executive brief">⎘ Copy</button>
+        </div>
+
+        <div class="ai-brief-sec ai-brief-nextstep-sec">
+          <div class="ai-brief-sec-title">▶ Recommended Next Step</div>
+          <p class="ai-brief-text ai-brief-nextstep-text">${_esc(result.nextStep)}</p>
+          <button class="ai-brief-copy-btn" data-ai-copy="nextstep" title="Copy next step">⎘ Copy</button>
+        </div>
+
+        <div class="ai-brief-footer">
+          <span class="ai-brief-disclaimer">
+            ✦ ${_esc(modelLabel)} · ${_esc(signalNote)}${genTime ? " · " + _esc(genTime) : ""}
+            · Always verify before action
+          </span>
+          <button class="ai-brief-copy-btn ai-brief-copy-all-btn" id="ai-copy-all-btn">⎘ Copy all</button>
+        </div>
+
+      </div>`;
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+
+  function showModal(entity, type) {
+    // Réutiliser ou créer l'overlay
+    let overlay = document.getElementById("ai-brief-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id        = "ai-brief-overlay";
+      overlay.className = "ai-brief-overlay";
+      overlay.style.display = "none";
+      document.body.appendChild(overlay);
+    }
+
+    const rawTitle   = type === "incident"
+      ? (entity.title || "Incident")
+      : (entity.title || "Article");
+    const shortTitle = String(rawTitle).slice(0, 70) + (rawTitle.length > 70 ? "…" : "");
+
+    overlay.innerHTML = `
+      <div class="ai-brief-box" role="dialog" aria-modal="true">
+        <div class="ai-brief-modal-hd">
+          <span class="ai-brief-modal-logo">✦</span>
+          <span class="ai-brief-modal-title">${_esc(shortTitle)}</span>
+          <button class="ai-brief-modal-close" id="ai-brief-close" title="Close">✕</button>
+        </div>
+        <div class="ai-brief-modal-body" id="ai-brief-body">
+          <div class="ai-brief-loading">
+            <span class="ai-brief-spinner"></span>
+            <span>Generating AI brief…</span>
+          </div>
+        </div>
+      </div>`;
+
+    overlay.style.display = "flex";
+    document.body.style.overflow = "hidden";
+
+    document.getElementById("ai-brief-close")
+      ?.addEventListener("click", closeModal);
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", _onEsc);
+
+    // Génération asynchrone
+    generate(entity, type).then(result => {
+      const body = document.getElementById("ai-brief-body");
+      if (!body) return;
+      body.innerHTML = _renderResult(result);
+      if (!result.error) _bindCopyButtons(body, result);
+    });
+  }
+
+  function closeModal() {
+    const overlay = document.getElementById("ai-brief-overlay");
+    if (overlay) overlay.style.display = "none";
+    document.body.style.overflow = "";
+    document.removeEventListener("keydown", _onEsc);
+  }
+
+  function _onEsc(e) { if (e.key === "Escape") closeModal(); }
+
+  // ── Boutons Copy ──────────────────────────────────────────────────────────
+
+  function _bindCopyButtons(container, result) {
+    // Boutons copy individuels
+    container.querySelectorAll("[data-ai-copy]").forEach(btn => {
+      if (btn.id === "ai-copy-all-btn") return; // traité séparément
+      btn.addEventListener("click", () => {
+        const which = btn.dataset.aiCopy;
+        const text  = which === "analyst"  ? result.analystBrief
+                    : which === "exec"     ? result.executiveBrief
+                    : result.nextStep;
+        _copyText(text, btn);
+      });
+    });
+
+    // Bouton Copy all
+    const allBtn = document.getElementById("ai-copy-all-btn");
+    if (allBtn) {
+      allBtn.addEventListener("click", () => {
+        const full = [
+          `🔬 ANALYST BRIEF\n${result.analystBrief}`,
+          `\n📊 EXECUTIVE BRIEF\n${result.executiveBrief}`,
+          `\n▶ RECOMMENDED NEXT STEP\n${result.nextStep}`,
+          `\n[✦ AI-generated by CyberVeille Pro · ${result.model || "AI"} · ${new Date().toLocaleString("en-US")}]`
+        ].join("");
+        _copyText(full, allBtn);
+      });
+    }
+  }
+
+  function _copyText(text, btn) {
+    navigator.clipboard?.writeText(text).then(() => {
+      if (!btn) return;
+      const orig = btn.textContent;
+      btn.textContent = "✓ Copied";
+      setTimeout(() => { btn.textContent = orig; }, 1600);
+    }).catch(() => {
+      if (typeof UI !== "undefined") UI.showToast("⚠ Copy failed", "error");
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function _esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  return { buildContext, generate, showModal, closeModal };
+
+})();
