@@ -152,7 +152,7 @@ module.exports = async (req, res) => {
   const result = {
     // Core brief (v1/v2 — unchanged limits)
     analystBrief:   _postProcess(parsed.analystBrief,    900, { trimSentences: 5 }),
-    executiveBrief: _postProcess(parsed.executiveBrief,  450, { trimSentences: 3 }),
+    executiveBrief: _postProcess(parsed.executiveBrief,  320, { trimSentences: 2 }),
     nextStep:       _postProcess(parsed.nextStep,        260, { trimSentences: 1, checkVerb: true }),
     // Action outputs (v3 — new)
     ticketDraft:    _postProcess(parsed.ticketDraft    || "", 1200, { isStructured: true }),
@@ -201,11 +201,28 @@ function _buildSystemPrompt() {
 - Focus: what type of threat, key indicators, what triage action is warranted.
 - Do NOT open by restating the article title. Do NOT use bullet points.
 
-── executiveBrief ── FOR: CISO / manager (decision)
-- 2 to 3 sentences MAX. No raw signal enumeration (no "EPSS 87%, CVSS 9.8, CVE-2024-xxx").
-- Translate: high EPSS → "elevated exploitation probability", KEV → "actively exploited in the wild", watchlist match → "a monitored vendor or technology in your scope".
-- Focus: what is at risk → risk level → what the team recommends.
-- Do NOT repeat the analystBrief. Different reader, different purpose.
+── executiveBrief ── FOR: CISO / security director / manager (10-second decision read)
+- EXACTLY 2 sentences. Hard limit — never write a third sentence, no matter how rich the context.
+- Sentence 1: why this item warrants attention right now — plain business stakes, no technical signal dump. Write for someone who will not read the full details.
+- Sentence 2: what the security team or manager should validate, prepare, or confirm internally.
+- FORBIDDEN in this section — never use, not even once:
+  · Raw EPSS percentages ("EPSS 87%", "87.3%", "score of 0.87")
+  · Raw CVSS scores ("CVSS 9.8", "severity score of 9.8", "9.8/10")
+  · CVE identifiers ("CVE-2024-XXXX", "CVE number", "the CVE")
+  · Technical jargon: "remote code execution capability", "threat actor TTPs", "MITRE ATT&CK", "attack vector", "lateral movement", "privilege escalation vector"
+  · Long signal enumerations ("vendor A, vendor B, IOC count 14, EPSS 87%, watchlist match…")
+  · Repetition of what was already said in analystBrief
+- REQUIRED plain-language translations (use these instead of raw values):
+  · EPSS ≥ 50%    → "elevated probability of exploitation in the near term"
+  · EPSS ≥ 80%    → "high probability of exploitation in the near term"
+  · isKEV = true  → "confirmed active exploitation in the wild"
+  · watchlist hit → "a technology or vendor in your monitored scope"
+  · CVSS ≥ 9      → "critical severity"
+  · CVSS 7–8.9    → "high severity"
+  · trending      → "confirmed across multiple independent sources"
+  · iocCount > 0  → "associated indicators have been extracted" (only if directly relevant)
+- If context is poor or signals are weak: use "Limited information is available at this stage — monitor for updates." as sentence 2 if nothing concrete can be said.
+- Tone: sober, measured, decision-ready. Not alarming, not dismissive.
 
 ── nextStep ── FOR: analyst / responder (first action)
 - Exactly 1 sentence. Starts with action verb. Matches priorityLevel urgency:
@@ -399,6 +416,18 @@ function _qualityCheck(result, ctx) {
   const nonVerbStart = /^(The |A |An |It |This |That |There |You |We |I )/i;
   if (nonVerbStart.test(result.nextStep)) {
     warnings.push("nextStep may not start with action verb: " + result.nextStep.slice(0, 50));
+  }
+
+  // Executive brief: raw technical signal dump check
+  const execRawSignals = /\bEPSS\s*[\d.]|CVSS\s*[\d.]|\bCVE-\d{4}-\d+\b|remote code execution capability|\bTTPs\b|ATT&CK|attack vector|lateral movement|privilege escalation vector/i;
+  if (execRawSignals.test(result.executiveBrief)) {
+    warnings.push("executiveBrief contains raw technical signals or jargon — expected plain management language: " + result.executiveBrief.slice(0, 100));
+  }
+
+  // Executive brief: sentence count (hard limit is 2 — post-processed, but log overruns)
+  const execSentences = (result.executiveBrief.match(/[^.!?]*[.!?](?:\s|$)/g) || []).filter(s => s.trim().length > 4);
+  if (execSentences.length > 2) {
+    warnings.push(`executiveBrief has ${execSentences.length} sentences (max 2)`);
   }
 
   if (warnings.length > 0) {
