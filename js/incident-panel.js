@@ -615,39 +615,105 @@ const IncidentPanel = (() => {
       </tr>`;
   }
 
+  // ── Compact reasoning block — Why / Signals / Focus ─────────────────────
+  function _reasoningBlockHTML(i) {
+
+    // Section 1: Why this matters — use priorityReasons[] or derive from signals
+    let reasons = (i.priorityReasons || []).slice(0, 4);
+    if (!reasons.length) {
+      if (i.kev)
+        reasons.push("Active exploitation confirmed (CISA KEV)");
+      if (i.maxEpss != null && i.maxEpss >= 0.70)
+        reasons.push(`EPSS ${Math.round(i.maxEpss * 100)}% — high exploitation probability`);
+      else if (i.maxEpss != null && i.maxEpss >= 0.40)
+        reasons.push(`EPSS ${Math.round(i.maxEpss * 100)}% — moderate exploitation probability`);
+      if (i.watchlistHit)
+        reasons.push("Matches asset watchlist");
+      if (i.sourceCount >= 3)
+        reasons.push(`Confirmed by ${i.sourceCount} independent sources`);
+      if (i.attackTags && i.attackTags.length)
+        reasons.push(`ATT&CK: ${i.attackTags.slice(0, 2).join(", ")}`);
+      if (!reasons.length && i.cves.length)
+        reasons.push("CVE identified — assess exposure");
+      if (!reasons.length)
+        reasons.push("Signal detected — monitor for updates");
+    }
+    const whyHTML = reasons
+      .map(r => `<span class="ip-rsn-why-item">${r}</span>`)
+      .join("");
+
+    // Section 2: Key signals — compact badge row
+    const signalTags = [
+      i.kev
+        ? `<span class="ip-badge ip-kev">🚨 KEV</span>` : "",
+      i.maxEpss != null
+        ? `<span class="ip-badge ip-epss">EPSS ${Math.round(i.maxEpss * 100)}%</span>` : "",
+      i.watchlistHit
+        ? `<span class="ip-badge ip-wl">👁 WL</span>` : "",
+      i.maxScore > 0
+        ? `<span class="ip-badge ip-rsn-score">⚡ ${i.maxScore}</span>` : "",
+      ...i.cves.slice(0, 2).map(c => `<code class="ip-cve-code">${c}</code>`),
+      i.cves.length > 2
+        ? `<span class="ip-dim">+${i.cves.length - 2}</span>` : "",
+      `<span class="ip-rsn-src">${i.sourceCount} src · ${i.articleCount} art.</span>`
+    ].filter(Boolean).join(" ");
+
+    // Section 3: Recommended focus — deterministic 1-sentence from signals
+    const lv = i.incidentPriorityLevel;
+    let focus;
+    if (i.kev) {
+      focus = "Verify exposure immediately and apply the vendor patch — active exploitation confirmed (CISA KEV).";
+    } else if (lv === "critical_now" && i.maxEpss != null && i.maxEpss >= 0.7) {
+      focus = "Prioritize patching within 24h — high exploitation probability confirmed by score and EPSS.";
+    } else if (lv === "critical_now" && i.watchlistHit) {
+      focus = "Investigate watchlisted assets immediately — elevated risk confirmed across multiple signals.";
+    } else if (lv === "critical_now") {
+      focus = "Escalate to infrastructure team and confirm patch availability.";
+    } else if (lv === "investigate" && i.watchlistHit) {
+      focus = "Investigate exposure on watchlisted assets and confirm scope before next patch cycle.";
+    } else if (lv === "investigate") {
+      focus = "Assign for investigation — assess exposed systems and confirm scope.";
+    } else if (lv === "watch") {
+      focus = "Monitor for updates and enrich with additional context.";
+    } else {
+      focus = "Track in standard reporting cycle.";
+    }
+
+    return `
+    <div class="ip-reasoning">
+      <div class="ip-rsn-row">
+        <span class="ip-rsn-lbl">Why this matters</span>
+        <div class="ip-rsn-why">${whyHTML}</div>
+      </div>
+      <div class="ip-rsn-row">
+        <span class="ip-rsn-lbl">Key signals</span>
+        <div class="ip-rsn-tags">${signalTags}</div>
+      </div>
+      <div class="ip-rsn-row">
+        <span class="ip-rsn-lbl">Recommended focus</span>
+        <span class="ip-rsn-focus">${focus}</span>
+      </div>
+    </div>`;
+  }
+
   function _detailHeaderHTML(i) {
     const pm = typeof getPriorityMeta === "function"
       ? getPriorityMeta(i.incidentPriorityLevel)
       : { icon: "⚪", label: "—", css: "low" };
 
-    // Bloc priorité — toujours affiché (y compris "low" pour transparence)
+    // Priority anchor — level + score (reasons now live in the reasoning block)
     const prioHeader = `
       <div class="ip-prio-header prio-${pm.css}">
         <span class="ip-prio-badge">${pm.icon} <strong>${pm.label}</strong></span>
         ${i.incidentPriorityScore > 0
           ? `<span class="ip-dim ip-prio-pts">Score&nbsp;${i.incidentPriorityScore}&nbsp;pts</span>` : ""}
-        ${i.priorityReasons.length
-          ? `<span class="ip-prio-reasons">${i.priorityReasons.join(" · ")}</span>` : ""}
       </div>`;
 
-    // Résumé lisible
+    // Readable summary
     const summaryLine = i.summary
       ? `<p class="ip-summary">${i.summary}</p>` : "";
 
-    // Méta secondaire : CVEs, score, EPSS, timeline, ATT&CK
-    const meta = [
-      i.cves.length  ? `<strong>${i.cves.join("  ·  ")}</strong>` : "",
-      `${i.articleCount} art. · ${i.sourceCount} src`,
-      i.maxScore > 0    ? `max score <strong>${i.maxScore}</strong>` : "",
-      i.maxEpss != null ? `EPSS max <strong>${Math.round(i.maxEpss * 100)}%</strong>` : "",
-      i.kev ? `<span class="ip-badge ip-kev" style="font-size:.65rem">🚨 KEV</span>` : "",
-      i.attackTags.length
-        ? `<span class="ip-dim">${i.attackTags.slice(0, 3).join(" · ")}</span>` : "",
-      i.firstSeen && i.lastSeen && i.firstSeen !== i.lastSeen
-        ? `${_fmtDate(i.firstSeen)} → ${_fmtDate(i.lastSeen)}` : ""
-    ].filter(Boolean).join(" &nbsp;·&nbsp; ");
-
-    return `${prioHeader}${summaryLine}<p class="ip-detail-head">${meta}</p>`;
+    return `${prioHeader}${summaryLine}${_reasoningBlockHTML(i)}`;
   }
 
   function _timelineRowHTML(a) {

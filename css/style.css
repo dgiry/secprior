@@ -3138,6 +3138,27 @@ body.modal-open { overflow: hidden; }
 .ip-summary           { margin:.1rem 0 .4rem; font-size:.74rem; color:var(--text2);
                         line-height:1.4; }
 
+/* ── Compact reasoning block (incident detail) ──────────────────────────── */
+.ip-reasoning         { border:1px solid var(--border); border-radius:6px;
+                        overflow:hidden; margin:.35rem 0 .65rem; }
+.ip-rsn-row           { display:flex; align-items:flex-start; gap:.55rem;
+                        padding:.35rem .65rem;
+                        border-top:1px solid var(--border); }
+.ip-rsn-row:first-child { border-top:none; }
+.ip-rsn-lbl           { font-size:.6rem; font-weight:700; color:var(--text2);
+                        letter-spacing:.05em; text-transform:uppercase;
+                        white-space:nowrap; min-width:6.5rem; flex-shrink:0;
+                        padding-top:.17rem; }
+.ip-rsn-why           { display:flex; flex-direction:column; gap:.1rem; flex:1; }
+.ip-rsn-why-item      { font-size:.75rem; color:var(--text); line-height:1.35; }
+.ip-rsn-why-item::before { content:"·"; margin-right:.3rem; color:#a371f7; }
+.ip-rsn-tags          { display:flex; flex-wrap:wrap; gap:.25rem;
+                        align-items:center; flex:1; }
+.ip-rsn-score         { background:rgba(88,166,255,.1); color:var(--accent); }
+.ip-rsn-src           { font-size:.65rem; color:var(--text2); font-family:monospace; }
+.ip-rsn-focus         { font-size:.75rem; font-weight:500; color:var(--text);
+                        line-height:1.35; flex:1; }
+
 /* Barre de tri incidents */
 .ip-sort-bar          { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap;
                         padding:.3rem 1rem; border-top:1px solid var(--border); }
