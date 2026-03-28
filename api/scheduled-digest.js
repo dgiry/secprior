@@ -10,7 +10,7 @@
 //   DIGEST_WEEKDAY     — jour 0-6 (0=dim) pour mode hebdomadaire ; vide = quotidien
 //   CRON_SECRET        — secret partagé pour sécuriser les appels manuels
 //   RESEND_API_KEY     — clé API Resend    (si DIGEST_CHANNEL=resend)
-//   RESEND_FROM        — expéditeur Resend (ex: "CyberVeille Pro <alerts@...>")
+//   RESEND_FROM        — expéditeur Resend (ex: "ThreatLens <alerts@...>")
 //   SENDGRID_API_KEY   — clé API SendGrid  (si DIGEST_CHANNEL=sendgrid)
 //   SENDGRID_FROM      — email expéditeur vérifié SendGrid
 
@@ -199,7 +199,7 @@ async function _sendEmail({ channel, to, subject, html, text }) {
   if (channel === "resend") {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) throw new Error("RESEND_API_KEY non configurée");
-    const from = process.env.RESEND_FROM || "CyberVeille Pro <onboarding@resend.dev>";
+    const from = process.env.RESEND_FROM || "ThreatLens <onboarding@resend.dev>";
 
     const res = await fetch("https://api.resend.com/emails", {
       method:  "POST",
@@ -224,7 +224,7 @@ async function _sendEmail({ channel, to, subject, html, text }) {
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body:    JSON.stringify({
         personalizations: [{ to: [{ email: to }], subject }],
-        from:    { email: fromEmail, name: "CyberVeille Pro" },
+        from:    { email: fromEmail, name: "ThreatLens" },
         content: [
           ...(text ? [{ type: "text/plain", value: text }] : []),
           ...(html  ? [{ type: "text/html",  value: html  }] : [])

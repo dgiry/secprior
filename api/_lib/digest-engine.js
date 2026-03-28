@@ -169,7 +169,7 @@ function formatBriefingHTML(top, rest, label) {
                 background:#0d1117;color:#e6edf3;padding:24px;border-radius:10px;max-width:680px;margin:0 auto">
       <div style="border-bottom:1px solid #30363d;padding-bottom:16px;margin-bottom:20px">
         <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Briefing Cybersécurité — ${now}</h1>
-        <p style="margin:0;color:#8b949e;font-size:13px">CyberVeille Pro · Digest ${label}</p>
+        <p style="margin:0;color:#8b949e;font-size:13px">ThreatLens · Digest ${label}</p>
       </div>
       <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:14px;margin-bottom:24px">
         <p style="margin:0 0 4px;color:#8b949e;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">RÉSUMÉ EXÉCUTIF</p>
@@ -182,7 +182,7 @@ function formatBriefingHTML(top, rest, label) {
       ${restHTML}
       <div style="border-top:1px solid #30363d;margin-top:24px;padding-top:16px;text-align:center">
         <p style="margin:0;color:#8b949e;font-size:11px">
-          CyberVeille Pro · ${new Date().toLocaleString("fr-FR")} ·
+          ThreatLens · ${new Date().toLocaleString("fr-FR")} ·
           <a href="https://cyberveille-pro.vercel.app" style="color:#58a6ff">Ouvrir l'app</a>
         </p>
       </div>
@@ -202,7 +202,7 @@ function formatBriefingText(top, rest, label) {
   const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
   const sep      = "=".repeat(60);
 
-  let t = `☀️ BRIEFING CYBERSÉCURITÉ — ${now.toUpperCase()}\nCyberVeille Pro · Digest ${label}\n${sep}\n\n`;
+  let t = `☀️ BRIEFING CYBERSÉCURITÉ — ${now.toUpperCase()}\nThreatLens · Digest ${label}\n${sep}\n\n`;
   t += `RÉSUMÉ EXÉCUTIF\n${"-".repeat(30)}\n${total} menace(s) détectée(s)`;
   if (kevCount > 0) t += `, dont ${kevCount} KEV activement exploitée(s)`;
   t += `.\n\n🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep}\n\n`;
@@ -226,7 +226,7 @@ function formatBriefingText(top, rest, label) {
     t += "\n";
   }
 
-  t += `${sep}\nGénéré par CyberVeille Pro le ${new Date().toLocaleString("fr-FR")}\n`;
+  t += `${sep}\nGénéré par ThreatLens le ${new Date().toLocaleString("fr-FR")}\n`;
   return t;
 }
 

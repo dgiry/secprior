@@ -1,4 +1,4 @@
-// article-modal.js — Modal de détail article CyberVeille Pro
+// article-modal.js — Modal de détail article ThreatLens
 //
 // Clic sur une carte → overlay pleine page avec :
 //   • Score composite + CVSS (NVD) + jauge EPSS + KEV
@@ -485,7 +485,7 @@ const ArticleModal = (() => {
 
   async function _copyIOCs(article) {
     const lines = [
-      `# CyberVeille Pro — IOCs`,
+      `# ThreatLens — IOCs`,
       `# Titre   : ${article.title}`,
       `# Source  : ${article.sourceName}`,
       `# Date    : ${article.pubDate.toLocaleDateString('en-US')}`,

@@ -58,7 +58,7 @@ const PWA = (() => {
     window.addEventListener('appinstalled', () => {
       _deferredPrompt = null;
       document.getElementById('pwa-install-banner')?.remove();
-      if (window.UI) UI.showToast('CyberVeille Pro est installé ! 🎉', 'success');
+      if (window.UI) UI.showToast('ThreatLens installed! 🎉', 'success');
     });
   }
 
@@ -137,9 +137,9 @@ const PWA = (() => {
     const banner = document.createElement('div');
     banner.id = 'pwa-update-banner';
     banner.innerHTML = `
-      <span>🔄 <strong>Mise à jour disponible</strong> — Une nouvelle version de CyberVeille Pro est prête</span>
+      <span>🔄 <strong>Update available</strong> — A new version of ThreatLens is ready</span>
       <div class="pwa-banner-actions">
-        <button id="pwa-reload-btn" class="btn btn-primary pwa-btn">Mettre à jour</button>
+        <button id="pwa-reload-btn" class="btn btn-primary pwa-btn">Update</button>
         <button id="pwa-update-dismiss" class="pwa-dismiss" title="Plus tard">✕</button>
       </div>
     `;

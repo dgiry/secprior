@@ -106,14 +106,14 @@ const Onboarding = (() => {
     card.id        = 'onboarding-card';
     card.className = 'ob-card';
     card.setAttribute('role', 'complementary');
-    card.setAttribute('aria-label', 'CyberVeille Pro Quick Start Guide');
+    card.setAttribute('aria-label', 'ThreatLens Quick Start Guide');
 
     card.innerHTML = `
 
       <!-- ── En-tête marque + tagline ── -->
       <div class="ob-header">
         <div class="ob-brand">
-          <span class="ob-tag">🛡 CyberVeille Pro</span>
+          <span class="ob-tag">🛡 ThreatLens</span>
           <span class="ob-tagline">
             Cyber threat intelligence · explainable prioritization · analyst actions in 1 click
           </span>

@@ -1,4 +1,4 @@
-// pdf-report.js — Rapport PDF SecOps CyberVeille Pro
+// pdf-report.js — Rapport PDF SecOps ThreatLens
 //
 // Zéro dépendance : génère un rapport HTML dans un div caché,
 // puis utilise window.print() avec des styles @media print dédiés.
@@ -59,7 +59,7 @@ const PDFReport = (() => {
   function _buildHeader(articles, weekLabel) {
     return `
       <div class="rpt-header">
-        <div class="rpt-logo">🛡️ CyberVeille Pro</div>
+        <div class="rpt-logo">🛡️ ThreatLens</div>
         <div class="rpt-title">Cybersecurity Threat Intelligence Report</div>
         <div class="rpt-period">${weekLabel}</div>
         <div class="rpt-generated">Generated on ${new Date().toLocaleString("en-US")} · ${articles.length} articles analyzed</div>
@@ -418,7 +418,7 @@ const PDFReport = (() => {
   function _buildFooter() {
     return `
       <div class="rpt-footer">
-        <div>CyberVeille Pro — Confidential report</div>
+        <div>ThreatLens — Confidential report</div>
         <div>Sources: ${typeof CONFIG !== 'undefined' ? CONFIG.FEEDS.length : "?"} RSS feeds · Pipeline: Collect → Enrich → Deduplicate → Score → Contextualize</div>
         <div>${new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })}</div>
       </div>`;

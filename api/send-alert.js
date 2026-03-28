@@ -4,7 +4,7 @@
 //    → stockées dans les variables d'environnement Vercel
 //    → RESEND_API_KEY   : Dashboard Vercel > Settings > Environment Variables
 //    → SENDGRID_API_KEY : idem
-//    → RESEND_FROM      : ex "CyberVeille Pro <alerts@votredomaine.com>"
+//    → RESEND_FROM      : ex "ThreatLens <alerts@votredomaine.com>"
 //    → SENDGRID_FROM    : ex "alerts@votredomaine.com"
 //
 // Payload attendu (POST JSON) :
@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
     const from =
       body.fromOverride ||
       process.env.RESEND_FROM ||
-      "CyberVeille Pro <onboarding@resend.dev>";
+      "ThreatLens <onboarding@resend.dev>";
 
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -138,7 +138,7 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }], subject }],
-          from: { email: fromEmail, name: "CyberVeille Pro" },
+          from: { email: fromEmail, name: "ThreatLens" },
           content: [
             ...(text ? [{ type: "text/plain", value: text }] : []),
             ...(html  ? [{ type: "text/html",  value: html  }] : [])

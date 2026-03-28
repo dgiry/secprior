@@ -166,7 +166,7 @@ const SettingsModal = (() => {
       const res = await fetch(url, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "cyberveille_test", message: "✅ CyberVeille Pro — Test webhook successful!", timestamp: new Date().toISOString() }),
+        body: JSON.stringify({ event: "cyberveille_test", message: "✅ ThreatLens — Test webhook successful!", timestamp: new Date().toISOString() }),
         signal: AbortSignal.timeout(8000)
       });
       if (res.ok) UI.showToast("✅ Webhook test sent successfully!", "success");
@@ -188,7 +188,7 @@ const SettingsModal = (() => {
     if (!s.emailjsService || !s.emailjsTemplate || !s.emailjsPublicKey) {
       UI.showToast("Fill in Service ID, Template ID and public key", "error"); return;
     }
-    const fakeArticle = [{ id: "test-article", title: "Test CyberVeille Pro — email de test", sourceName: "CyberVeille Pro", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Email de test." }];
+    const fakeArticle = [{ id: "test-article", title: "Test ThreatLens — email de test", sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Email de test." }];
     const testBtn = document.querySelectorAll(".btn-test")[1];
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = "⏳ Sending…"; }
     const saved = AlertManager.loadSettings();
@@ -243,7 +243,7 @@ const SettingsModal = (() => {
   async function _runTest(channel, overrides, btnLabel, btnSelector) {
     const btn = document.querySelector(btnSelector);
     if (btn) { btn.disabled = true; btn.textContent = "⏳ Sending…"; }
-    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test CyberVeille Pro via ${channel}`, sourceName: "CyberVeille Pro", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Email de test ${channel}.` }];
+    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test ThreatLens via ${channel}`, sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Email de test ${channel}.` }];
     const saved = AlertManager.loadSettings();
     AlertManager.saveSettings({ ...saved, ...overrides, channel, enabled: true, lastSentAt: 0, cooldownMs: 0 });
     try {

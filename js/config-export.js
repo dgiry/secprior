@@ -1,4 +1,4 @@
-// config-export.js — Export / Import de configuration CyberVeille Pro
+// config-export.js — Export / Import de configuration ThreatLens
 //
 // Permet de transporter la configuration utilisateur entre navigateurs ou machines.
 //
@@ -90,7 +90,7 @@ const ConfigExport = (() => {
       schema:       SCHEMA,
       version:      VERSION,
       exportedAt:   new Date().toISOString(),
-      app:          'CyberVeille Pro',
+      app:          'ThreatLens',
       safeExport:   !includeSensitive,   // flag lisible à l'import
       profiles:        _read(KEYS.profiles)      ?? null,
       savedFilters:    _read(KEYS.savedFilters)  ?? [],
@@ -109,7 +109,7 @@ const ConfigExport = (() => {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `cyberveille-pro-config-${new Date().toISOString().slice(0,10)}${suffix}.json`;
+    a.download = `threatlens-config-${new Date().toISOString().slice(0,10)}${suffix}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -127,7 +127,7 @@ const ConfigExport = (() => {
     if (!data || typeof data !== 'object')
       return 'Invalid or empty JSON file.';
     if (data.schema !== SCHEMA)
-      return "This file is not a CyberVeille Pro configuration.";
+      return "This file is not a ThreatLens configuration.";
     if (typeof data.version !== 'number')
       return 'Missing schema version.';
     if (data.version > VERSION)
@@ -399,7 +399,7 @@ const ConfigExport = (() => {
           <div class="cex-section">
             <div class="cex-section-title">📥 Import</div>
             <p class="cex-desc">
-              Load a file exported from CyberVeille Pro.<br>
+              Load a file exported from ThreatLens.<br>
               Then choose between <strong>Merge</strong> (adds without overwriting)
               or <strong>Replace</strong> (overwrites completely).
             </p>
