@@ -201,7 +201,7 @@ const IOCExtractor = (() => {
       ta.remove();
     }
     const short = value.length > 24 ? value.slice(0, 12) + '…' + value.slice(-8) : value;
-    if (window.UI) UI.showToast(`📋 ${type} copié : ${short}`, 'success');
+    if (window.UI) UI.showToast(`📋 ${type} copied: ${short}`, 'success');
   }
 
   // ── Formater un IOC pour affichage ────────────────────────────────────────

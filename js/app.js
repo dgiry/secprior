@@ -9,6 +9,9 @@ const App = (() => {
     criticality: "all",
     source: "all",
     date: "all",
+    priorityLevel: "all", // all | critical_now | investigate | watch | low
+    sortBy: "default",    // default (date) | priority (priorityScore desc)
+    statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
     timerId: null
   };
@@ -34,6 +37,7 @@ const App = (() => {
       CVEPanel.update(articles);
       IncidentPanel.update(articles);
       VisibilityPanel.update(articles);
+      if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -64,7 +68,7 @@ const App = (() => {
       }
     } catch (err) {
       console.error("[App] Erreur refresh:", err);
-      UI.showToast("Erreur lors du chargement des flux RSS. Vérifiez la connexion.", "error");
+      UI.showToast("Error loading RSS feeds. Check your connection.", "error");
       const cache = Storage.getCache();
       if (cache && cache.items) {
         state.articles = cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
@@ -91,12 +95,15 @@ const App = (() => {
   // ─── Rendu avec filtres ────────────────────────────────────────────────────
   function render() {
     const filtered = UI.applyFilters(state.articles, {
-      query:        state.query,
-      criticality:  state.criticality,
-      source:       state.source,
-      date:         state.date,
-      showFavOnly:  state.showFavOnly,
-      riskFilters:  RiskFilter.getFilters()   // { active: Set, epssThreshold }
+      query:         state.query,
+      criticality:   state.criticality,
+      source:        state.source,
+      date:          state.date,
+      priorityLevel: state.priorityLevel,
+      sortBy:        state.sortBy,
+      statusFilter:  state.statusFilter,
+      showFavOnly:   state.showFavOnly,
+      riskFilters:   RiskFilter.getFilters()   // { active: Set, epssThreshold }
     });
     UI.renderCards(filtered);
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
@@ -177,6 +184,32 @@ const App = (() => {
 
     document.getElementById("filter-date")?.addEventListener("change", e => {
       state.date = e.target.value;
+      render();
+    });
+
+    document.getElementById("filter-priority-level")?.addEventListener("change", e => {
+      state.priorityLevel = e.target.value;
+      render();
+    });
+
+    document.getElementById("sort-by")?.addEventListener("change", e => {
+      state.sortBy = e.target.value;
+      render();
+    });
+
+    document.getElementById("filter-status")?.addEventListener("change", e => {
+      state.statusFilter = e.target.value;
+      render();
+    });
+
+    // ── Raccourci "Top priorités" — filtre critique + tri priorité ────────────
+    document.getElementById("btn-top-priorities")?.addEventListener("click", () => {
+      state.priorityLevel = "critical_now";
+      state.sortBy = "priority";
+      const plEl = document.getElementById("filter-priority-level");
+      if (plEl) plEl.value = "critical_now";
+      const sbEl = document.getElementById("sort-by");
+      if (sbEl) sbEl.value = "priority";
       render();
     });
 
@@ -270,11 +303,14 @@ const App = (() => {
   // ── API publique filtres (pour SavedFilters) ──────────────────────────────
   function getFilters() {
     return {
-      query:       state.query,
-      criticality: state.criticality,
-      source:      state.source,
-      date:        state.date,
-      showFavOnly: state.showFavOnly
+      query:         state.query,
+      criticality:   state.criticality,
+      source:        state.source,
+      date:          state.date,
+      priorityLevel: state.priorityLevel,
+      sortBy:        state.sortBy,
+      statusFilter:  state.statusFilter,
+      showFavOnly:   state.showFavOnly
     };
   }
   function setFilters(f) {
@@ -297,6 +333,21 @@ const App = (() => {
       state.date = f.date;
       const el = document.getElementById("filter-date");
       if (el) el.value = f.date;
+    }
+    if (f.priorityLevel !== undefined) {
+      state.priorityLevel = f.priorityLevel;
+      const el = document.getElementById("filter-priority-level");
+      if (el) el.value = f.priorityLevel;
+    }
+    if (f.sortBy !== undefined) {
+      state.sortBy = f.sortBy;
+      const el = document.getElementById("sort-by");
+      if (el) el.value = f.sortBy;
+    }
+    if (f.statusFilter !== undefined) {
+      state.statusFilter = f.statusFilter;
+      const el = document.getElementById("filter-status");
+      if (el) el.value = f.statusFilter;
     }
     if (f.showFavOnly !== undefined) {
       state.showFavOnly = f.showFavOnly;

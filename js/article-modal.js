@@ -38,15 +38,40 @@ const ArticleModal = (() => {
     document.getElementById('art-modal-copy-ioc')
       ?.addEventListener('click', () => _copyIOCs(article));
 
+    // Actions rapides — résumés analyste / exécutif
+    if (typeof QuickActions !== 'undefined')
+      QuickActions.bindArticle(article, _nvdMap[article.id] || null);
+
     document.getElementById('art-modal-fav')
       ?.addEventListener('click', () => {
         const isNow = UI.toggleFav(article.id);
         const btn   = document.getElementById('art-modal-fav');
         if (!btn) return;
         btn.classList.toggle('active', isNow);
-        btn.innerHTML = isNow ? '★ Favori' : '☆ Favoris';
-        btn.title     = isNow ? 'Retirer des favoris' : 'Ajouter aux favoris';
+        btn.innerHTML = isNow ? '★ Favorite' : '☆ Favorite';
+        btn.title     = isNow ? 'Remove from favorites' : 'Add to favorites';
       });
+
+    // Workflow analyste — statut, note, owner
+    if (typeof EntityStatus !== 'undefined') {
+      content.querySelectorAll('.es-block .es-select').forEach(sel => {
+        sel.addEventListener('change', e => {
+          EntityStatus.setStatus('article', article.id, e.target.value);
+        });
+      });
+      content.querySelectorAll('.es-block .es-note-input').forEach(inp => {
+        inp.addEventListener('blur', e => {
+          EntityStatus.updateNote('article', article.id, e.target.value);
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+      });
+      content.querySelectorAll('.es-block .es-owner-input').forEach(inp => {
+        inp.addEventListener('blur', e => {
+          EntityStatus.updateOwner('article', article.id, e.target.value);
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+      });
+    }
 
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
@@ -66,7 +91,7 @@ const ArticleModal = (() => {
     const nvd     = _nvdMap[article.id] || null;
     const similar = _findSimilar(article);
     const isFav   = Storage.isFavorite(article.id);
-    const dateStr = article.pubDate.toLocaleDateString('fr-FR', {
+    const dateStr = article.pubDate.toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
@@ -96,13 +121,13 @@ const ArticleModal = (() => {
           ${_renderPriorityBlock(article)}
 
           <div class="art-modal-section">
-            <h4 class="art-modal-section-title">📊 Métriques sécurité</h4>
+            <h4 class="art-modal-section-title">📊 Security metrics</h4>
             ${_renderMetrics(article, nvd)}
           </div>
 
           ${(article.cves || []).length ? `
           <div class="art-modal-section">
-            <h4 class="art-modal-section-title">🔍 CVE détectés (${article.cves.length})</h4>
+            <h4 class="art-modal-section-title">🔍 Detected CVEs (${article.cves.length})</h4>
             ${_renderCVEs(article.cves, nvd)}
           </div>` : ''}
 
@@ -114,7 +139,7 @@ const ArticleModal = (() => {
 
           ${article.watchlistMatches?.length ? `
           <div class="art-modal-section">
-            <h4 class="art-modal-section-title">👁 Watchlist — termes correspondants</h4>
+            <h4 class="art-modal-section-title">👁 Watchlist — matched terms</h4>
             <div class="art-watchlist-matches">
               ${article.watchlistMatches.map(w =>
                 `<span class="badge badge-watchlist">${_esc(w)}</span>`
@@ -124,7 +149,7 @@ const ArticleModal = (() => {
 
           ${(article.iocCount > 0) ? `
           <div class="art-modal-section">
-            <h4 class="art-modal-section-title">🔬 IOCs Extraits (${article.iocCount})</h4>
+            <h4 class="art-modal-section-title">🔬 Extracted IOCs (${article.iocCount})</h4>
             ${_renderIOCPanel(article.iocs)}
           </div>` : ''}
 
@@ -141,17 +166,17 @@ const ArticleModal = (() => {
 
           ${similar.length ? `
           <div class="art-modal-section">
-            <h4 class="art-modal-section-title">🔗 Articles similaires</h4>
+            <h4 class="art-modal-section-title">🔗 Similar articles</h4>
             <div class="art-similar-list">
               ${similar.map(a => {
                 const sm = _critMeta(a.criticality);
                 return `
                   <div class="art-similar-item" data-id="${a.id}" role="button" tabindex="0"
-                       title="Ouvrir cet article">
+                       title="Open this article">
                     <div class="art-similar-meta">
                       <span class="badge ${sm.cssClass} art-badge-xs">${sm.icon}</span>
                       <span class="art-similar-source">${_esc(a.sourceName)}</span>
-                      <span class="art-similar-date">${a.pubDate.toLocaleDateString('fr-FR')}</span>
+                      <span class="art-similar-date">${a.pubDate.toLocaleDateString('en-US')}</span>
                     </div>
                     <div class="art-similar-title">${_esc(a.title)}</div>
                   </div>`;
@@ -162,19 +187,30 @@ const ArticleModal = (() => {
         </div>
       </div>
 
+      <!-- ── RECOMMANDATIONS ──────────────────────────────────────────── -->
+      ${typeof Recommender !== 'undefined' ? Recommender.renderHTML(article, 'article') : ''}
+
+      <!-- ── WORKFLOW ANALYSTE ─────────────────────────────────────────── -->
+      ${typeof EntityStatus !== 'undefined' ? `
+      <div class="art-modal-section art-workflow-section">
+        <h4 class="art-modal-section-title">📋 Analyst workflow</h4>
+        ${EntityStatus.statusBlockHTML('article', article.id)}
+      </div>` : ''}
+
       <!-- ── PIED DE PAGE ────────────────────────────────────────────── -->
+      <!-- Sprint 23 : footer rationalisé — 3 éléments : Favoris · ⚡ Actions · ↗ Ouvrir -->
+      <!-- Le bouton IOC (art-modal-copy-ioc) est désormais dans le dropdown ⚡ Actions   -->
       <div class="art-modal-footer">
-        <button id="art-modal-copy-ioc" class="btn art-modal-ioc-btn"
-                title="Copier CVEs, URL, ATT&CK, IPs/domaines détectés">
-          📋 Copier IOCs
-        </button>
         <button id="art-modal-fav" class="btn ${isFav ? 'active' : ''}"
-                title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
-          ${isFav ? '★ Favori' : '☆ Favoris'}
+                title="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
+          ${isFav ? '★ Favorite' : '☆ Favorite'}
         </button>
+        ${typeof QuickActions !== 'undefined'
+          ? QuickActions.articleButtonsHTML({ showIoc: (article.iocCount || 0) > 0 })
+          : ''}
         <a href="${article.link}" target="_blank" rel="noopener noreferrer"
            class="btn btn-primary art-modal-open-btn">
-          ↗ Ouvrir l'article original
+          ↗ Open article
         </a>
       </div>`;
   }
@@ -194,23 +230,23 @@ const ArticleModal = (() => {
     // Tableau de signaux complémentaires (données brutes, lisibles)
     const sigRows = [];
     if (signals.kev)
-      sigRows.push(['CISA KEV',  '✅ Exploitation confirmée']);
+      sigRows.push(['CISA KEV',  '✅ Exploitation confirmed']);
     if (signals.epss !== null && signals.epss !== undefined)
-      sigRows.push(['EPSS',      `${signals.epss}% probabilité d'exploitation (30j)`]);
+      sigRows.push(['EPSS',      `${signals.epss}% exploitation probability (30d)`]);
     if (signals.isZeroDay)
-      sigRows.push(['0-Day',     'Aucun patch officiel disponible']);
+      sigRows.push(['0-Day',     'No official patch available']);
     if (signals.watchlist)
-      sigRows.push(['Watchlist', 'Terme de surveillance détecté']);
+      sigRows.push(['Watchlist', 'Watchlist term matched']);
     if (signals.trending)
-      sigRows.push(['Trending',  `${signals.sources} sources simultanées`]);
+      sigRows.push(['Trending',  `${signals.sources} concurrent sources`]);
     if (signals.iocCount > 0)
-      sigRows.push(['IOCs',      `${signals.iocCount} indicateur${signals.iocCount > 1 ? 's' : ''} extraits`]);
+      sigRows.push(['IOCs',      `${signals.iocCount} indicator${signals.iocCount > 1 ? 's' : ''} extracted`]);
     if (signals.baseScore != null)
       sigRows.push(['Score',     `${signals.baseScore}/100`]);
 
     return `
       <div class="art-modal-section">
-        <h4 class="art-modal-section-title">🎯 Pourquoi cette priorité ?</h4>
+        <h4 class="art-modal-section-title">🎯 Why this priority?</h4>
         <div class="art-priority-block">
           <div class="art-priority-level-badge prio-${pm.css}">
             ${pm.icon} ${pm.label}
@@ -218,7 +254,7 @@ const ArticleModal = (() => {
           ${reasons.length ? `
           <ul class="art-priority-reasons">
             ${reasons.map(r => `<li>${_esc(r)}</li>`).join('')}
-          </ul>` : `<p class="art-priority-no-reason">Aucun signal significatif détecté.</p>`}
+          </ul>` : `<p class="art-priority-no-reason">No significant signal detected.</p>`}
           ${sigRows.length ? `
           <table class="art-priority-signals">
             ${sigRows.map(([k, v]) => `
@@ -241,7 +277,7 @@ const ArticleModal = (() => {
       const colorCls = article.score >= 70 ? 'err' : article.score >= 40 ? 'warn' : 'ok';
       rows.push(`
         <div class="art-metric-row">
-          <span class="art-metric-label">Score composite</span>
+          <span class="art-metric-label">Composite score</span>
           <div class="art-metric-bar-wrap" title="${article.score}/100">
             <div class="art-metric-bar art-bar-${colorCls}" style="width:${article.score}%"></div>
           </div>
@@ -255,7 +291,7 @@ const ArticleModal = (() => {
       rows.push(`
         <div class="art-metric-row">
           <span class="art-metric-label">CVSS v3.1</span>
-          <span class="badge ${cls}" title="${nvd.vector || 'Vecteur CVSS'}">
+          <span class="badge ${cls}" title="${nvd.vector || 'CVSS vector'}">
             ${nvd.score.toFixed(1)} ${nvd.severity || ''}
           </span>
           ${nvd.cwe ? `<span class="badge badge-cwe" title="CWE">${nvd.cwe}</span>` : ''}
@@ -267,7 +303,7 @@ const ArticleModal = (() => {
       rows.push(`
         <div class="art-metric-row">
           <span class="art-metric-label">CVSS v3.1</span>
-          <span class="art-metric-na">— En attente enrichissement NVD</span>
+          <span class="art-metric-na">— Pending NVD enrichment</span>
         </div>`);
     }
 
@@ -275,7 +311,7 @@ const ArticleModal = (() => {
     if (article.epssScore != null) {
       const pct   = (article.epssScore * 100).toFixed(1);
       const perc  = article.epssPercentile != null
-        ? `(${(article.epssPercentile * 100).toFixed(0)}e centile)`
+        ? `(${(article.epssPercentile * 100).toFixed(0)}th percentile)`
         : '';
       // Normalisation visuelle : 50% EPSS = 100% barre
       const barW  = Math.min(article.epssScore * 200, 100);
@@ -283,12 +319,12 @@ const ArticleModal = (() => {
       rows.push(`
         <div class="art-metric-row">
           <span class="art-metric-label">EPSS</span>
-          <div class="art-metric-bar-wrap" title="EPSS : ${pct}% ${perc}">
+          <div class="art-metric-bar-wrap" title="EPSS: ${pct}% ${perc}">
             <div class="art-metric-bar art-bar-${barCls}" style="width:${barW}%"></div>
           </div>
           <span class="art-metric-val">${pct}% <small>${perc}</small></span>
         </div>
-        <p class="art-metric-hint">Probabilité d'exploitation dans les 30 prochains jours (FIRST.org)</p>`);
+        <p class="art-metric-hint">Exploitation probability in the next 30 days (FIRST.org)</p>`);
     }
 
     // KEV
@@ -296,8 +332,8 @@ const ArticleModal = (() => {
       <div class="art-metric-row">
         <span class="art-metric-label">CISA KEV</span>
         ${article.isKEV
-          ? `<span class="badge badge-kev">✅ Exploitation active confirmée</span>`
-          : `<span class="art-metric-na">— Non répertorié</span>`}
+          ? `<span class="badge badge-kev">✅ Active exploitation confirmed</span>`
+          : `<span class="art-metric-na">— Not listed</span>`}
       </div>`);
 
     return `<div class="art-metrics">${rows.join('')}</div>`;
@@ -352,7 +388,7 @@ const ArticleModal = (() => {
   // ─── Panneau IOCs complet (modal) ─────────────────────────────────────────
 
   function _renderIOCPanel(iocs) {
-    if (!iocs) return '<p class="art-metric-na">Aucun IOC détecté.</p>';
+    if (!iocs) return '<p class="art-metric-na">No IOC detected.</p>';
 
     const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
     const sections = [];
@@ -366,7 +402,7 @@ const ArticleModal = (() => {
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
-                  title="Copier">📋</button>
+                  title="Copy">📋</button>
         </div>`;
     };
 
@@ -382,14 +418,14 @@ const ArticleModal = (() => {
 
     if (ips.length) {
       sections.push(`<div class="art-ioc-group">
-        <div class="art-ioc-group-label">🌐 Adresses IP (${ips.length})</div>
+        <div class="art-ioc-group-label">🌐 IP Addresses (${ips.length})</div>
         ${ips.map(ip => _iocRow('IP', '🌐', 'ip', ip, ip)).join('')}
       </div>`);
     }
 
     if (domains.length) {
       sections.push(`<div class="art-ioc-group">
-        <div class="art-ioc-group-label">🔗 Domaines (${domains.length})</div>
+        <div class="art-ioc-group-label">🔗 Domains (${domains.length})</div>
         ${domains.map(d => _iocRow('Domain', '🔗', 'domain', d, d)).join('')}
       </div>`);
     }
@@ -405,7 +441,7 @@ const ArticleModal = (() => {
 
     return sections.length
       ? `<div class="art-ioc-panel">${sections.join('')}</div>`
-      : '<p class="art-metric-na">Aucun IOC détecté dans ce texte.</p>';
+      : '<p class="art-metric-na">No IOC detected in this text.</p>';
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────
@@ -452,7 +488,7 @@ const ArticleModal = (() => {
       `# CyberVeille Pro — IOCs`,
       `# Titre   : ${article.title}`,
       `# Source  : ${article.sourceName}`,
-      `# Date    : ${article.pubDate.toLocaleDateString('fr-FR')}`,
+      `# Date    : ${article.pubDate.toLocaleDateString('en-US')}`,
       `# URL     : ${article.link}`,
       ''
     ];
@@ -502,7 +538,7 @@ const ArticleModal = (() => {
       ta.remove();
     }
 
-    if (window.UI) UI.showToast(`📋 ${total} IOC${total > 1 ? 's' : ''} copiés (CVE, hashes, IPs, domaines)`, 'success');
+    if (window.UI) UI.showToast(`📋 ${total} IOC${total > 1 ? 's' : ''} copied (CVEs, hashes, IPs, domains)`, 'success');
   }
 
   // ─── Initialisation ────────────────────────────────────────────────────────
@@ -521,7 +557,7 @@ const ArticleModal = (() => {
            onclick="if(event.target===this)ArticleModal.close()">
         <div class="art-modal-box">
           <button class="modal-close art-modal-close-btn"
-                  onclick="ArticleModal.close()" title="Fermer (Échap)">✕</button>
+                  onclick="ArticleModal.close()" title="Close (Esc)">✕</button>
           <div id="art-modal-content" class="art-modal-scroll"></div>
         </div>
       </div>`;

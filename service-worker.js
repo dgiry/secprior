@@ -1,45 +1,40 @@
 // service-worker.js — CyberVeille Pro PWA
-// Stratégie :
-//   • Fichiers statiques (HTML/CSS/JS/SVG) → Stale-While-Revalidate
-//     (sert le cache immédiatement, met à jour en arrière-plan)
-//   • Appels API / RSS externes → Network-First avec fallback cache
-//     (essaie le réseau, replie sur le cache si hors-ligne)
+//
+// Stratégie à deux vitesses :
+//
+//   DEV / PREVIEW (localhost / 127.0.0.1)
+//   ─────────────────────────────────────
+//   • Tout same-origin → Network-First
+//     (les assets versionnés ?v=N arrivent toujours frais du serveur)
+//
+//   PRODUCTION (domaine public)
+//   ───────────────────────────
+//   • Assets versionnés (?v=N) → Network-First + mise en cache
+//     (le cache-busting est respecté : ?v=14 ≠ ?v=13)
+//   • Fichiers structurels sans version (/, index.html, manifest) → Stale-While-Revalidate
+//     (chargement rapide + mise à jour en arrière-plan + offline)
+//   • Requêtes externes (RSS, NVD, EPSS, KEV) → Network-First + fallback cache offline
+//
+// Correctifs appliqués :
+//   ✓ Suppression de ignoreSearch:true dans staleWhileRevalidate
+//     (chaque ?v=N est désormais une entrée de cache distincte)
+//   ✓ APP_SHELL réduit aux fichiers structurels (sans JS/CSS versionnés)
+//     (les JS/CSS sont fetched Network-First au premier usage, pas pré-cachés)
+//   ✓ Détection localhost → Network-First automatique en dev
 
-const SW_VERSION   = 'v35';
+const SW_VERSION   = 'v42';
 const CACHE_STATIC = `cvpro-static-${SW_VERSION}`;
 const CACHE_DATA   = `cvpro-data-${SW_VERSION}`;
 
-// Fichiers pré-cachés à l'installation (app shell)
+// Dev/preview : Network-First pour tout (previews et reloads toujours frais)
+const IS_DEV = ['localhost', '127.0.0.1'].includes(self.location.hostname);
+
+// App shell réduit : uniquement les fichiers structurels non versionnés.
+// Les JS/CSS (chargés avec ?v=N dans index.html) passent Network-First — inutile de les pré-cacher.
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/style.css',
-  '/js/config.js',
-  '/js/stats.js',
-  '/js/demo-data.js',
-  '/js/feed-manager.js',
-  '/js/scorer.js',
-  '/js/storage.js',
-  '/js/feeds.js',
-  '/js/enricher.js',
-  '/js/deduplicator.js',
-  '/js/contextualizer.js',
-  '/js/ioc-extractor.js',
-  '/js/pipeline.js',
-  '/js/nvd.js',
-  '/js/email-alerts.js',
-  '/js/risk-filter.js',
-  '/js/settings-modal.js',
-  '/js/watchlist-modal.js',
-  '/js/article-modal.js',
-  '/js/ui.js',
-  '/js/pdf-report.js',
-  '/js/briefing-panel.js',
-  '/js/health-panel.js',
-  '/js/vendor-panel.js',
-  '/js/pwa.js',
-  '/js/app.js',
   '/icons/icon.svg'
 ];
 
@@ -75,16 +70,29 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   if (!url.protocol.startsWith('http')) return;
 
-  // Ignorer les DevTools / extensions
+  // Ignorer les DevTools / extensions (ports différents sur localhost)
   if (url.hostname === 'localhost' && url.port && url.port !== location.port) return;
 
-  // ── Requêtes same-origin (HTML, CSS, JS, assets) → Stale-While-Revalidate
+  // ── Requêtes same-origin (HTML, CSS, JS, assets) ─────────────────────────
   if (url.origin === self.location.origin) {
+    const hasVersion = url.searchParams.has('v');
+    const isDocument = request.destination === 'document';
+
+    // Network-First si :
+    //   • dev/preview (localhost) → toujours frais
+    //   • asset versionné (?v=N) → cache-busting respecté
+    //   • navigation HTML (index.html) → jamais de version fantôme après mise à jour SW
+    if (IS_DEV || hasVersion || isDocument) {
+      event.respondWith(networkFirstStatic(request));
+      return;
+    }
+
+    // Prod + fichier statique sans version (manifest.json, icon.svg…) → SWR
     event.respondWith(staleWhileRevalidate(request, CACHE_STATIC));
     return;
   }
 
-  // ── Requêtes externes (RSS, NVD, EPSS, KEV, allorigins) → Network-First
+  // ── Requêtes externes (RSS, NVD, EPSS, KEV, allorigins) → Network-First ──
   event.respondWith(networkFirst(request, CACHE_DATA));
 });
 
@@ -95,17 +103,32 @@ self.addEventListener('message', event => {
   }
 });
 
-// ── Stale-While-Revalidate ────────────────────────────────────────────────────
-// Sert immédiatement depuis le cache, met à jour en arrière-plan
+// ── Network-First (assets same-origin versionnés ou dev) ─────────────────────
+// Toujours essaye le réseau ; met en cache en cas de succès.
+// En cas d'échec réseau, replie sur le cache (exact match — pas d'ignoreSearch).
+async function networkFirstStatic(request) {
+  const cache = await caches.open(CACHE_STATIC);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return offlineFallback(request);
+  }
+}
+
+// ── Stale-While-Revalidate (fichiers structurels sans version en prod) ────────
+// Sert immédiatement depuis le cache, met à jour en arrière-plan.
+// NOTE : pas d'ignoreSearch → chaque URL est une entrée distincte.
 async function staleWhileRevalidate(request, cacheName) {
-  const cache    = await caches.open(cacheName);
-  const cached   = await cache.match(request, { ignoreSearch: true });
+  const cache  = await caches.open(cacheName);
+  const cached = await cache.match(request); // exact match — ignoreSearch supprimé
 
   // Revalider en arrière-plan (ne bloque pas la réponse)
   const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
+    if (response.ok) cache.put(request, response.clone());
     return response;
   }).catch(() => null);
 
@@ -113,15 +136,14 @@ async function staleWhileRevalidate(request, cacheName) {
   return cached || fetchPromise || offlineFallback(request);
 }
 
-// ── Network-First ─────────────────────────────────────────────────────────────
-// Essaie le réseau d'abord, cache en fallback si hors-ligne
+// ── Network-First (requêtes externes RSS / API) ───────────────────────────────
+// Essaie le réseau d'abord, cache en fallback si hors-ligne.
+// ignoreSearch conservé ici : les API externes peuvent varier leurs params.
 async function networkFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
+    if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {
     const cached = await cache.match(request, { ignoreSearch: true });
@@ -137,7 +159,6 @@ async function networkFirst(request, cacheName) {
 // ── Fallback hors-ligne ────────────────────────────────────────────────────────
 async function offlineFallback(request) {
   const cache = await caches.open(CACHE_STATIC);
-  // Pour les pages HTML : servir index.html
   if (request.destination === 'document') {
     return cache.match('/index.html') || new Response('Hors-ligne', { status: 503 });
   }

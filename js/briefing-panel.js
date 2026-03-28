@@ -61,7 +61,7 @@ const BriefingPanel = (() => {
       _cache = await res.json();
       _render(_cache);
     } catch (e) {
-      _renderError(e.message || "Erreur inconnue");
+      _renderError(e.message || "Unknown error");
     } finally {
       _loading = false;
     }
@@ -71,7 +71,7 @@ const BriefingPanel = (() => {
 
   function _renderLoading() {
     const el = document.getElementById("briefing-list");
-    if (el) el.innerHTML = '<div class="bp-state bp-loading">⏳ Chargement du briefing…</div>';
+    if (el) el.innerHTML = '<div class="bp-state bp-loading">⏳ Loading briefing…</div>';
     _setMeta("");
   }
 
@@ -94,10 +94,10 @@ const BriefingPanel = (() => {
     if (data.generatedAt || data.stats) {
       const s   = data.stats || {};
       const gen = data.generatedAt
-        ? new Date(data.generatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+        ? new Date(data.generatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
         : "";
       const parts = [
-        gen && `Généré à ${gen}`,
+        gen && `Generated at ${gen}`,
         s.feeds  && `${s.feeds.ok}/${s.feeds.total} sources`,
         s.articles && `${s.articles.raw} articles bruts`,
         s.enrichment?.kevHits  > 0 && `${s.enrichment.kevHits} KEV`,
@@ -108,7 +108,7 @@ const BriefingPanel = (() => {
     }
 
     if (!data.top?.length) {
-      list.innerHTML = '<div class="bp-state bp-empty">Aucun article sélectionné pour ce briefing.</div>';
+      list.innerHTML = '<div class="bp-state bp-empty">No article selected for this briefing.</div>';
       return;
     }
 
@@ -153,7 +153,7 @@ const BriefingPanel = (() => {
 
     // Date de publication
     const pub = a.pubDate
-      ? new Date(a.pubDate).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+      ? new Date(a.pubDate).toLocaleString("en-US", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
       : "";
 
     return `
@@ -169,7 +169,7 @@ const BriefingPanel = (() => {
   </div>
   ${signals ? `<div class="bp-signals">${signals}</div>` : ""}
   ${reasons ? `<div class="bp-reasons">⚡ ${reasons}</div>` : ""}
-  <div class="bp-topic">🔑 <code>${a.topicKey}</code>${a.groupedFrom > 1 ? ` · groupé depuis ${a.groupedFrom} articles` : ""}</div>
+  <div class="bp-topic">🔑 <code>${a.topicKey}</code>${a.groupedFrom > 1 ? ` · grouped from ${a.groupedFrom} articles` : ""}</div>
   <div class="bp-why">📌 ${a.whyImportant}</div>
   ${wpts ? `<ul class="bp-watchpoints">${wpts}</ul>` : ""}
 </div>`;

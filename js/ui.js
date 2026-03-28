@@ -14,7 +14,7 @@ const UI = (() => {
     if (diff < 60)   return `${diff}s`;
     if (diff < 3600) return `${Math.floor(diff/60)}min`;
     if (diff < 86400)return `${Math.floor(diff/3600)}h`;
-    return `${Math.floor(diff/86400)}j`;
+    return `${Math.floor(diff/86400)}d`;
   }
 
   // ─── Rendu d'une carte article ─────────────────────────────────────────────
@@ -28,21 +28,21 @@ const UI = (() => {
 
     // ── Badges pipeline ──────────────────────────────────────────────────────
     const kevBadge = article.isKEV
-      ? `<span class="badge badge-kev" title="CISA KEV — Exploité activement en production">⚠ KEV</span>`
+      ? `<span class="badge badge-kev" title="CISA KEV — Actively exploited in production">⚠ KEV</span>`
       : "";
 
     const epssBadge = article.epssScore !== null && article.epssScore !== undefined
-      ? `<span class="badge badge-epss" title="EPSS : probabilité d'exploitation dans 30j (${((article.epssPercentile ?? 0) * 100).toFixed(0)}e centile)">EPSS ${(article.epssScore * 100).toFixed(1)}%</span>`
+      ? `<span class="badge badge-epss" title="EPSS: exploitation probability in 30d (${((article.epssPercentile ?? 0) * 100).toFixed(0)}th percentile)">EPSS ${(article.epssScore * 100).toFixed(1)}%</span>`
       : "";
 
     const trendingBadge = article.isTrending
-      ? `<span class="badge badge-trending" title="${article.trendingCount} sources couvrent ce sujet">🔥 Trending×${article.trendingCount}</span>`
+      ? `<span class="badge badge-trending" title="${article.trendingCount} sources cover this topic">🔥 Trending×${article.trendingCount}</span>`
       : (article.sourceCount > 1
-          ? `<span class="badge badge-sources" title="${article.sourceCount} sources couvrent ce sujet">×${article.sourceCount} sources</span>`
+          ? `<span class="badge badge-sources" title="${article.sourceCount} sources cover this topic">×${article.sourceCount} sources</span>`
           : "");
 
     const watchlistBadge = article.watchlistMatches?.length > 0
-      ? `<span class="badge badge-watchlist" title="Watchlist : ${article.watchlistMatches.join(', ')}">👁 Vous concerne</span>`
+      ? `<span class="badge badge-watchlist" title="Watchlist: ${article.watchlistMatches.join(', ')}">👁 Matches you</span>`
       : "";
 
     const attackBadges = (article.attackTags || []).slice(0, 2).map(t =>
@@ -51,7 +51,7 @@ const UI = (() => {
 
     // ── Barre de score composite ─────────────────────────────────────────────
     const scoreBar = article.score !== undefined
-      ? `<div class="score-bar-wrap" title="Score composite : ${article.score}/100">
+      ? `<div class="score-bar-wrap" title="Composite score: ${article.score}/100">
            <div class="score-bar ${scoreBarClass(article.score)}" style="width:${article.score}%"></div>
            <span class="score-label">${article.score}</span>
          </div>`
@@ -72,7 +72,7 @@ const UI = (() => {
     // Badge résumé IOC — compteur rapide dans la rangée principale des signaux
     const iocSummaryBadge = (article.iocCount || 0) > 0
       ? `<span class="badge badge-ioc-summary"
-               title="IOCs détectés : ${article.iocCount} indicateur${article.iocCount > 1 ? 's' : ''} (IPs, domaines, hashes, URLs)">🔗 ${article.iocCount} IOC</span>`
+               title="Detected IOCs: ${article.iocCount} indicator${article.iocCount > 1 ? 's' : ''} (IPs, domains, hashes, URLs)">🔗 ${article.iocCount} IOC</span>`
       : "";
 
     const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges, iocSummaryBadge]
@@ -83,14 +83,14 @@ const UI = (() => {
 
     return `
       <article class="card crit-${article.criticality}" data-id="${article.id}"
-               title="Cliquer pour voir les détails complets">
+               title="Click to see full details">
         <header class="card-header">
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
           <span class="badge badge-source">${article.sourceIcon} ${article.sourceName}</span>
           <time class="card-time" title="${article.pubDate.toLocaleString()}">${age}</time>
           <button class="btn-star ${starred ? 'starred' : ''}"
                   onclick="UI.toggleFav('${article.id}')"
-                  title="${starred ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
+                  title="${starred ? 'Remove from favorites' : 'Add to favorites'}">
             ${starred ? '★' : '☆'}
           </button>
         </header>
@@ -123,7 +123,7 @@ const UI = (() => {
       badges.push(
         `<span class="badge badge-ioc badge-ioc-${cssType}"
               onclick="event.stopPropagation();IOCExtractor.copyIOC('${type}','${copyEsc}')"
-              title="${type} — Cliquer pour copier&#10;${copyVal}">
+              title="${type} — Click to copy&#10;${copyVal}">
            ${icon} ${escaped}
          </span>`
       );
@@ -147,7 +147,7 @@ const UI = (() => {
 
     const more = iocCount - badges.length;
     const moreBadge = more > 0
-      ? `<span class="badge badge-ioc badge-ioc-more" title="${more} IOC(s) supplémentaires — Ouvrir les détails">+${more} IOC${more > 1 ? 's' : ''}</span>`
+      ? `<span class="badge badge-ioc badge-ioc-more" title="${more} more IOC(s) — Open details">+${more} IOC${more > 1 ? 's' : ''}</span>`
       : "";
 
     return badges.join("") + moreBadge;
@@ -159,17 +159,100 @@ const UI = (() => {
     if (!container) return;
 
     if (articles.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">🔍</div>
-          <p>Aucun article ne correspond à vos filtres.</p>
-        </div>`;
+      container.innerHTML = _buildEmptyState();
     } else {
       container.innerHTML = articles.map(cardHTML).join("");
     }
 
     const countEl = $count();
     if (countEl) countEl.textContent = articles.length;
+  }
+
+  // ─── Empty state contextuel ────────────────────────────────────────────────
+  function _buildEmptyState() {
+    // Lire l'état des filtres depuis le DOM (lecture seule — pas d'effet de bord)
+    const query      = document.getElementById('search-input')?.value?.trim() || '';
+    const crit       = document.getElementById('filter-criticality')?.value   || 'all';
+    const prio       = document.getElementById('filter-priority-level')?.value || 'all';
+    const status     = document.getElementById('filter-status')?.value         || 'all';
+    const showFavs   = document.getElementById('btn-favs')?.classList.contains('active') || false;
+
+    let icon  = '🔍';
+    let title = 'No matching articles';
+    let hint  = 'Try widening your filters or use a business view.';
+    let cta   = '';
+
+    const _resetBtn = (targetId, label, eventType = 'change', value = 'all') =>
+      `<button class="btn ob-reset-btn"
+               onclick="(function(){var el=document.getElementById('${targetId}');if(!el)return;el.value='${value}';el.dispatchEvent(new Event('${eventType}'));})()">
+         ${label}
+       </button>`;
+
+    if (showFavs) {
+      icon  = '⭐';
+      title = 'No favorites yet';
+      hint  = 'Click ⭐ on an article card to add it to your favorites.';
+      cta   = `<button class="btn ob-reset-btn"
+                       onclick="document.getElementById('btn-favs').click()">
+                 See all articles
+               </button>`;
+    } else if (query) {
+      icon  = '🔎';
+      title = `No results for «${_escHtmlShort(query)}»`;
+      hint  = 'Try a shorter term, without quotes, or use a business view.';
+      cta   = `<button class="btn ob-reset-btn"
+                       onclick="(function(){var el=document.getElementById('search-input');if(!el)return;el.value='';el.dispatchEvent(new Event('input'));})()">
+                 Clear search
+               </button>`;
+    } else if (status !== 'all') {
+      icon  = '📋';
+      title = 'No articles with this analyst status';
+      hint  = 'Change the status or show all articles to continue.';
+      cta   = _resetBtn('filter-status', 'Reset status');
+    } else if (crit === 'high') {
+      icon  = '🔴';
+      title = 'No HIGH alert at the moment';
+      hint  = 'HIGH severity can be rare. Show all severities to see current threats.';
+      cta   = _resetBtn('filter-criticality', 'See all severities');
+    } else if (prio !== 'all') {
+      icon  = '🎯';
+      title = 'No articles with this priority';
+      hint  = 'Widen the priority level or use a business view for guided selection.';
+      cta   = _resetBtn('filter-priority-level', 'All priorities');
+    } else {
+      icon  = '📡';
+      title = 'No articles available';
+      hint  = 'Feeds are loading from your RSS sources. Refresh or start with a business view.';
+      cta   = `<button class="btn ob-reset-btn"
+                       onclick="document.getElementById('btn-refresh').click()">
+                 ↻ Refresh feeds
+               </button>`;
+    }
+
+    const personaHint = typeof PersonaPresets !== 'undefined'
+      ? `<button class="btn ob-reset-btn ob-reset-persona"
+                 onclick="document.querySelector('[data-pid=\\'today\\']')?.click()"
+                 title="See critical threats from the last 24h">
+           🚨 Top priorities
+         </button>`
+      : '';
+
+    return `
+      <div class="empty-state empty-state-rich">
+        <div class="empty-icon">${icon}</div>
+        <p class="empty-title">${title}</p>
+        <p class="empty-hint">${hint}</p>
+        <div class="empty-actions">
+          ${cta}
+          ${personaHint}
+        </div>
+      </div>`;
+  }
+
+  // Helper d'échappement minimal pour l'empty state
+  function _escHtmlShort(s) {
+    return (s || '').slice(0, 40)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   // ─── Filtrage ──────────────────────────────────────────────────────────────
@@ -243,6 +326,23 @@ const UI = (() => {
       );
     }
 
+    // Filtre niveau de priorité explicable
+    if (state.priorityLevel && state.priorityLevel !== "all") {
+      filtered = filtered.filter(a => a.priorityLevel === state.priorityLevel);
+    }
+
+    // Filtre statut analyste
+    if (state.statusFilter && state.statusFilter !== "all" && typeof EntityStatus !== "undefined") {
+      filtered = EntityStatus.filterByStatus(filtered, "article", state.statusFilter, a => a.id);
+    }
+
+    // Tri par priorityScore (articles sans priorityScore traités comme 0)
+    if (state.sortBy === "priority") {
+      filtered = filtered.slice().sort((a, b) =>
+        (b.priorityScore ?? 0) - (a.priorityScore ?? 0)
+      );
+    }
+
     return filtered;
   }
 
@@ -269,12 +369,12 @@ const UI = (() => {
   // ─── Mise à jour timestamp ─────────────────────────────────────────────────
   function updateTimestamp() {
     const el = $lastUp();
-    if (el) el.textContent = new Date().toLocaleTimeString("fr-FR");
+    if (el) el.textContent = new Date().toLocaleTimeString("en-US");
   }
 
   // ─── Export CSV ────────────────────────────────────────────────────────────
   function exportCSV(articles) {
-    const header = ["Titre", "Source", "Criticité", "Date", "Lien"].join(";");
+    const header = ["Title", "Source", "Severity", "Date", "Link"].join(";");
     const rows = articles.map(a => [
       `"${(a.title || "").replace(/"/g, '""')}"`,
       `"${a.sourceName}"`,
@@ -291,7 +391,7 @@ const UI = (() => {
     a.download = `cyberveille_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast(`Export CSV : ${articles.length} articles`, "success");
+    showToast(`CSV Export: ${articles.length} articles`, "success");
   }
 
   // ─── Notifications browser ─────────────────────────────────────────────────
@@ -312,7 +412,7 @@ const UI = (() => {
 
     newCritical.forEach(a => {
       notifiedIds.add(a.id);
-      const n = new Notification(`🔴 Alerte Haute — ${a.sourceName}`, {
+      const n = new Notification(`🔴 High Alert — ${a.sourceName}`, {
         body: a.title.slice(0, 100),
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>",
         tag: a.id
@@ -330,7 +430,7 @@ const UI = (() => {
       if (btn) {
         btn.classList.toggle("starred", isNowStarred);
         btn.textContent = isNowStarred ? "★" : "☆";
-        btn.title = isNowStarred ? "Retirer des favoris" : "Ajouter aux favoris";
+        btn.title = isNowStarred ? "Remove from favorites" : "Add to favorites";
       }
     }
     // Mettre à jour le compteur favoris
@@ -366,7 +466,7 @@ const UI = (() => {
 
   // ─── Export CSV enrichi (avec CVSS) ───────────────────────────────────────
   function exportCSVEnriched(articles, nvdMap) {
-    const header = ["Titre", "Source", "Criticité", "CVSS Score", "CVE ID", "Date", "Lien"].join(";");
+    const header = ["Title", "Source", "Severity", "CVSS Score", "CVE ID", "Date", "Link"].join(";");
     const rows = articles.map(a => {
       const nvd   = nvdMap[a.id];
       const score = nvd?.score ?? "";
@@ -390,7 +490,7 @@ const UI = (() => {
     el.download = `cyberveille_${new Date().toISOString().slice(0,10)}.csv`;
     el.click();
     URL.revokeObjectURL(url);
-    showToast(`Export CSV : ${articles.length} articles (CVSS inclus)`, "success");
+    showToast(`CSV Export: ${articles.length} articles (with CVSS)`, "success");
   }
 
   // ─── Initialiser le sélecteur de sources ──────────────────────────────────
@@ -398,7 +498,7 @@ const UI = (() => {
     const sel = document.getElementById("filter-source");
     if (!sel) return;
     // FeedManager.getAllFeeds() inclut les flux custom en plus des défauts
-    sel.innerHTML = `<option value="all">Toutes les sources</option>` +
+    sel.innerHTML = `<option value="all">All sources</option>` +
       FeedManager.getAllFeeds().map(f =>
         `<option value="${f.id}">${f.icon} ${f.name}</option>`
       ).join("");

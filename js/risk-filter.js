@@ -23,15 +23,15 @@ const RiskFilter = (() => {
     {
       id:    'kev',
       icon:  '⚠',
-      label: 'KEV actif',
-      title: 'Présent dans CISA Known Exploited Vulnerabilities\nExploitation active confirmée en production',
+      label: 'KEV active',
+      title: 'Present in CISA Known Exploited Vulnerabilities\nActive exploitation confirmed in production',
       color: 'kev'
     },
     {
       id:    'epss',
       icon:  '📊',
       label: 'EPSS',        // label complété par le seuil dynamique
-      title: 'Score EPSS (FIRST.org) au-dessus du seuil défini\nProbabilité d\'exploitation dans les 30 prochains jours',
+      title: 'EPSS score (FIRST.org) above the defined threshold\nExploitation probability within the next 30 days',
       color: 'epss',
       hasInput: true        // pill avec champ numérique intégré
     },
@@ -39,14 +39,14 @@ const RiskFilter = (() => {
       id:    'watchlist',
       icon:  '👁',
       label: 'Watchlist',
-      title: 'Correspond à un terme de votre liste de surveillance\n(vendeurs, produits, CVE, menaces spécifiques)',
+      title: 'Matches a term in your watchlist\n(vendors, products, CVEs, specific threats)',
       color: 'watchlist'
     },
     {
       id:    'trending',
       icon:  '🔥',
       label: 'Trending',
-      title: 'Sujet couvert simultanément par 3+ sources RSS\nSignal fort — menace largement confirmée',
+      title: 'Topic covered simultaneously by 3+ RSS sources\nStrong signal — widely confirmed threat',
       color: 'trending'
     },
     {
@@ -60,7 +60,7 @@ const RiskFilter = (() => {
       id:    'zero_day',
       icon:  '💀',
       label: '0-Day',
-      title: 'Vulnérabilité zero-day — aucun patch officiel disponible\nDétecté via ATT&CK T1203 ou mots-clés zero-day / 0day',
+      title: 'Zero-day vulnerability — no official patch available\nDetected via ATT&CK T1203 or zero-day / 0day keywords',
       color: 'zero_day'
     }
   ];
@@ -102,7 +102,7 @@ const RiskFilter = (() => {
     const countEl = document.getElementById('risk-result-count');
     if (countEl) {
       countEl.textContent = _active.size > 0
-        ? `${n} article${n !== 1 ? 's' : ''} correspond${n === 1 ? '' : 'ent'}`
+        ? `${n} article${n !== 1 ? 's' : ''} match${n === 1 ? 'es' : ''}`
         : '';
       countEl.style.display = _active.size > 0 ? 'inline' : 'none';
     }
@@ -132,7 +132,7 @@ const RiskFilter = (() => {
     bar.innerHTML = `
       <div class="risk-filter-inner">
 
-        <span class="risk-filter-label">🎯 Menace opérationnelle</span>
+        <span class="risk-filter-label">🎯 Operational threat</span>
 
         <div class="risk-pills" id="risk-pills-list">
           ${PILLS.map(p => _pillHTML(p)).join('')}
@@ -140,8 +140,8 @@ const RiskFilter = (() => {
 
         <div class="risk-filter-end">
           <span id="risk-result-count" class="risk-result-count" style="display:none"></span>
-          <button id="risk-clear-btn" class="risk-clear-btn" title="Désactiver tous les filtres">
-            ✕ Effacer
+          <button id="risk-clear-btn" class="risk-clear-btn" title="Clear all filters">
+            ✕ Clear
           </button>
         </div>
 
@@ -167,7 +167,7 @@ const RiskFilter = (() => {
           <span class="risk-pill-sep">EPSS &gt;</span>
           <input  class="risk-epss-input" id="risk-epss-input"
                   type="number" min="1" max="99" value="${_threshold}"
-                  title="Seuil EPSS (%)">
+                  title="EPSS threshold (%)">
           <span class="risk-pill-pct">%</span>
         </div>`;
     }
@@ -246,16 +246,16 @@ const RiskFilter = (() => {
     }
 
     const labels = {
-      kev:       'Exploités activement (KEV)',
+      kev:       'Actively exploited (KEV)',
       epss:      `EPSS ≥ ${_threshold}%`,
-      watchlist: 'Présents dans la watchlist',
+      watchlist: 'In watchlist',
       trending:  'Trending (3+ sources)',
-      ioc:       'Contenant des IOCs',
+      ioc:       'Containing IOCs',
       zero_day:  '0-Day / sans patch'
     };
 
     const parts = [..._active].map(id => `<strong>${labels[id] || id}</strong>`);
-    descText.innerHTML = `Affiche uniquement les articles : ${parts.join(' ET ')}`;
+    descText.innerHTML = `Showing only articles matching: ${parts.join(' AND ')}`;
     descRow.style.display = 'flex';
   }
 

@@ -365,12 +365,12 @@ const VendorPanel = (() => {
 
     const searchBar = `<div class="vp-search-bar">
   <input id="vp-search-input" class="vp-search-input" type="search"
-    placeholder="🔍 Rechercher un vendor ou produit…"
+    placeholder="🔍 Search vendor or product…"
     value="${_escHtml(_searchQuery)}" autocomplete="off" spellcheck="false">
 </div>`;
 
     const filterBar = `<div class="vp-filter-bar">
-  <button class="vp-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">Tous (${allVendors.length})</button>
+  <button class="vp-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">All (${allVendors.length})</button>
   <button class="vp-filter-btn${_filterBy==="briefing"  ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
   <button class="vp-filter-btn${_filterBy==="kev"       ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
   <button class="vp-filter-btn${_filterBy==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist (${allVendors.filter(v=>v.hasWatchlist).length})</button>
@@ -378,12 +378,12 @@ const VendorPanel = (() => {
 
     if (vendors.length === 0) {
       const emptyMsg = q
-        ? `Aucun résultat pour « ${_escHtml(_searchQuery.trim())} ».`
+        ? `No result for « ${_escHtml(_searchQuery.trim())} ».`
         : _filterBy === "briefing" && !_briefingAvailable
           ? "Ouvre l\'onglet Briefing d\'abord pour activer ce filtre."
           : _filterBy === "watchlist"
-            ? "Aucun vendor en watchlist — configure des mots-clés dans l\'app."
-            : "Aucun vendor pour ce filtre.";
+            ? "No vendor in watchlist — configure keywords in the app."
+            : "No vendor for this filter.";
       listEl.innerHTML = searchBar + filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
       listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
         btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));

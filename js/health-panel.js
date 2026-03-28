@@ -47,7 +47,7 @@ const HealthPanel = (() => {
       _cache = await res.json();
       _render(_cache);
     } catch (e) {
-      _renderError(e.message || "Erreur inconnue");
+      _renderError(e.message || "Unknown error");
     } finally {
       _loading = false;
     }
@@ -57,7 +57,7 @@ const HealthPanel = (() => {
 
   function _renderLoading() {
     const el = document.getElementById("health-list");
-    if (el) el.innerHTML = '<div class="hp-state hp-loading">⏳ Chargement…</div>';
+    if (el) el.innerHTML = '<div class="hp-state hp-loading">⏳ Loading…</div>';
   }
 
   function _renderError(msg) {
@@ -69,7 +69,7 @@ const HealthPanel = (() => {
   function _ts(iso) {
     if (!iso) return '<span class="hp-null">—</span>';
     const d = new Date(iso);
-    return `<span class="hp-ts" title="${iso}">${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>`;
+    return `<span class="hp-ts" title="${iso}">${d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>`;
   }
 
   /** Convertit une valeur bool/null en pill colorée. */
@@ -81,11 +81,11 @@ const HealthPanel = (() => {
 
   /** Badge de résultat du dernier run (libellés humains). */
   function _resultBadge(result) {
-    if (!result) return '<span class="hp-pill hp-null">Aucun run</span>';
+    if (!result) return '<span class="hp-pill hp-null">No run</span>';
     const map = {
-      sent:       '<span class="hp-pill hp-ok">✅ Envoyé</span>',
-      failed:     '<span class="hp-pill hp-err">❌ Échec d\'envoi</span>',
-      noArticles: '<span class="hp-pill hp-warn">⚠️ Aucun article</span>'
+      sent:       '<span class="hp-pill hp-ok">✅ Sent</span>',
+      failed:     '<span class="hp-pill hp-err">❌ Send failed</span>',
+      noArticles: '<span class="hp-pill hp-warn">⚠️ No articles</span>'
     };
     return map[result] || `<span class="hp-pill hp-null">${result}</span>`;
   }
@@ -101,13 +101,13 @@ const HealthPanel = (() => {
     const timeStr  = `${pad(targetH)}h${pad(targetM)}`;
     if (dg.mode === "weekly" && dg.weekday != null) {
       const days = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
-      return `${days[dg.weekday] || "?"} à ${timeStr}`;
+      return `${days[dg.weekday] || "?"} at ${timeStr}`;
     }
-    if (!dg.nowMontreal) return `à ${timeStr}`;
+    if (!dg.nowMontreal) return `at ${timeStr}`;
     const nowTime = dg.nowMontreal.split(" ")[1] || "";
     const [curH, curM] = nowTime.split(":").map(Number);
     const ahead = curH * 60 + curM < targetH * 60 + targetM;
-    return `${ahead ? "aujourd'hui" : "demain"} à ${timeStr}`;
+    return `${ahead ? "today" : "tomorrow"} at ${timeStr}`;
   }
 
   /** Bandeau résumé : état global + impact + prochain run en un coup d'œil. */
@@ -119,11 +119,11 @@ const HealthPanel = (() => {
 
     // Impact lisible du dernier run
     const impactMap = {
-      sent:       `Briefing envoyé${ls.topCount != null ? `, ${ls.topCount} article${ls.topCount > 1 ? "s" : ""} sélectionné${ls.topCount > 1 ? "s" : ""}` : ""}`,
-      failed:     "Échec d'envoi — vérifier la configuration email",
-      noArticles: "Aucun article dans les 48 h — briefing non envoyé"
+      sent:       `Briefing sent${ls.topCount != null ? `, ${ls.topCount} article${ls.topCount > 1 ? "s" : ""} selected` : ""}`,
+      failed:     "Send failure — check email configuration",
+      noArticles: "No article in the last 48h — briefing not sent"
     };
-    const impact = lr.lastResult ? (impactMap[lr.lastResult] || lr.lastResult) : "Aucun run enregistré";
+    const impact = lr.lastResult ? (impactMap[lr.lastResult] || lr.lastResult) : "No run recorded";
 
     // Cause principale (1re alerte ou raison d'échec)
     const cause = Array.isArray(d.warnings) && d.warnings.length
@@ -131,16 +131,16 @@ const HealthPanel = (() => {
       : (lr.lastResult === "failed" && lr.lastReason) ? lr.lastReason : "";
 
     const statusLabel = globalOk
-      ? '<span class="hp-sum-status hp-sum-ok">✅ Système opérationnel</span>'
-      : '<span class="hp-sum-status hp-sum-warn">⚠️ Dégradé</span>';
+      ? '<span class="hp-sum-status hp-sum-ok">✅ System operational</span>'
+      : '<span class="hp-sum-status hp-sum-warn">⚠️ Degraded</span>';
 
     return `
 <div class="hp-summary ${globalOk ? "hp-summary-ok" : "hp-summary-warn"}">
   ${statusLabel}
   <div class="hp-sum-grid">
-    <span class="hp-sum-lbl">📤 Dernier résultat</span><span class="hp-sum-val">${impact}</span>
-    <span class="hp-sum-lbl">⏭ Prochain run</span><span class="hp-sum-val">${_nextRunLabel(dg)}</span>
-    ${cause ? `<span class="hp-sum-lbl">⚠️ Alerte</span><span class="hp-sum-val hp-sum-cause">${cause}</span>` : ""}
+    <span class="hp-sum-lbl">📤 Last result</span><span class="hp-sum-val">${impact}</span>
+    <span class="hp-sum-lbl">⏭ Next run</span><span class="hp-sum-val">${_nextRunLabel(dg)}</span>
+    ${cause ? `<span class="hp-sum-lbl">⚠️ Alert</span><span class="hp-sum-val hp-sum-cause">${cause}</span>` : ""}
   </div>
 </div>`;
   }   // ← fermeture de _renderSummary
@@ -155,10 +155,10 @@ const HealthPanel = (() => {
     if (errCount === 0) {
       const okLabel = typeof okCount === "number"
         ? `✅ ${okCount}/${total} OK`
-        : "✅ Tous les feeds OK";
+        : "✅ All feeds OK";
       return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 Flux RSS (dernier run)</div>
+  <div class="hp-section-head">📡 RSS Feeds (last run)</div>
   <div class="hp-row hp-row-ok">${okLabel}</div>
 </div>`;
     }
@@ -169,15 +169,15 @@ const HealthPanel = (() => {
       return `
   <div class="hp-feed-err-row">
     <span class="hp-feed-name">${f.name || f.id}${idTag}</span>
-    <span class="hp-feed-err-msg">${f.error || "erreur inconnue"}</span>
+    <span class="hp-feed-err-msg">${f.error || "unknown error"}</span>
   </div>`;
     }).join("");
     const errLabel = typeof okCount === "number"
       ? `${okCount}/${total} OK`
-      : `${errCount} en erreur`;
+      : `${errCount} with errors`;
     return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 Flux RSS (dernier run) <span class="hp-err-count">${errLabel}</span></div>
+  <div class="hp-section-head">📡 RSS Feeds (last run) <span class="hp-err-count">${errLabel}</span></div>
   ${rows}
 </div>`;
   }
@@ -187,21 +187,21 @@ const HealthPanel = (() => {
     if (!Array.isArray(history) || history.length === 0) {
       return `
 <div class="hp-section">
-  <div class="hp-section-head">📋 Historique des runs</div>
-  <div class="hp-row hp-null-row">Aucun historique disponible (KV requis)</div>
+  <div class="hp-section-head">📋 Run history</div>
+  <div class="hp-row hp-null-row">No history available (KV required)</div>
 </div>`;
     }
 
     const rows = history.map((r, i) => {
       const isLast  = i === 0;
       const badge   = r.lastResult === "sent"
-        ? '<span class="hp-pill hp-ok hp-pill-sm">✅ Envoyé</span>'
+        ? '<span class="hp-pill hp-ok hp-pill-sm">✅ Sent</span>'
         : r.lastResult === "failed"
-          ? '<span class="hp-pill hp-err hp-pill-sm">❌ Échec</span>'
-          : '<span class="hp-pill hp-warn hp-pill-sm">⚠️ Aucun art.</span>';
+          ? '<span class="hp-pill hp-err hp-pill-sm">❌ Failed</span>'
+          : '<span class="hp-pill hp-warn hp-pill-sm">⚠️ No art.</span>';
 
       const d   = new Date(r.lastRunAt);
-      const ts  = isNaN(d) ? r.lastRunAt : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+      const ts  = isNaN(d) ? r.lastRunAt : `${d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
       const slotStr = r.slot ? `<br><span class="hp-hist-slot">${r.slot}</span>` : "";
       const ls  = r.lastStats || {};
       const feedsTotal = (ls.feedsOk ?? 0) + (ls.feedsErr ?? 0);
@@ -224,7 +224,7 @@ const HealthPanel = (() => {
 
     return `
 <div class="hp-section">
-  <div class="hp-section-head">📋 Historique des runs (${history.length})</div>
+  <div class="hp-section-head">📋 Run history (${history.length})</div>
   <table class="hp-hist-table"><tbody>${rows}</tbody></table>
 </div>`;
   }
@@ -234,8 +234,8 @@ const HealthPanel = (() => {
     if (!Array.isArray(history) || history.length === 0) {
       return `
 <div class="hp-section">
-  <div class="hp-section-head">📬 Briefings envoyés</div>
-  <div class="hp-row hp-null-row">Aucun briefing enregistré (KV requis, ou aucun envoi encore)</div>
+  <div class="hp-section-head">📬 Sent briefings</div>
+  <div class="hp-row hp-null-row">No briefing recorded (KV required, or no send yet)</div>
 </div>`;
     }
 
@@ -244,7 +244,7 @@ const HealthPanel = (() => {
     const cards = history.map((b, i) => {
       const d   = new Date(b.sentAt);
       const ts  = isNaN(d) ? b.sentAt
-        : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+        : `${d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
       const slotBadge = b.slot
         ? `<span class="hp-bh-slot">${b.slot}</span>`
         : "";
@@ -294,7 +294,7 @@ const HealthPanel = (() => {
 
     return `
 <div class="hp-section">
-  <div class="hp-section-head">📬 Briefings envoyés (${history.length})</div>
+  <div class="hp-section-head">📬 Sent briefings (${history.length})</div>
   <div class="hp-bh-list">${cards}</div>
 </div>`;
   }
@@ -328,64 +328,64 @@ ${_renderSummary(d)}
 
 <!-- ── Statut global ─────────────────────────────────────────────────── -->
 <div class="hp-section">
-  <div class="hp-section-head">🩺 État global</div>
-  <div class="hp-row"><span class="hp-lbl">Statut</span><span>${globalBadge}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Vérifié le</span><span>${_ts(d.timestamp)}</span></div>
+  <div class="hp-section-head">🩺 Global status</div>
+  <div class="hp-row"><span class="hp-lbl">Status</span><span>${globalBadge}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Checked on</span><span>${_ts(d.timestamp)}</span></div>
   ${warnings}
 </div>
 
 <!-- ── Dernier run ────────────────────────────────────────────────────── -->
 <div class="hp-section">
-  <div class="hp-section-head">🕐 Dernier run</div>
-  <div class="hp-row"><span class="hp-lbl">Exécuté le</span><span>${_ts(lr.lastRunAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Créneau (Montréal)</span><span class="hp-code">${lr.slot || "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Résultat</span><span>${_resultBadge(lr.lastResult)}</span></div>
-  ${lr.lastReason ? `<div class="hp-row"><span class="hp-lbl">Motif</span><span class="hp-reason-txt">${lr.lastReason}</span></div>` : ""}
-  <div class="hp-row"><span class="hp-lbl">Dernier envoi</span><span>${_ts(lr.lastSentAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Dernier succès</span><span>${_ts(lr.lastSuccessAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Dernier échec</span><span>${_ts(lr.lastFailureAt)}</span></div>
+  <div class="hp-section-head">🕐 Last run</div>
+  <div class="hp-row"><span class="hp-lbl">Executed on</span><span>${_ts(lr.lastRunAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Slot (Montreal)</span><span class="hp-code">${lr.slot || "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Result</span><span>${_resultBadge(lr.lastResult)}</span></div>
+  ${lr.lastReason ? `<div class="hp-row"><span class="hp-lbl">Reason</span><span class="hp-reason-txt">${lr.lastReason}</span></div>` : ""}
+  <div class="hp-row"><span class="hp-lbl">Last sent</span><span>${_ts(lr.lastSentAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Last success</span><span>${_ts(lr.lastSuccessAt)}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Last failure</span><span>${_ts(lr.lastFailureAt)}</span></div>
 </div>
 
 <!-- ── Stats du dernier run ───────────────────────────────────────────── -->
 <div class="hp-section">
-  <div class="hp-section-head">📊 Stats pipeline</div>
-  <div class="hp-row"><span class="hp-lbl">Flux OK / erreur</span>
+  <div class="hp-section-head">📊 Pipeline stats</div>
+  <div class="hp-row"><span class="hp-lbl">Feeds OK / error</span>
     <span><strong>${ls.feedsOk ?? "—"}</strong> ok · <strong class="${ls.feedsErr > 0 ? "hp-val-err" : ""}">${ls.feedsErr ?? "—"}</strong> err</span>
   </div>
-  <div class="hp-row"><span class="hp-lbl">Articles bruts</span><span>${ls.rawArticles ?? "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Articles uniques</span><span>${ls.uniqueArticles ?? "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Top sélectionnés</span><span><strong>${ls.topCount ?? "—"}</strong></span></div>
+  <div class="hp-row"><span class="hp-lbl">Raw articles</span><span>${ls.rawArticles ?? "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Unique articles</span><span>${ls.uniqueArticles ?? "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Top selected</span><span><strong>${ls.topCount ?? "—"}</strong></span></div>
 </div>
 
 <!-- ── Cron & planning ─────────────────────────────────────────────────── -->
 <div class="hp-section">
-  <div class="hp-section-head">⏱ Cron & planning</div>
+  <div class="hp-section-head">⏱ Cron & schedule</div>
   <div class="hp-row"><span class="hp-lbl">Schedule</span><span class="hp-code">${cr.schedule || "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Heure d'envoi</span><span class="hp-code">${dg.hour || "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Send time</span><span class="hp-code">${dg.hour || "—"}</span></div>
   <div class="hp-row"><span class="hp-lbl">Mode</span><span>${dg.mode || "—"}</span></div>
   ${dg.weekday != null ? `<div class="hp-row"><span class="hp-lbl">Jour (0=dim)</span><span>${dg.weekday}</span></div>` : ""}
   <div class="hp-row"><span class="hp-lbl">Timezone</span><span class="hp-code">${dg.tz || "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Heure Montréal</span><span class="hp-code">${dg.nowMontreal || "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Montreal time</span><span class="hp-code">${dg.nowMontreal || "—"}</span></div>
 </div>
 
 <!-- ── Email ──────────────────────────────────────────────────────────── -->
 <div class="hp-section">
   <div class="hp-section-head">✉️ Email</div>
   <div class="hp-row"><span class="hp-lbl">Canal</span><span class="hp-code">${em.channel || "—"}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Destinataire</span><span>${_bool(em.recipient, "configuré", "manquant")}</span></div>
-  <div class="hp-row"><span class="hp-lbl">CRON_SECRET</span><span>${_bool(em.cronSecret, "configuré", "absent")}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Recipient</span><span>${_bool(em.recipient, "configured", "missing")}</span></div>
+  <div class="hp-row"><span class="hp-lbl">CRON_SECRET</span><span>${_bool(em.cronSecret, "configured", "absent")}</span></div>
   ${em.channel === "resend"    ? `
-  <div class="hp-row"><span class="hp-lbl">RESEND_API_KEY</span><span>${_bool(em.resend,     "configuré", "manquant")}</span></div>
-  <div class="hp-row"><span class="hp-lbl">RESEND_FROM</span><span>${_bool(em.resendFrom, "configuré", "manquant")}</span></div>` : ""}
+  <div class="hp-row"><span class="hp-lbl">RESEND_API_KEY</span><span>${_bool(em.resend,     "configured", "missing")}</span></div>
+  <div class="hp-row"><span class="hp-lbl">RESEND_FROM</span><span>${_bool(em.resendFrom, "configured", "missing")}</span></div>` : ""}
   ${em.channel === "sendgrid"  ? `
-  <div class="hp-row"><span class="hp-lbl">SENDGRID_API_KEY</span><span>${_bool(em.sendgrid,     "configuré", "manquant")}</span></div>
-  <div class="hp-row"><span class="hp-lbl">SENDGRID_FROM</span><span>${_bool(em.sendgridFrom, "configuré", "manquant")}</span></div>` : ""}
+  <div class="hp-row"><span class="hp-lbl">SENDGRID_API_KEY</span><span>${_bool(em.sendgrid,     "configured", "missing")}</span></div>
+  <div class="hp-row"><span class="hp-lbl">SENDGRID_FROM</span><span>${_bool(em.sendgridFrom, "configured", "missing")}</span></div>` : ""}
 </div>
 
 <!-- ── Déduplication KV ───────────────────────────────────────────────── -->
 <div class="hp-section">
   <div class="hp-section-head">🔁 Déduplication KV</div>
-  <div class="hp-row"><span class="hp-lbl">Vercel KV</span><span>${_bool(dd.kvAvailable, "disponible", "non configuré")}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Vercel KV</span><span>${_bool(dd.kvAvailable, "available", "not configured")}</span></div>
 </div>
 
 <!-- ── Feeds en erreur ────────────────────────────────────────────────── -->

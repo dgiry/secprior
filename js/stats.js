@@ -185,9 +185,9 @@ const StatsPanel = (() => {
 
     // Sous-labels dynamiques — nouveaux
     const rrEl = document.getElementById("kpi-reduction-rate-sub");
-    if (rrEl)  rrEl.textContent = eligible > 0 ? `${eligible} élig. → ${topicEligible} sujets` : "";
+    if (rrEl)  rrEl.textContent = eligible > 0 ? `${eligible} elig. → ${topicEligible} topics` : "";
     const btEl = document.getElementById("kpi-briefing-top-sub");
-    if (btEl)  btEl.textContent = topicEligible > 0 ? `sur ${topicEligible} sujets éligibles` : "";
+    if (btEl)  btEl.textContent = topicEligible > 0 ? `of ${topicEligible} eligible topics` : "";
 
     // Couleur dynamique des taux (vert si bon, orange si faible)
     _colorRate("kpi-enrich-rate",    enrichRate,    50, 25);  // vert ≥50%, orange <25%
@@ -364,14 +364,14 @@ const StatsPanel = (() => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      days.push(d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }));
-      labels.push(i === 0 ? "Auj." : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }));
+      days.push(d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }));
+      labels.push(i === 0 ? "Today" : d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }));
     }
 
     const all  = Object.fromEntries(days.map(d => [d, 0]));
     const high = Object.fromEntries(days.map(d => [d, 0]));
     articles.forEach(a => {
-      const label = a.pubDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+      const label = a.pubDate.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" });
       if (label in all) {
         all[label]++;
         if (a.criticality === "high") high[label]++;
@@ -465,7 +465,7 @@ const StatsPanel = (() => {
 
     const sorted = Object.entries(tactics).sort((a, b) => b[1] - a[1]).slice(0, 7);
     if (!sorted.length) {
-      el.innerHTML = `<span style="color:var(--text2);font-size:.75rem">Aucune tactique détectée</span>`;
+      el.innerHTML = `<span style="color:var(--text2);font-size:.75rem">No tactic detected</span>`;
       return;
     }
 
@@ -502,13 +502,13 @@ const StatsPanel = (() => {
       .slice(0, 6);
 
     if (!sorted.length) {
-      el.innerHTML = `<span style="color:var(--text2);font-size:.75rem">Aucun CVE détecté</span>`;
+      el.innerHTML = `<span style="color:var(--text2);font-size:.75rem">No CVE detected</span>`;
       return;
     }
 
     el.innerHTML = sorted.map(([cve, info]) => `
       <div class="cve-row">
-        <span class="cve-id cp-cve-link" data-cve="${cve}" title="Voir les articles liés dans le panneau CVE">${cve}</span>
+        <span class="cve-id cp-cve-link" data-cve="${cve}" title="View related articles in the CVE panel">${cve}</span>
         ${info.isKEV ? `<span class="badge badge-kev" style="font-size:.6rem;padding:.05rem .3rem">KEV</span>` : ""}
         ${info.epss != null ? `<span class="badge badge-epss" style="font-size:.6rem;padding:.05rem .3rem">EPSS ${(info.epss*100).toFixed(1)}%</span>` : ""}
         <a href="https://nvd.nist.gov/vuln/detail/${cve}" target="_blank" class="cp-nvd-link" title="Voir sur NVD">↗</a>

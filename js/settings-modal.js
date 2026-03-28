@@ -26,7 +26,7 @@ const SettingsModal = (() => {
     document.body.style.overflow = "";
     // Rappel discret si des flux ont été modifiés sans actualiser
     if (_feedsDirty) {
-      UI.showToast("💾 Flux sauvegardés — cliquez ↺ Actualiser pour voir les effets", "info");
+      UI.showToast("💾 Feeds saved — click ↺ Refresh to apply changes", "info");
       _feedsDirty = false;
     }
   }
@@ -60,6 +60,8 @@ const SettingsModal = (() => {
     _val("alert-sg-key",       s.sendgridApiKey);
     _val("alert-sg-from",      s.sendgridFrom);
     _val("alert-sg-to",        s.recipientEmail);
+    _val("alert-token",        s.alertToken);
+    _val("alert-sg-token",     s.alertToken);
     _val("alert-ejs-service",  s.emailjsService);
     _val("alert-ejs-template", s.emailjsTemplate);
     _val("alert-ejs-key",      s.emailjsPublicKey);
@@ -76,7 +78,36 @@ const SettingsModal = (() => {
     _showChannelSection(s.channel);
     _bindChannelRadios();
     _bindModeSelect();
+    _adaptToMode();
     _renderAlertHistory("all");
+  }
+
+  // ── Adaptation de l'UI selon le mode prod/dev ─────────────────────────────
+  //
+  // En production (CONFIG.USE_API=true) : les clés API ne doivent pas être
+  // saisies côté client — elles sont dans les env vars Vercel.
+  // On cache les champs clé et on affiche un message "géré côté serveur".
+  // On montre à la place les champs "token optionnel" (pour ALERT_TOKEN).
+
+  function _adaptToMode() {
+    const isProd = (typeof CONFIG !== "undefined") && CONFIG.USE_API;
+
+    // Resend
+    _showEl("resend-local-notice",  !isProd);
+    _showEl("resend-prod-notice",    isProd);
+    _showEl("resend-key-row",       !isProd);
+    _showEl("resend-token-row",      isProd);
+
+    // SendGrid
+    _showEl("sg-local-notice",      !isProd);
+    _showEl("sg-prod-notice",        isProd);
+    _showEl("sg-key-row",           !isProd);
+    _showEl("sg-token-row",          isProd);
+  }
+
+  function _showEl(id, visible) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? "" : "none";
   }
 
   function save() {
@@ -93,15 +124,19 @@ const SettingsModal = (() => {
     };
     const recipientEmail = recipientMap[channel] || _val("alert-recipient");
 
+    const isProd   = (typeof CONFIG !== "undefined") && CONFIG.USE_API;
+    const existing = AlertManager.loadSettings();
+
     const settings = {
-      ...AlertManager.loadSettings(),
+      ...existing,
       enabled:         _val("alert-enabled", null, "checked"),
       mode:            _val("alert-mode") || "immediate",
       channel,
       webhookUrl:      _val("alert-webhook-url"),
-      resendApiKey:    _val("alert-resend-key"),
+      // En prod, ne pas écraser les clés locales par des champs cachés vides
+      resendApiKey:    isProd ? existing.resendApiKey   : _val("alert-resend-key"),
       resendFrom:      _val("alert-resend-from"),
-      sendgridApiKey:  _val("alert-sg-key"),
+      sendgridApiKey:  isProd ? existing.sendgridApiKey : _val("alert-sg-key"),
       sendgridFrom:    _val("alert-sg-from"),
       emailjsService:  _val("alert-ejs-service"),
       emailjsTemplate: _val("alert-ejs-template"),
@@ -111,11 +146,13 @@ const SettingsModal = (() => {
       cooldownMs:      cooldown,
       batchSize:       batch,
       digestHour:      _val("alert-digest-hour")    || "08:00",
-      digestWeekday:   parseInt(_val("alert-digest-weekday") ?? "1")
+      digestWeekday:   parseInt(_val("alert-digest-weekday") ?? "1"),
+      // Token d'auth optionnel pour /api/send-alert (si ALERT_TOKEN configuré sur Vercel)
+      alertToken:      _val("alert-token") || _val("alert-sg-token") || existing.alertToken || ""
     };
 
     AlertManager.saveSettings(settings);
-    UI.showToast("⚙️ Paramètres alertes enregistrés", "success");
+    UI.showToast("⚙️ Alert settings saved", "success");
     close();
     _updateSettingsBtn(settings);
   }
@@ -124,20 +161,20 @@ const SettingsModal = (() => {
     const url = _val("alert-webhook-url");
     if (!url) { UI.showToast("Entrez d'abord une URL webhook", "error"); return; }
     const btn = document.querySelector(".btn-test");
-    if (btn) { btn.disabled = true; btn.textContent = "⏳ Envoi…"; }
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ Sending…"; }
     try {
       const res = await fetch(url, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "cyberveille_test", message: "✅ CyberVeille Pro — Test webhook réussi !", timestamp: new Date().toISOString() }),
+        body: JSON.stringify({ event: "cyberveille_test", message: "✅ CyberVeille Pro — Test webhook successful!", timestamp: new Date().toISOString() }),
         signal: AbortSignal.timeout(8000)
       });
-      if (res.ok) UI.showToast("✅ Webhook test envoyé avec succès !", "success");
-      else        UI.showToast(`⚠️ Webhook répondu HTTP ${res.status}`, "warning");
+      if (res.ok) UI.showToast("✅ Webhook test sent successfully!", "success");
+      else        UI.showToast(`⚠️ Webhook responded HTTP ${res.status}`, "warning");
     } catch (e) {
-      UI.showToast(`❌ Échec webhook : ${e.message}`, "error");
+      UI.showToast(`❌ Webhook error: ${e.message}`, "error");
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "🧪 Tester le webhook"; }
+      if (btn) { btn.disabled = false; btn.textContent = "🧪 Test webhook"; }
     }
   }
 
@@ -149,48 +186,69 @@ const SettingsModal = (() => {
       recipientEmail:  _val("alert-recipient")
     };
     if (!s.emailjsService || !s.emailjsTemplate || !s.emailjsPublicKey) {
-      UI.showToast("Remplissez Service ID, Template ID et Clé publique", "error"); return;
+      UI.showToast("Fill in Service ID, Template ID and public key", "error"); return;
     }
     const fakeArticle = [{ id: "test-article", title: "Test CyberVeille Pro — email de test", sourceName: "CyberVeille Pro", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Email de test." }];
     const testBtn = document.querySelectorAll(".btn-test")[1];
-    if (testBtn) { testBtn.disabled = true; testBtn.textContent = "⏳ Envoi…"; }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = "⏳ Sending…"; }
     const saved = AlertManager.loadSettings();
     AlertManager.saveSettings({ ...saved, ...s, channel: "emailjs", enabled: true, lastSentAt: 0, cooldownMs: 0 });
     try {
       await AlertManager.processNewArticles(fakeArticle);
-      UI.showToast("✅ Email test envoyé — vérifiez votre boîte", "success");
+      UI.showToast("✅ Test email sent — check your inbox", "success");
     } catch (e) {
       UI.showToast(`❌ EmailJS : ${e.message}`, "error");
     } finally {
       AlertManager.saveSettings(saved);
-      if (testBtn) { testBtn.disabled = false; testBtn.textContent = "🧪 Envoyer un email test"; }
+      if (testBtn) { testBtn.disabled = false; testBtn.textContent = "🧪 Send test email"; }
     }
   }
 
   async function testResend() {
-    const s = { resendApiKey: _val("alert-resend-key"), resendFrom: _val("alert-resend-from"), recipientEmail: _val("alert-resend-to") };
-    if (!s.resendApiKey)   { UI.showToast("Clé API Resend manquante", "error"); return; }
-    if (!s.recipientEmail) { UI.showToast("Email destinataire manquant", "error"); return; }
-    await _runTest("resend", s, "🧪 Envoyer un email test", "#section-resend .btn-test");
+    const isProd = (typeof CONFIG !== "undefined") && CONFIG.USE_API;
+    const recipientEmail = _val("alert-resend-to");
+    if (!isProd) {
+      const key = _val("alert-resend-key");
+      if (!key) { UI.showToast("Resend API key missing", "error"); return; }
+    }
+    if (!recipientEmail) { UI.showToast("Recipient email missing", "error"); return; }
+    const s = {
+      resendApiKey:  isProd ? "" : _val("alert-resend-key"),
+      resendFrom:    _val("alert-resend-from"),
+      recipientEmail,
+      alertToken:    _val("alert-token") || AlertManager.loadSettings().alertToken || ""
+    };
+    await _runTest("resend", s, "🧪 Send test email", "#section-resend .btn-test");
   }
 
   async function testSendGrid() {
-    const s = { sendgridApiKey: _val("alert-sg-key"), sendgridFrom: _val("alert-sg-from"), recipientEmail: _val("alert-sg-to") };
-    if (!s.sendgridApiKey)  { UI.showToast("Clé API SendGrid manquante", "error"); return; }
-    if (!s.sendgridFrom)    { UI.showToast("Adresse expéditeur manquante", "error"); return; }
-    if (!s.recipientEmail)  { UI.showToast("Email destinataire manquant", "error"); return; }
-    await _runTest("sendgrid", s, "🧪 Envoyer un email test", "#section-sendgrid .btn-test");
+    const isProd = (typeof CONFIG !== "undefined") && CONFIG.USE_API;
+    const recipientEmail = _val("alert-sg-to");
+    if (!isProd) {
+      const key = _val("alert-sg-key");
+      if (!key) { UI.showToast("SendGrid API key missing", "error"); return; }
+      const from = _val("alert-sg-from");
+      if (!from) { UI.showToast("Sender address missing", "error"); return; }
+    }
+    if (!recipientEmail) { UI.showToast("Recipient email missing", "error"); return; }
+    const s = {
+      sendgridApiKey: isProd ? "" : _val("alert-sg-key"),
+      sendgridFrom:   _val("alert-sg-from"),
+      recipientEmail,
+      alertToken:     _val("alert-sg-token") || AlertManager.loadSettings().alertToken || ""
+    };
+    await _runTest("sendgrid", s, "🧪 Send test email", "#section-sendgrid .btn-test");
   }
 
   async function _runTest(channel, overrides, btnLabel, btnSelector) {
     const btn = document.querySelector(btnSelector);
-    if (btn) { btn.disabled = true; btn.textContent = "⏳ Envoi…"; }
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ Sending…"; }
     const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test CyberVeille Pro via ${channel}`, sourceName: "CyberVeille Pro", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Email de test ${channel}.` }];
     const saved = AlertManager.loadSettings();
     AlertManager.saveSettings({ ...saved, ...overrides, channel, enabled: true, lastSentAt: 0, cooldownMs: 0 });
     try {
       await AlertManager.processNewArticles(fakeArticles);
-      UI.showToast(`✅ Email test ${channel} envoyé — vérifiez votre boîte`, "success");
+      UI.showToast(`✅ ${channel} test email sent — check your inbox`, "success");
     } catch (e) {
       UI.showToast(`❌ ${channel} : ${e.message}`, "error");
     } finally {
@@ -217,10 +275,10 @@ const SettingsModal = (() => {
     if (!btn) return;
     if (settings.enabled) {
       btn.classList.add("active");
-      btn.title = `Alertes activées — canal : ${settings.channel}`;
+      btn.title = `Alerts enabled — channel: ${settings.channel}`;
     } else {
       btn.classList.remove("active");
-      btn.title = "Paramètres alertes email/webhook";
+      btn.title = "Email/webhook alert settings";
     }
   }
 
@@ -262,9 +320,9 @@ const SettingsModal = (() => {
     if (feeds.length === 0) {
       const allUnknown = all.every(f => f.lastStatus === "unknown");
       list.innerHTML = `<div class="fm-empty">${
-        filter === "error"  ? (allUnknown ? "Aucun test effectué — cliquez ↺ Actualiser pour diagnostiquer les flux" : "Aucun flux en erreur 🎉") :
-        filter === "active" ? "Aucun flux actif" :
-        "Aucun flux configuré"
+        filter === "error"  ? (allUnknown ? "No test performed — click ↺ Refresh to diagnose feeds" : "No feed errors 🎉") :
+        filter === "active" ? "No active feeds" :
+        "No feeds configured"
       }</div>`;
       return;
     }
@@ -279,21 +337,21 @@ const SettingsModal = (() => {
                       : f.lastStatus === "error" ? "fm-status-error"
                       :                            "fm-status-unknown";
     const statusLabel = f.lastStatus === "ok"    ? "✓ OK"
-                      : f.lastStatus === "error" ? "✗ Erreur"
-                      : neverTested              ? "— jamais testé"
+                      : f.lastStatus === "error" ? "✗ Error"
+                      : neverTested              ? "— never tested"
                       :                            "? Inconnu";
 
-    const lastTest  = f.lastTestAt ? _relTime(f.lastTestAt) : "jamais testé";
+    const lastTest  = f.lastTestAt ? _relTime(f.lastTestAt) : "never tested";
     const itemCount = f.lastItemCount !== null ? `${f.lastItemCount} art.` : "";
     const hostname  = (() => { try { return new URL(f.url).hostname; } catch { return (f.url || "").slice(0, 40); } })();
 
     const deleteBtn = f.isDefault ? "" :
-      `<button class="fm-btn fm-btn-danger" title="Supprimer ce flux" onclick="SettingsModal.deleteFeed('${f.id}')">🗑</button>`;
+      `<button class="fm-btn fm-btn-danger" title="Delete this feed" onclick="SettingsModal.deleteFeed('${f.id}')">🗑</button>`;
     const editBtn   = f.isDefault ? "" :
-      `<button class="fm-btn" title="Modifier ce flux" onclick="SettingsModal.editFeedToggle('${f.id}')">✏️</button>`;
+      `<button class="fm-btn" title="Edit this feed" onclick="SettingsModal.editFeedToggle('${f.id}')">✏️</button>`;
 
     const errorRow = (f.lastStatus === "error") ?
-      `<div class="fm-error-row">❌ ${_esc(f.lastErrorMessage || "Erreur inconnue")}</div>` : "";
+      `<div class="fm-error-row">❌ ${_esc(f.lastErrorMessage || "Unknown error")}</div>` : "";
 
     const editForm = f.isDefault ? "" : `
       <div class="fm-edit-row" id="fm-edit-${f.id}" style="display:none">
@@ -309,8 +367,8 @@ const SettingsModal = (() => {
         </div>
         <div class="fm-edit-errors" id="fm-ee-${f.id}" style="display:none"></div>
         <div class="fm-edit-actions">
-          <button class="btn btn-primary" onclick="SettingsModal.saveEditFeed('${f.id}')">💾 Sauvegarder</button>
-          <button class="btn" onclick="SettingsModal.editFeedToggle('${f.id}')">Annuler</button>
+          <button class="btn btn-primary" onclick="SettingsModal.saveEditFeed('${f.id}')">💾 Save</button>
+          <button class="btn" onclick="SettingsModal.editFeedToggle('${f.id}')">Cancel</button>
         </div>
       </div>`;
 
@@ -323,7 +381,7 @@ const SettingsModal = (() => {
           <div class="fm-feed-info">
             <div class="fm-feed-name">
               ${_esc(f.name)}
-              <span class="${f.isDefault ? "fm-badge-default" : "fm-badge-custom"}">${f.isDefault ? "défaut" : "custom"}</span>
+              <span class="${f.isDefault ? "fm-badge-default" : "fm-badge-custom"}">${f.isDefault ? "default" : "custom"}</span>
             </div>
             <div class="fm-feed-url" title="${_esc(f.url)}">${hostname}</div>
             <div class="fm-feed-meta">
@@ -334,10 +392,10 @@ const SettingsModal = (() => {
             </div>
           </div>
           <div class="fm-feed-actions">
-            <button class="fm-btn fm-btn-test" title="Tester ce flux maintenant" onclick="SettingsModal.testFeedUI('${f.id}')">🧪</button>
+            <button class="fm-btn fm-btn-test" title="Test this feed now" onclick="SettingsModal.testFeedUI('${f.id}')">🧪</button>
             ${editBtn}
             ${deleteBtn}
-            <label class="fm-toggle-wrap" title="${f.enabled ? "Désactiver" : "Activer"}">
+            <label class="fm-toggle-wrap" title="${f.enabled ? "Disable" : "Enable"}">
               <input type="checkbox" class="fm-toggle-input" ${f.enabled ? "checked" : ""} onchange="SettingsModal.toggleFeedUI('${f.id}', this.checked)">
               <span class="fm-toggle-track"><span class="fm-toggle-thumb"></span></span>
             </label>
@@ -381,16 +439,16 @@ const SettingsModal = (() => {
   function deleteFeed(feedId) {
     const feed = FeedManager.getAllFeeds().find(f => f.id === feedId);
     if (!feed || feed.isDefault) return;
-    if (!confirm(`Supprimer définitivement le flux « ${feed.name} » ?`)) return;
+    if (!confirm(`Permanently delete feed « ${feed.name} »?`)) return;
     const r = FeedManager.removeFeed(feedId);
     if (r.ok) {
       _feedsDirty = true;
       Storage.clearCache();
-      UI.showToast(`Flux « ${feed.name} » supprimé`, "success");
+      UI.showToast(`Feed « ${feed.name} » deleted`, "success");
       renderFeeds(_feedFilter);
       _syncCounters();
     } else {
-      UI.showToast("Impossible de supprimer ce flux", "error");
+      UI.showToast("Cannot delete this feed", "error");
     }
   }
 
@@ -425,7 +483,7 @@ const SettingsModal = (() => {
     }
     _feedsDirty = true;
     Storage.clearCache();   // l'URL a peut-être changé → forcer un refetch
-    UI.showToast("✅ Flux mis à jour", "success");
+    UI.showToast("✅ Feed updated", "success");
     renderFeeds(_feedFilter);
     _syncCounters();
   }
@@ -461,7 +519,7 @@ const SettingsModal = (() => {
 
     _feedsDirty = true;
     Storage.clearCache();           // force un refetch complet incluant le nouveau flux
-    UI.showToast(`✅ Flux « ${r.feed.name} » ajouté`, "success");
+    UI.showToast(`✅ Feed « ${r.feed.name} » added`, "success");
     renderFeeds(_feedFilter);
     _syncCounters();
   }
@@ -469,11 +527,11 @@ const SettingsModal = (() => {
   /** Réinitialise tous les flux personnalisés avec confirmation. */
   function resetCustomFeeds() {
     const custom = FeedManager.loadCustomFeeds();
-    if (custom.length === 0) { UI.showToast("Aucun flux personnalisé à supprimer", "info"); return; }
-    if (!confirm(`Supprimer les ${custom.length} flux personnalisés ?`)) return;
+    if (custom.length === 0) { UI.showToast("No custom feeds to delete", "info"); return; }
+    if (!confirm(`Delete ${custom.length} custom feed(s)?`)) return;
     FeedManager.resetCustomFeeds();
     Storage.clearCache();
-    UI.showToast("Flux personnalisés réinitialisés", "success");
+    UI.showToast("Custom feeds reset", "success");
     renderFeeds(_feedFilter);
     _syncCounters();
   }
@@ -491,10 +549,10 @@ const SettingsModal = (() => {
 
   /** Restaure tous les flux par défaut (réactive les désactivés). */
   function restoreDefaultFeeds() {
-    if (!confirm("Réactiver tous les flux par défaut désactivés ?")) return;
+    if (!confirm("Re-enable all disabled default feeds?")) return;
     FeedManager.restoreDefaultFeeds();
     Storage.clearCache();
-    UI.showToast("Flux par défaut restaurés", "success");
+    UI.showToast("Default feeds restored", "success");
     renderFeeds(_feedFilter);
     _syncCounters();
   }
@@ -504,10 +562,10 @@ const SettingsModal = (() => {
   // ══════════════════════════════════════════════════════════════════════════
 
   const MODE_HINTS = {
-    immediate:      "Chaque alerte est envoyée immédiatement, dans la limite du cooldown configuré.",
-    urgent_only:    "Seuls les articles KEV actif ou EPSS ≥ 70 % déclenchent une alerte, sans cooldown.",
-    daily_digest:   "Les alertes sont accumulées et envoyées chaque jour à l'heure configurée.",
-    weekly_digest:  "Les alertes sont accumulées et envoyées chaque semaine à l'heure configurée."
+    immediate:      "Each alert is sent immediately, within the configured cooldown limit.",
+    urgent_only:    "Only KEV active or EPSS ≥ 70% articles trigger an alert, without cooldown.",
+    daily_digest:   "Alerts are accumulated and sent every day at the configured time.",
+    weekly_digest:  "Alerts are accumulated and sent every week at the configured time."
   };
 
   function _updateModeHint(mode) {
@@ -533,8 +591,8 @@ const SettingsModal = (() => {
     // Hint contextuel selon le mode
     if (hourHint) {
       hourHint.textContent = isWeekly
-        ? "Le briefing sera envoyé une fois par semaine, le jour et à l'heure configurés."
-        : "Le briefing quotidien sera envoyé chaque jour à cette heure.";
+        ? "The briefing will be sent once a week, on the configured day and time."
+        : "The daily briefing will be sent every day at this time.";
     }
   }
 
@@ -570,7 +628,7 @@ const SettingsModal = (() => {
     }
 
     if (history.length === 0) {
-      listEl.innerHTML = '<div class="ah-empty">Aucun envoi enregistré.</div>';
+      listEl.innerHTML = '<div class="ah-empty">No sent alert recorded.</div>';
       return;
     }
 
@@ -579,14 +637,14 @@ const SettingsModal = (() => {
                    : history;
 
     if (filtered.length === 0) {
-      listEl.innerHTML = '<div class="ah-empty">Aucune entrée pour ce filtre.</div>';
+      listEl.innerHTML = '<div class="ah-empty">No entry for this filter.</div>';
       return;
     }
 
     listEl.innerHTML = filtered.map(e => {
       const d  = new Date(e.sentAt);
       const ts = isNaN(d) ? (e.sentAt || "—")
-        : `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+        : `${d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
       const icon    = e.success ? "✅" : "❌";
       const channel = _esc((e.channel || "—").charAt(0).toUpperCase() + (e.channel || "—").slice(1));
       const reason  = _esc(e.reason || e.mode || "—");
@@ -613,12 +671,12 @@ const SettingsModal = (() => {
 
   /** Vide l'historique après confirmation. */
   function clearAlertHistoryUI() {
-    if (!confirm("Vider tout l'historique des alertes ?")) return;
+    if (!confirm("Clear all alert history?")) return;
     AlertManager.clearAlertHistory();
     _renderAlertHistory("all");
     document.querySelectorAll(".ah-filter-btn").forEach(b =>
       b.classList.toggle("active", b.dataset.filter === "all"));
-    UI.showToast("Historique vidé", "success");
+    UI.showToast("History cleared", "success");
   }
 
   /** Change le filtre et met à jour l'affichage. */
@@ -632,10 +690,10 @@ const SettingsModal = (() => {
   function _relTime(iso) {
     if (!iso) return "—";
     const diff = Date.now() - new Date(iso).getTime();
-    if (diff < 60_000)     return "à l'instant";
-    if (diff < 3_600_000)  return `il y a ${Math.floor(diff / 60_000)} min`;
-    if (diff < 86_400_000) return `il y a ${Math.floor(diff / 3_600_000)} h`;
-    return `il y a ${Math.floor(diff / 86_400_000)} j`;
+    if (diff < 60_000)     return "just now";
+    if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)} min ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
   }
 
   /** Échappe les caractères HTML. */

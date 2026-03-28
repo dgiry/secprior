@@ -61,7 +61,9 @@ const AlertManager = (() => {
     lastSentAt:      0,
     lastDigestAt:    0,          // timestamp du dernier digest envoyé
     digestHour:      "08:00",    // heure locale d'envoi du digest (format HH:MM)
-    digestWeekday:   1           // jour d'envoi du weekly_digest (0=dim … 6=sam, défaut lundi)
+    digestWeekday:   1,          // jour d'envoi du weekly_digest (0=dim … 6=sam, défaut lundi)
+    // Production Vercel : token optionnel pour authentifier /api/send-alert
+    alertToken:      ""          // si vide, aucun header X-Alert-Token envoyé
   };
 
   // ── Persistance des paramètres ────────────────────────────────────────────
@@ -383,8 +385,8 @@ const AlertManager = (() => {
   function formatAlertBody(articles) {
     return articles.map(a => {
       const { badge } = _alertBadge(a);
-      const date = a.pubDate instanceof Date ? a.pubDate.toLocaleString("fr-FR") : String(a.pubDate || "");
-      return `${badge} | ${a.sourceName || "?"} | ${date}\n${a.title || "(sans titre)"}\n${a.link || ""}`;
+      const date = a.pubDate instanceof Date ? a.pubDate.toLocaleString("en-US") : String(a.pubDate || "");
+      return `${badge} | ${a.sourceName || "?"} | ${date}\n${a.title || "(untitled)"}\n${a.link || ""}`;
     }).join("\n\n---\n\n");
   }
 
@@ -407,20 +409,20 @@ const AlertManager = (() => {
 
     return `
       <div style="font-family:monospace;background:#0d1117;color:#e6edf3;padding:20px;border-radius:8px">
-        <h2 style="color:#f85149;margin-top:0">🛡️ CyberVeille Pro — Alerte Cybersécurité</h2>
-        <p style="color:#8b949e">${articles.length} nouvelle(s) alerte(s) détectée(s)</p>
+        <h2 style="color:#f85149;margin-top:0">🛡️ CyberVeille Pro — Security Alert</h2>
+        <p style="color:#8b949e">${articles.length} new alert(s) detected</p>
         <table style="width:100%;border-collapse:collapse">
           <thead>
             <tr style="color:#8b949e;font-size:12px">
-              <th style="text-align:left;padding:8px">CRITICITÉ</th>
+              <th style="text-align:left;padding:8px">SEVERITY</th>
               <th style="text-align:left;padding:8px">SOURCE</th>
-              <th style="text-align:left;padding:8px">TITRE</th>
+              <th style="text-align:left;padding:8px">TITLE</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
         <p style="color:#8b949e;font-size:12px;margin-top:16px">
-          Envoyé par CyberVeille Pro · ${new Date().toLocaleString("fr-FR")}
+          Sent by CyberVeille Pro · ${new Date().toLocaleString("en-US")}
         </p>
       </div>`;
   }
@@ -575,22 +577,22 @@ const AlertManager = (() => {
     // Prédicats conçus pour s'accorder avec "Cette vulnérabilité est …"
     const r = [];
     if (a.isKEV)
-      r.push("activement exploitée dans la nature (CISA KEV)");
+      r.push("actively exploited in the wild (CISA KEV)");
     if (a.epssScore != null && a.epssScore >= 0.70)
-      r.push(`à très haute probabilité d'exploitation (EPSS ${Math.round(a.epssScore * 100)} %)`);
+      r.push(`with very high exploitation probability (EPSS ${Math.round(a.epssScore * 100)}%)`);
     else if (a.epssScore != null && a.epssScore >= 0.40)
-      r.push(`à risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
-    if (a.score != null && a.score >= 90)      r.push("de criticité maximale");
-    else if (a.score != null && a.score >= 80) r.push("de très haute criticité");
+      r.push(`with moderate exploitation risk (EPSS ${Math.round(a.epssScore * 100)}%)`);
+    if (a.score != null && a.score >= 90)      r.push("maximum severity");
+    else if (a.score != null && a.score >= 80) r.push("very high severity");
     if (a.isTrending)     r.push("en forte circulation sur les plateformes de threat intel");
-    if (a.cveIds?.length) r.push(`référencée sous ${a.cveIds.slice(0, 2).join(", ")}`);
+    if (a.cveIds?.length) r.push(`referenced as ${a.cveIds.slice(0, 2).join(", ")}`);
     if (r.length === 0)
       return a.priorityLevel === "critical_now"
-        ? "Classée priorité critique par l'analyse multi-signaux."
+        ? "Classified as critical priority by multi-signal analysis."
         : a.criticality === "high"
-          ? "Classée haute criticité par l'analyse automatique."
-          : "Identifiée comme menace potentielle.";
-    return "Cette vulnérabilité est " + r.join(", ") + ".";
+          ? "Classified as high severity by automated analysis."
+          : "Identified as potential threat.";
+    return "This vulnerability is " + r.join(", ") + ".";
   }
 
   /** Retourne les produits/secteurs touchés depuis les tags ou la source. */
@@ -604,18 +606,18 @@ const AlertManager = (() => {
   function _watchpoints(a) {
     const pts = [];
     if (a.isKEV)
-      pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
+      pts.push("Apply patches urgently (CISA deadline: 3 weeks)");
     if (a.epssScore != null && a.epssScore >= 0.70)
-      pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
+      pts.push("Monitor exploitation logs on exposed systems");
     // "Vérifier l'exposition" seulement si aucun point plus spécifique n'a été ajouté
     if (pts.length === 0 && (a.priorityLevel === "critical_now" || a.criticality === "high"))
-      pts.push("Vérifier l'exposition de vos actifs concernés");
+      pts.push("Check the exposure of your affected assets");
     if (a.isTrending)
-      pts.push("Consulter les IoCs publiés par la communauté threat intel");
+      pts.push("Consult IoCs published by the threat intelligence community");
     if (a.cveIds?.length)
-      pts.push(`Vérifier le statut de patch pour ${a.cveIds[0]}`);
+      pts.push(`Verify patch status for ${a.cveIds[0]}`);
     if (pts.length === 0)
-      pts.push("Surveiller l'évolution et appliquer les recommandations du fournisseur");
+      pts.push("Monitor developments and apply vendor recommendations");
     return pts;
   }
 
@@ -627,7 +629,7 @@ const AlertManager = (() => {
    * `rest` = autres alertes en format compact.
    */
   function _formatBriefingHTML(top, rest, label, stats = null) {
-    const now = new Date().toLocaleDateString("fr-FR",
+    const now = new Date().toLocaleDateString("en-US",
       { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const total    = top.length + rest.length;
     const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
@@ -636,16 +638,16 @@ const AlertManager = (() => {
     ).length;
 
     // Résumé exécutif
-    let exec = `${total} menace(s) détectée(s) durant cette période`;
-    if (kevCount > 0) exec += `, dont ${kevCount} vulnérabilité(s) KEV activement exploitée(s)`;
-    if (highCount > 0) exec += `. ${highCount} alerte(s) critique(s) nécessitent votre attention`;
+    let exec = `${total} threat(s) detected during this period`;
+    if (kevCount > 0) exec += `, including ${kevCount} KEV vulnerability(ies) actively exploited`;
+    if (highCount > 0) exec += `. ${highCount} critical alert(s) require your attention`;
     exec += ".";
 
     // Cartes top alertes
     const topHTML = top.map(a => {
       const { color, badge } = _alertBadge(a);
       const meta  = [
-        a.isKEV             ? "🚨 KEV ACTIF"                                     : "",
+        a.isKEV             ? "🚨 KEV ACTIVE"                                     : "",
         a.epssScore != null ? `EPSS ${Math.round(a.epssScore * 100)} %`          : "",
         a.score     != null ? `Score ${a.score}`                                  : ""
       ].filter(Boolean).join(" · ");
@@ -665,11 +667,11 @@ const AlertManager = (() => {
           <p style="margin:0 0 8px;font-size:12px;color:#8b949e">🏷️ ${_affectedProducts(a)}</p>
           <p style="margin:0 0 12px;font-size:13px;color:#cdd9e5;background:#0d1117;
                     padding:10px;border-radius:4px;border-left:3px solid ${color}">
-            📌 <strong>Pourquoi c'est important :</strong> ${_whyImportant(a)}
+            📌 <strong>Why it matters:</strong> ${_whyImportant(a)}
           </p>
           <div style="font-size:12px">
             <p style="margin:0 0 6px;color:#8b949e;font-weight:600;text-transform:uppercase;
-                      letter-spacing:.5px">⚡ Watchpoints immédiats</p>
+                      letter-spacing:.5px">⚡ Immediate watchpoints</p>
             <ul style="margin:0;padding-left:16px">${pts}</ul>
           </div>
         </div>`;
@@ -678,7 +680,7 @@ const AlertManager = (() => {
     // Tableau compact des autres alertes
     const restHTML = rest.length === 0 ? "" : `
       <h3 style="color:#8b949e;font-size:13px;font-weight:600;text-transform:uppercase;
-                 letter-spacing:.5px;margin:24px 0 12px">📋 Autres alertes (${rest.length})</h3>
+                 letter-spacing:.5px;margin:24px 0 12px">📋 Other alerts (${rest.length})</h3>
       <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace">
         <tbody>
           ${rest.map(a => {
@@ -699,28 +701,28 @@ const AlertManager = (() => {
                   background:#0d1117;color:#e6edf3;padding:24px;border-radius:10px;max-width:680px;margin:0 auto">
         <!-- En-tête -->
         <div style="border-bottom:1px solid #30363d;padding-bottom:16px;margin-bottom:20px">
-          <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Briefing Cybersécurité — ${now}</h1>
+          <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Cybersecurity Briefing — ${now}</h1>
           <p style="margin:0;color:#8b949e;font-size:13px">CyberVeille Pro · Digest ${label}</p>
         </div>
-        <!-- Résumé exécutif -->
+        <!-- Executive summary -->
         <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:14px;margin-bottom:24px">
           <p style="margin:0 0 4px;color:#8b949e;font-size:11px;font-weight:600;
-                    text-transform:uppercase;letter-spacing:.5px">RÉSUMÉ EXÉCUTIF</p>
+                    text-transform:uppercase;letter-spacing:.5px">EXECUTIVE SUMMARY</p>
           <p style="margin:0;font-size:14px;color:#cdd9e5">${exec}</p>
         </div>
         <!-- Statistiques enrichies -->
         ${stats ? _statsBlockHTML(stats) : ""}
         <!-- Top alertes -->
         <h2 style="font-size:15px;font-weight:700;color:#e6edf3;margin:0 0 16px;
-                   text-transform:uppercase;letter-spacing:.5px">🎯 Top ${top.length} Alertes Prioritaires</h2>
+                   text-transform:uppercase;letter-spacing:.5px">🎯 Top ${top.length} Priority Alerts</h2>
         ${topHTML}
         <!-- Autres alertes -->
         ${restHTML}
         <!-- Pied de page -->
         <div style="border-top:1px solid #30363d;margin-top:24px;padding-top:16px;text-align:center">
           <p style="margin:0;color:#8b949e;font-size:11px">
-            CyberVeille Pro · ${new Date().toLocaleString("fr-FR")} ·
-            <a href="https://technocspace.com" style="color:#58a6ff">Ouvrir l'app</a>
+            CyberVeille Pro · ${new Date().toLocaleString("en-US")} ·
+            <a href="https://technocspace.com" style="color:#58a6ff">Open app</a>
           </p>
         </div>
       </div>`;
@@ -730,23 +732,23 @@ const AlertManager = (() => {
 
   /** Version texte brut du briefing (fallback clients email sans HTML). */
   function _formatBriefingText(top, rest, label, stats = null) {
-    const now    = new Date().toLocaleDateString("fr-FR",
+    const now    = new Date().toLocaleDateString("en-US",
       { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const total    = top.length + rest.length;
     const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
     const sep60  = "=".repeat(60);
 
-    let t = `☀️ BRIEFING CYBERSÉCURITÉ — ${now.toUpperCase()}\n`;
+    let t = `☀️ CYBERSECURITY BRIEFING — ${now.toUpperCase()}\n`;
     t += `CyberVeille Pro · Digest ${label}\n${sep60}\n\n`;
 
-    t += "RÉSUMÉ EXÉCUTIF\n" + "-".repeat(30) + "\n";
-    t += `${total} menace(s) détectée(s)`;
-    if (kevCount > 0) t += `, dont ${kevCount} KEV activement exploitée(s)`;
+    t += "EXECUTIVE SUMMARY\n" + "-".repeat(30) + "\n";
+    t += `${total} threat(s) detected`;
+    if (kevCount > 0) t += `, including ${kevCount} KEV actively exploited`;
     t += ".\n\n";
 
     if (stats) t += _statsBlockText(stats);
 
-    t += `🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep60}\n\n`;
+    t += `🎯 TOP ${top.length} PRIORITY ALERTS\n${sep60}\n\n`;
     top.forEach((a, i) => {
       const { badge } = _alertBadge(a);
       const kev   = a.isKEV ? " | 🚨 KEV ACTIF" : "";
@@ -755,22 +757,22 @@ const AlertManager = (() => {
       t += `${i + 1}. ${badge}${kev}${epss}\n`;
       t += `   ${a.title || "(sans titre)"}\n`;
       t += `   Source : ${a.sourceName || "?"} — ${_affectedProducts(a)}\n`;
-      t += `   Lien   : ${a.link || ""}\n`;
+      t += `   Link   : ${a.link || ""}\n`;
       t += `   ► ${_whyImportant(a)}\n`;
       _watchpoints(a).forEach(p => { t += `   • ${p}\n`; });
       t += "\n";
     });
 
     if (rest.length > 0) {
-      t += `📋 AUTRES ALERTES (${rest.length})\n${"-".repeat(60)}\n`;
+      t += `📋 OTHER ALERTS (${rest.length})\n${"-".repeat(60)}\n`;
       rest.forEach(a => {
         const { badge: b } = _alertBadge(a);
-        t += `${b} [${a.sourceName || "?"}] ${a.title || "(sans titre)"}\n   ${a.link || ""}\n`;
+        t += `${b} [${a.sourceName || "?"}] ${a.title || "(untitled)"}\n   ${a.link || ""}\n`;
       });
       t += "\n";
     }
 
-    t += `${sep60}\nGénéré par CyberVeille Pro le ${new Date().toLocaleString("fr-FR")}\n`;
+    t += `${sep60}\nGenerated by CyberVeille Pro on ${new Date().toLocaleString("en-US")}\n`;
     return t;
   }
 
@@ -783,7 +785,7 @@ const AlertManager = (() => {
       return;
     }
 
-    const label   = settings.mode === "weekly_digest" ? "hebdomadaire" : "quotidien";
+    const label   = settings.mode === "weekly_digest" ? "weekly" : "daily";
     const top     = _selectTopArticles(queue, 5);
     const topIds  = new Set(top.map(a => a.id));
     const rest    = queue.filter(a => !topIds.has(a.id));
@@ -792,7 +794,7 @@ const AlertManager = (() => {
     const reason  = isManual ? "manual_digest_flush" : settings.mode;
     const stats   = _buildDigestStats(allArts);
 
-    const subject = `☀️ Briefing Cybersécurité ${label} — ${top.length} alertes prioritaires · ${new Date().toLocaleDateString("fr-FR")}`;
+    const subject = `☀️ ${label.charAt(0).toUpperCase() + label.slice(1)} Cybersecurity Briefing — ${top.length} priority alerts · ${new Date().toLocaleDateString("en-US")}`;
     const html    = _formatBriefingHTML(top, rest, label, stats);
     const text    = _formatBriefingText(top, rest, label, stats);
 
@@ -805,7 +807,7 @@ const AlertManager = (() => {
       _markBatchSent(allArts, reason, settings.channel);
       appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, true, "", { digest: true, manualFlush: isManual }));
       // Toast uniquement si appelé automatiquement — flushDigest() gère son propre message
-      if (window.UI && !isManual) UI.showToast(`☀️ Briefing ${label} envoyé — ${total} alerte(s)`, "success");
+      if (window.UI && !isManual) UI.showToast(`☀️ ${label} briefing sent — ${total} alert(s)`, "success");
       console.log("[Alerts] Briefing %s envoyé (%d articles, %d en top)", label, total, top.length);
     } catch (err) {
       appendAlertHistory(_makeHistoryEntry(allArts, settings, reason, false, err.message, { digest: true, manualFlush: isManual }));
@@ -828,26 +830,53 @@ const AlertManager = (() => {
   // ── Canal 1 : Webhook générique ────────────────────────────────────────────
 
   async function sendWebhook(articles, settings, subjectOverride) {
-    if (!settings.webhookUrl) throw new Error("URL webhook non configurée");
+    if (!settings.webhookUrl) throw new Error("Webhook URL not configured");
+
+    // Métriques d'enveloppe
+    const _maxPrioOrder = { critical_now: 4, investigate: 3, watch: 2, low: 1 };
+    const _topPrio = articles.reduce((best, a) => {
+      const rank = _maxPrioOrder[a.priorityLevel] || 0;
+      return rank > (_maxPrioOrder[best] || 0) ? a.priorityLevel : best;
+    }, null);
 
     const payload = {
-      event:      subjectOverride ? "cyberveille_digest" : "cyberveille_alert",
-      timestamp:  new Date().toISOString(),
-      count:      articles.length,
-      threshold:  settings.threshold,
+      event:             subjectOverride ? "cyberveille_digest" : "cyberveille_alert",
+      timestamp:         new Date().toISOString(),
+      count:             articles.length,
+      threshold:         settings.threshold,
+      // Métriques d'enveloppe enrichies
+      maxPriorityLevel:  _topPrio,
+      maxPriorityScore:  Math.max(...articles.map(a => a.priorityScore || 0), 0) || null,
+      kevCount:          articles.filter(a => a.isKEV).length,
+      watchlistCount:    articles.filter(a => a.watchlistMatches?.length > 0).length,
       articles:   articles.map(a => ({
         id:            a.id,
         title:         a.title,
         source:        a.sourceName,
         criticality:   a.criticality,
-        priorityLevel: a.priorityLevel || null,   // V2 : niveau de priorité explicable
+        priorityLevel: a.priorityLevel || null,
         priorityScore: a.priorityScore  || null,
         link:          a.link,
         pubDate:       a.pubDate instanceof Date ? a.pubDate.toISOString() : String(a.pubDate || ""),
-        description:   a.description
+        description:   a.description,
+        // Signaux enrichis
+        summary:       (a.priorityReasons || []).slice(0, 2).join(" · ") || a.description?.slice(0, 120) || null,
+        topSignals: {
+          kev:          a.isKEV || false,
+          epss:         a.epssScore != null ? parseFloat((a.epssScore * 100).toFixed(1)) : null,
+          watchlistHit: (a.watchlistMatches?.length || 0) > 0,
+          iocCount:     a.iocCount || 0,
+          trending:     a.isTrending || false,
+          cves:         (a.cves || a.cveIds || []).slice(0, 5)
+        },
+        // Recommandations clés (si Recommender disponible)
+        keyRecommendations: (typeof Recommender !== "undefined"
+          ? (Recommender.getRecommendations?.(a) || []).slice(0, 3).map(r => r.action || r.label || r)
+          : []).filter(Boolean)
       })),
-      // Compatibilité Slack
-      text:       `🛡️ *CyberVeille Pro* — ${articles.length} nouvelle(s) alerte(s)\n` +
+      // Compatibilité Slack / Teams
+      text:       `🛡️ *CyberVeille Pro* — ${articles.length} new alert(s)` +
+                  (_topPrio ? ` · Max priority: ${_topPrio}` : '') + "\n" +
                   articles.slice(0, 3).map(a =>
                     `>*${_alertBadge(a).badge} ${a.title}*\n>${a.link}`
                   ).join("\n")
@@ -869,7 +898,7 @@ const AlertManager = (() => {
   async function sendEmailJS(articles, settings, subjectOverride, htmlOverride, textOverride) {
     const { emailjsService, emailjsTemplate, emailjsPublicKey, recipientEmail } = settings;
     if (!emailjsService || !emailjsTemplate || !emailjsPublicKey) {
-      throw new Error("Configuration EmailJS incomplète (service/template/clé publique)");
+      throw new Error("Incomplete EmailJS configuration (service/template/public key)");
     }
 
     // Chargement dynamique du SDK EmailJS si absent
@@ -880,11 +909,11 @@ const AlertManager = (() => {
 
     await window.emailjs.send(emailjsService, emailjsTemplate, {
       to_email:      recipientEmail,
-      subject:       subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} alerte(s) haute(s)`,
+      subject:       subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} high-priority alert(s)`,
       message_text:  textOverride    || formatAlertBody(articles),
       message_html:  htmlOverride    || formatAlertHTML(articles),
       alert_count:   articles.length,
-      sent_at:       new Date().toLocaleString("fr-FR")
+      sent_at: new Date().toLocaleString("en-US")
     });
 
     console.log("[Alerts] Email EmailJS envoyé (%d articles)", articles.length);
@@ -908,7 +937,7 @@ const AlertManager = (() => {
 
   async function sendResend(articles, settings, subjectOverride, htmlOverride, textOverride) {
     const { resendFrom, recipientEmail } = settings;
-    if (!recipientEmail) throw new Error("Email destinataire manquant");
+    if (!recipientEmail) throw new Error("Recipient email missing");
 
     const subject = subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} alerte(s) haute(s)`;
     const html    = htmlOverride    || formatAlertHTML(articles);
@@ -916,9 +945,11 @@ const AlertManager = (() => {
 
     if (CONFIG.USE_API) {
       // ── Vercel : clé API lue depuis process.env côté serveur ──────────────
+      const headers = { "Content-Type": "application/json" };
+      if (settings.alertToken) headers["X-Alert-Token"] = settings.alertToken;
       const res = await fetch("/api/send-alert", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body:    JSON.stringify({
           channel:      "resend",
           to:           recipientEmail,
@@ -933,7 +964,7 @@ const AlertManager = (() => {
     } else {
       // ── Local : appel direct (clé API dans le modal) ──────────────────────
       const { resendApiKey } = settings;
-      if (!resendApiKey) throw new Error("Clé API Resend manquante (mode local)");
+      if (!resendApiKey) throw new Error("Resend API key missing (local mode)");
       const res = await fetch("https://api.resend.com/emails", {
         method:  "POST",
         headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
@@ -964,9 +995,11 @@ const AlertManager = (() => {
 
     if (CONFIG.USE_API) {
       // ── Vercel : clé API lue depuis process.env côté serveur ──────────────
+      const headers = { "Content-Type": "application/json" };
+      if (settings.alertToken) headers["X-Alert-Token"] = settings.alertToken;
       const res = await fetch("/api/send-alert", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body:    JSON.stringify({
           channel:      "sendgrid",
           to:           recipientEmail,
@@ -981,8 +1014,8 @@ const AlertManager = (() => {
     } else {
       // ── Local : appel direct (clé API dans le modal) ──────────────────────
       const { sendgridApiKey } = settings;
-      if (!sendgridApiKey) throw new Error("Clé API SendGrid manquante (mode local)");
-      if (!sendgridFrom)   throw new Error("Adresse expéditeur SendGrid manquante");
+      if (!sendgridApiKey) throw new Error("SendGrid API key missing (local mode)");
+      if (!sendgridFrom)   throw new Error("SendGrid sender address missing");
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method:  "POST",
         headers: { "Authorization": `Bearer ${sendgridApiKey}`, "Content-Type": "application/json" },
@@ -1006,12 +1039,12 @@ const AlertManager = (() => {
 
   function sendMailto(articles, settings, subjectOverride, textOverride) {
     const subject = encodeURIComponent(
-      subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} alerte(s) cybersécurité`
+      subjectOverride || `🛡️ CyberVeille Pro — ${articles.length} cybersecurity alert(s)`
     );
     const body = encodeURIComponent(
       textOverride || (
-        `CyberVeille Pro — Alertes haute criticité\n` +
-        `Généré le ${new Date().toLocaleString("fr-FR")}\n\n` +
+        `CyberVeille Pro — High severity alerts\n` +
+        `Generated on ${new Date().toLocaleString("en-US")}\n\n` +
         formatAlertBody(articles)
       )
     );
@@ -1080,7 +1113,7 @@ const AlertManager = (() => {
         try { await _sendDigest(settings); }
         catch (err) {
           console.error("[Alerts] Digest échoué:", err.message);
-          if (window.UI) UI.showToast(`⚠️ Digest échoué : ${err.message}`, "error");
+          if (window.UI) UI.showToast(`⚠️ Digest failed: ${err.message}`, "error");
         }
       }
     }
@@ -1096,26 +1129,26 @@ const AlertManager = (() => {
       _markBatchSent(batch, reason || settings.mode, settings.channel);
       appendAlertHistory(_makeHistoryEntry(batch, settings, reason || settings.mode, true, ""));
       if (window.UI) {
-        UI.showToast(`📧 Alerte envoyée — ${batch.length} article(s) via ${settings.channel}`, "success");
+        UI.showToast(`📧 Alert sent — ${batch.length} article(s) via ${settings.channel}`, "success");
       }
     } catch (err) {
       appendAlertHistory(_makeHistoryEntry(batch, settings, reason || settings.mode, false, err.message));
       console.error("[Alerts] Échec envoi:", err.message);
-      if (window.UI) UI.showToast(`⚠️ Alerte échouée : ${err.message}`, "error");
+      if (window.UI) UI.showToast(`⚠️ Alert failed: ${err.message}`, "error");
     }
   }
 
   /** Force l'envoi immédiat du digest (bouton manuel dans l'UI). */
   async function flushDigest() {
     const settings = loadSettings();
-    if (!settings.enabled) { UI.showToast("Alertes désactivées", "warning"); return; }
+    if (!settings.enabled) { UI.showToast("Alerts disabled", "warning"); return; }
     const queue = _loadDigest();
-    if (queue.length === 0) { UI.showToast("File de digest vide", "info"); return; }
+    if (queue.length === 0) { UI.showToast("Digest queue empty", "info"); return; }
     try {
       await _sendDigest({ ...settings, lastDigestAt: 0 }, true); // isManual = true
-      UI.showToast(`📋 Digest forcé — ${queue.length} article(s) envoyé(s)`, "success");
+      UI.showToast(`📋 Digest forced — ${queue.length} article(s) sent`, "success");
     } catch (err) {
-      UI.showToast(`⚠️ Digest échoué : ${err.message}`, "error");
+      UI.showToast(`⚠️ Digest failed: ${err.message}`, "error");
     }
   }
 

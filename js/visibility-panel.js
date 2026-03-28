@@ -95,7 +95,7 @@ const VisibilityPanel = (() => {
   function _fmtDT(iso) {
     if (!iso) return "—";
     try {
-      return new Date(iso).toLocaleDateString("fr-FR", {
+      return new Date(iso).toLocaleDateString("en-US", {
         day: "2-digit", month: "2-digit",
         hour: "2-digit", minute: "2-digit"
       });
@@ -105,7 +105,7 @@ const VisibilityPanel = (() => {
   function _fmtD(iso) {
     if (!iso) return "—";
     try {
-      return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+      return new Date(iso).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" });
     } catch { return "—"; }
   }
 
@@ -121,11 +121,11 @@ const VisibilityPanel = (() => {
     const feedColor  = kpis.activeFeeds === kpis.totalFeeds ? "ok"
                      : kpis.activeFeeds > 0 ? "warn" : "err";
     const cards = [
-      { icon: "📡", value: `${kpis.activeFeeds}/${kpis.totalFeeds}`, label: "Flux actifs",    col: feedColor },
+      { icon: "📡", value: `${kpis.activeFeeds}/${kpis.totalFeeds}`, label: "Active feeds",    col: feedColor },
       { icon: "📰", value: kpis.articles24h,                         label: "Articles 24h",   col: "neutral" },
       { icon: "📋", value: kpis.totalArticles,                       label: "Articles total", col: "neutral" },
-      { icon: "🔍", value: kpis.cveCount,                            label: "CVE détectées",  col: kpis.cveCount   > 0 ? "warn" : "neutral" },
-      { icon: "🚨", value: kpis.kevCount,                            label: "KEV confirmées", col: kpis.kevCount   > 0 ? "err"  : "neutral" },
+      { icon: "🔍", value: kpis.cveCount,                            label: "CVEs detected",  col: kpis.cveCount   > 0 ? "warn" : "neutral" },
+      { icon: "🚨", value: kpis.kevCount,                            label: "Confirmed KEV", col: kpis.kevCount   > 0 ? "err"  : "neutral" },
       { icon: "👁",  value: kpis.wlHits,                             label: "Watchlist hits", col: kpis.wlHits     > 0 ? "warn" : "neutral" },
       { icon: "🎯", value: kpis.incidentCount,                       label: "Incidents",      col: kpis.incidentCount > 0 ? "warn" : "neutral" },
     ];
@@ -139,12 +139,12 @@ const VisibilityPanel = (() => {
 
   function _enrichmentHTML(enr) {
     const rows = [
-      { icon: "🔍", label: "CVE détectées",     pct: enr.withCvePct },
-      { icon: "📊", label: "EPSS scorées",       pct: enr.withEpssPct },
-      { icon: "🚨", label: "Marquées KEV",       pct: enr.withKevPct },
-      { icon: "🏢", label: "Vendor identifié",   pct: enr.withVendorsPct },
-      { icon: "🔗", label: "IOC extraits",       pct: enr.withIocPct },
-      { icon: "⚡", label: "Score calculé",      pct: enr.withScorePct },
+      { icon: "🔍", label: "CVEs detected",     pct: enr.withCvePct },
+      { icon: "📊", label: "EPSS scored",        pct: enr.withEpssPct },
+      { icon: "🚨", label: "Tagged KEV",         pct: enr.withKevPct },
+      { icon: "🏢", label: "Vendor identified",  pct: enr.withVendorsPct },
+      { icon: "🔗", label: "IOCs extracted",     pct: enr.withIocPct },
+      { icon: "⚡", label: "Score computed",     pct: enr.withScorePct },
       { icon: "👁",  label: "Watchlist hit",     pct: enr.withWatchlistPct },
     ];
     return `<div class="vb-enr-list">${rows.map(r => `
@@ -159,17 +159,17 @@ const VisibilityPanel = (() => {
   }
 
   function _feedsHTML(feeds) {
-    if (!feeds.length) return `<p class="vb-empty">Aucun flux configuré.</p>`;
+    if (!feeds.length) return `<p class="vb-empty">No feeds configured.</p>`;
     return `<div class="vb-feed-scroll"><table class="vb-feed-table">
       <thead><tr class="vb-thead">
-        <th>Flux</th><th>St.</th><th>État</th>
-        <th>Dernier OK</th><th>Dernière err.</th>
+        <th>Feed</th><th>St.</th><th>Status</th>
+        <th>Last OK</th><th>Last err.</th>
         <th class="vb-num">Items</th><th>Message</th>
       </tr></thead>
       <tbody>${feeds.map(f => {
         const dot  = f.lastStatus === "ok" ? "🟢" : f.lastStatus === "error" ? "🔴" : "⚪";
         const enBadge = f.enabled
-          ? `<span class="vb-badge vb-ok">actif</span>`
+          ? `<span class="vb-badge vb-ok">active</span>`
           : `<span class="vb-badge vb-muted">off</span>`;
         const err = f.lastErrorMessage
           ? `<span class="vb-feed-err" title="${_esc(f.lastErrorMessage)}">${_esc(f.lastErrorMessage.slice(0,55))}${f.lastErrorMessage.length > 55 ? "…" : ""}</span>`
@@ -188,7 +188,7 @@ const VisibilityPanel = (() => {
   }
 
   function _topVendorsHTML(vendors) {
-    if (!vendors.length) return `<p class="vb-empty">Aucun vendor détecté dans les articles.</p>`;
+    if (!vendors.length) return `<p class="vb-empty">No vendor detected in articles.</p>`;
     return `<table class="vb-top-table">
       <thead><tr class="vb-thead">
         <th>Vendor</th>
@@ -211,15 +211,15 @@ const VisibilityPanel = (() => {
   }
 
   function _topIncidentsHTML(incidents) {
-    if (!incidents.length) return `<p class="vb-empty">Aucun incident consolidé pour l'instant.</p>`;
+    if (!incidents.length) return `<p class="vb-empty">No consolidated incident yet.</p>`;
     return `<table class="vb-top-table">
       <thead><tr class="vb-thead">
         <th>Incident</th>
         <th class="vb-num">Art.</th>
         <th class="vb-num">Score</th>
-        <th>Signaux</th>
-        <th class="vb-num">Vu le</th>
-        <th>Statut</th>
+        <th>Signals</th>
+        <th class="vb-num">Seen</th>
+        <th>Status</th>
       </tr></thead>
       <tbody>${incidents.map(i => {
         const sig = [
@@ -232,7 +232,7 @@ const VisibilityPanel = (() => {
         if (typeof EntityStatus !== "undefined") {
           const st = EntityStatus.getEffectiveStatus("incident", i.incidentId);
           if (st !== "new") {
-            const m = EntityStatus.STATUS_META[st];
+            const m = EntityStatus.STATUS_META[st] || EntityStatus.STATUS_META.new;
             stBadge = `<span class="es-badge es-${st}" style="color:${m.color};background:${m.bg}">${m.emoji} ${m.label}</span>`;
           }
         }
@@ -261,7 +261,7 @@ const VisibilityPanel = (() => {
 
     const feedOkCount = feeds.filter(f => f.lastStatus === "ok").length;
     const meta = document.getElementById("vb-meta");
-    if (meta) meta.textContent = `${kpis.totalArticles} articles · ${feedOkCount}/${feeds.length} flux OK`;
+    if (meta) meta.textContent = `${kpis.totalArticles} articles · ${feedOkCount}/${feeds.length} feeds OK`;
 
     content.innerHTML = `
       <section class="vb-section">
@@ -270,26 +270,26 @@ const VisibilityPanel = (() => {
 
       <section class="vb-section vb-two-col">
         <div class="vb-col">
-          <h3 class="vb-section-title">📊 Qualité d'enrichissement</h3>
-          <p class="vb-section-sub">${kpis.totalArticles} article${kpis.totalArticles !== 1 ? "s" : ""} analysé${kpis.totalArticles !== 1 ? "s" : ""}</p>
+          <h3 class="vb-section-title">📊 Enrichment quality</h3>
+          <p class="vb-section-sub">${kpis.totalArticles} article${kpis.totalArticles !== 1 ? "s" : ""} analyzed</p>
           ${_enrichmentHTML(enrichment)}
         </div>
         <div class="vb-col">
           <h3 class="vb-section-title">🏢 Top Vendors</h3>
-          <p class="vb-section-sub">${topVendors.length} vendor${topVendors.length !== 1 ? "s" : ""} identifié${topVendors.length !== 1 ? "s" : ""}</p>
+          <p class="vb-section-sub">${topVendors.length} vendor${topVendors.length !== 1 ? "s" : ""} identified</p>
           ${_topVendorsHTML(topVendors)}
         </div>
       </section>
 
       <section class="vb-section">
-        <h3 class="vb-section-title">📡 Santé des flux</h3>
-        <p class="vb-section-sub">${kpis.activeFeeds} flux actif${kpis.activeFeeds !== 1 ? "s" : ""} sur ${kpis.totalFeeds}</p>
+        <h3 class="vb-section-title">📡 Feed health</h3>
+        <p class="vb-section-sub">${kpis.activeFeeds} active feed${kpis.activeFeeds !== 1 ? "s" : ""} out of ${kpis.totalFeeds}</p>
         ${_feedsHTML(feeds)}
       </section>
 
       <section class="vb-section">
         <h3 class="vb-section-title">🎯 Top Incidents</h3>
-        <p class="vb-section-sub">${topIncidents.length} sur ${kpis.incidentCount} incident${kpis.incidentCount !== 1 ? "s" : ""} consolidé${kpis.incidentCount !== 1 ? "s" : ""}</p>
+        <p class="vb-section-sub">${topIncidents.length} of ${kpis.incidentCount} consolidated incident${kpis.incidentCount !== 1 ? "s" : ""}</p>
         ${_topIncidentsHTML(topIncidents)}
       </section>`;
   }

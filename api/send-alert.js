@@ -11,12 +11,38 @@
 //   { channel, to, subject, html, text, fromOverride? }
 
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // ── CORS : restreindre à l'origine de la requête (pas de wildcard en prod) ──
+  const origin = req.headers.origin || "";
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // Autoriser : origines explicitement listées + domaines Vercel natifs du projet
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    /^https:\/\/[a-z0-9-]+-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/.test(origin) ||
+    origin.endsWith(".vercel.app");
+
+  if (isAllowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Alert-Token");
+  res.setHeader("Vary", "Origin");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Méthode non autorisée" });
+
+  // ── Auth optionnelle : ALERT_TOKEN (si défini dans les env vars Vercel) ─────
+  const expectedToken = process.env.ALERT_TOKEN;
+  if (expectedToken) {
+    const providedToken = req.headers["x-alert-token"] || "";
+    if (providedToken !== expectedToken) {
+      console.warn("[send-alert] Token invalide — origin:", origin, "ip:", req.headers["x-forwarded-for"] || "?");
+      return res.status(401).json({ error: "Token d'authentification invalide" });
+    }
+  }
 
   let body;
   try {
@@ -80,7 +106,7 @@ module.exports = async (req, res) => {
         });
       }
 
-      console.log(`[send-alert] Resend OK — id: ${json.id}, to: ${to}`);
+      console.log(`[send-alert] resend OK — id:${json.id} to:${to} subject:"${subject}"`);
       return res.status(200).json({ success: true, channel: "resend", id: json.id });
     } catch (err) {
       return res.status(502).json({ error: `Resend : ${err.message}` });
@@ -129,7 +155,7 @@ module.exports = async (req, res) => {
         return res.status(response.status).json({ error: msg });
       }
 
-      console.log(`[send-alert] SendGrid OK (202) — to: ${to}`);
+      console.log(`[send-alert] sendgrid OK (202) — to:${to} subject:"${subject}"`);
       return res.status(200).json({ success: true, channel: "sendgrid" });
     } catch (err) {
       return res.status(502).json({ error: `SendGrid : ${err.message}` });

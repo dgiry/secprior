@@ -83,10 +83,17 @@ const Contextualizer = (() => {
 
   /**
    * getWatchlist() — retourne toujours un tableau d'items normalisés.
-   * Rétrocompatible : si le localStorage contient un string[], il est normalisé à la volée.
-   * Les items normalisés sont resauvegardés pour migrer silencieusement le format.
+   * Si ProfileManager est disponible, délègue au profil actif (multi-profil).
+   * Sinon, fallback sur la lecture directe de WATCHLIST_KEY (rétrocompat).
    */
   function getWatchlist() {
+    // Multi-profil : déléguer à ProfileManager si disponible
+    if (typeof ProfileManager !== 'undefined') {
+      const items = ProfileManager.getActiveWatchlist();
+      return Array.isArray(items) ? items.map(_normalizeItem) : [];
+    }
+
+    // Fallback legacy : lecture directe de cv_watchlist
     try {
       const raw = localStorage.getItem(WATCHLIST_KEY);
       if (!raw) return [];
@@ -103,7 +110,19 @@ const Contextualizer = (() => {
     } catch { return []; }
   }
 
+  /**
+   * saveWatchlist(list) — persiste la watchlist.
+   * Si ProfileManager est disponible, sauvegarde dans le profil actif.
+   * Sinon, fallback sur l'écriture directe de WATCHLIST_KEY.
+   */
   function saveWatchlist(list) {
+    // Multi-profil : déléguer à ProfileManager si disponible
+    if (typeof ProfileManager !== 'undefined') {
+      ProfileManager.saveActiveWatchlist(list);
+      return;
+    }
+
+    // Fallback legacy
     try {
       localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
     } catch (e) { console.warn("[Contextualizer] Watchlist save:", e.message); }

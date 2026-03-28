@@ -1,9 +1,16 @@
-// saved-filters.js — Vues / filtres sauvegardés (V1.1)
+// saved-filters.js — Vues / filtres sauvegardés (V1.2 — Sprint 17 : Profile-scoped presets)
 //
 // V1.1 — 3 améliorations ciblées :
 //   1. _closeAllPanelsExcept(view) — ferme les autres panneaux avant d'ouvrir la cible
 //   2. Support explicite de stats, briefing, health dans capture + application
 //   3. updatePreset(id) — écrase un preset existant avec l'état courant
+//
+// V1.2 — Profile-scoped presets :
+//   • addPreset() attache le profil actif (profileId, profileName, profileBadge) au preset
+//   • Les anciens presets sans profileId restent « globaux » et fonctionnent comme avant
+//   • _renderList() regroupe les presets : « Ce profil », « Globales », « Autres profils »
+//   • applyPreset() affiche un toast informatif si le preset vient d'un autre profil
+//   • open() injecte un hint affichant le profil actif dans la ligne de sauvegarde
 //
 // API publique : init, open, close, addPreset, removePreset, applyPreset, updatePreset
 
@@ -65,17 +72,28 @@ const SavedFilters = (() => {
   function addPreset(name) {
     const list = _load();
     if (list.length >= MAX_PRESETS) {
-      _toast(`Maximum ${MAX_PRESETS} vues atteint — supprimez-en une d'abord.`, "warning");
+      _toast(`Maximum ${MAX_PRESETS} views reached — delete one first.`, "warning");
       return null;
     }
     const { view, filters } = captureState();
     const id     = `preset_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    // Sprint 17 — attacher le profil actif si ProfileManager est disponible
+    let profileId = null, profileName = null, profileBadge = null;
+    if (typeof ProfileManager !== "undefined") {
+      const p = ProfileManager.getActiveProfile();
+      if (p) { profileId = p.id; profileName = p.name; profileBadge = p.badge || null; }
+    }
+
     const preset = {
       id,
-      name:      (name || "").trim() || "Vue sans nom",
+      name:      (name || "").trim() || "Unnamed view",
       view,
       filters,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      profileId,
+      profileName,
+      profileBadge
     };
     list.push(preset);
     _save(list);
@@ -97,7 +115,7 @@ const SavedFilters = (() => {
     list[idx] = { ...list[idx], view, filters, updatedAt: new Date().toISOString() };
     _save(list);
     _renderList();
-    _toast(`Vue "${list[idx].name}" mise à jour.`, "success");
+    _toast(`View "${list[idx].name}" updated.`, "success");
   }
 
   // ── Application d'un preset ───────────────────────────────────────────────
@@ -105,17 +123,28 @@ const SavedFilters = (() => {
   function applyPreset(preset) {
     const { view, filters } = preset;
 
+    // Sprint 17 — toast informatif si le preset appartient à un autre profil
+    if (preset.profileId && typeof ProfileManager !== "undefined") {
+      const activeId = ProfileManager.getActiveId();
+      if (preset.profileId !== activeId) {
+        const badge = preset.profileBadge ? preset.profileBadge + " " : "";
+        _toast(`ℹ️ This view was created for profile ${badge}«${preset.profileName || preset.profileId}»`, "info");
+      }
+    }
+
     // 1. Fermer tous les panneaux sauf la cible (V1.1)
     _closeAllPanelsExcept(view);
 
     // 2. Filtres globaux (dashboard principal)
     if (typeof App !== "undefined") {
       App.setFilters({
-        query:       filters.query       ?? "",
-        criticality: filters.criticality ?? "all",
-        source:      filters.source      ?? "all",
-        date:        filters.date        ?? "all",
-        showFavOnly: filters.showFavOnly ?? false
+        query:         filters.query         ?? "",
+        criticality:   filters.criticality   ?? "all",
+        source:        filters.source        ?? "all",
+        date:          filters.date          ?? "all",
+        priorityLevel: filters.priorityLevel ?? "all",
+        sortBy:        filters.sortBy        ?? "default",
+        showFavOnly:   filters.showFavOnly   ?? false
       });
     }
 
@@ -133,6 +162,7 @@ const SavedFilters = (() => {
       if (panel && panel.style.display === "none") IncidentPanel.toggle();
       IncidentPanel.setFilters({
         filterBy:    filters.filterBy    ?? "all",
+        sortBy:      filters.sortBy      ?? "default",
         searchQuery: filters.searchQuery ?? ""
       });
 
@@ -164,8 +194,11 @@ const SavedFilters = (() => {
     }
     // view === "main" → aucun panneau à ouvrir, filtres déjà appliqués
 
+    // Sprint 21 — effacer la vue persona active (un preset sauvegardé prend le dessus)
+    if (typeof PersonaPresets !== 'undefined') PersonaPresets.clearActive();
+
     close();
-    _toast(`Vue "${preset.name}" appliquée.`, "success");
+    _toast(`View "${preset.name}" applied.`, "success");
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────
@@ -173,12 +206,12 @@ const SavedFilters = (() => {
   const _VIEW_LABELS = {
     main:       "📰 Dashboard",
     cves:       "🔍 CVEs",
-    incidents:  "🎯 Incidents",
+    incidents:  "🔗 Incidents",
     vendors:    "🏢 Vendors",
-    visibility: "👁 Visibilité",
+    visibility: "👁 Visibility",
     stats:      "📊 Stats",
     briefing:   "📰 Briefing",
-    health:     "🩺 Santé"
+    health:     "🩺 Health"
   };
 
   function _esc(s) {
@@ -189,17 +222,45 @@ const SavedFilters = (() => {
       .replace(/"/g, "&quot;");
   }
 
+  const _PRIO_LABELS = {
+    critical_now: "CRITICAL",
+    investigate:  "INVESTIG.",
+    watch:        "MONITR.",
+    low:          "LOW"
+  };
+
   function _formatFilters(f) {
     const parts = [];
-    if (f.query)                                      parts.push(`"${_esc(f.query)}"`);
-    if (f.criticality && f.criticality !== "all")     parts.push(f.criticality.toUpperCase());
-    if (f.date        && f.date        !== "all")     parts.push(f.date);
-    if (f.source      && f.source      !== "all")     parts.push(_esc(f.source));
-    if (f.filterBy    && f.filterBy    !== "all")     parts.push(f.filterBy);
-    if (f.searchQuery)                                parts.push(`"${_esc(f.searchQuery)}"`);
-    if (f.sortBy      && f.sortBy      !== "default") parts.push(`tri:${f.sortBy}`);
-    if (f.showFavOnly)                                parts.push("favoris");
-    return parts.length ? parts.join(" · ") : "Aucun filtre actif";
+    if (f.query)                                           parts.push(`"${_esc(f.query)}"`);
+    if (f.criticality   && f.criticality   !== "all")     parts.push(f.criticality.toUpperCase());
+    if (f.priorityLevel && f.priorityLevel !== "all")     parts.push(`prio:${_PRIO_LABELS[f.priorityLevel] || f.priorityLevel}`);
+    if (f.date          && f.date          !== "all")     parts.push(f.date);
+    if (f.source        && f.source        !== "all")     parts.push(_esc(f.source));
+    if (f.filterBy      && f.filterBy      !== "all")     parts.push(f.filterBy);
+    if (f.searchQuery)                                     parts.push(`"${_esc(f.searchQuery)}"`);
+    if (f.sortBy        && f.sortBy        !== "default") parts.push(`sort:${f.sortBy}`);
+    if (f.showFavOnly)                                     parts.push("favorites");
+    return parts.length ? parts.join(" · ") : "No active filters";
+  }
+
+  function _presetRowHTML(p, dimmed) {
+    const scopeBadge = p.profileId
+      ? `<span class="sf-scope sf-scope-profile" title="Profile: ${_esc(p.profileName || p.profileId)}">${p.profileBadge || "◉"}</span>`
+      : `<span class="sf-scope sf-scope-global"  title="Global view (all profiles)">🌐</span>`;
+    return `
+      <div class="sf-preset-row${dimmed ? " sf-row-other" : ""}">
+        ${scopeBadge}
+        <span class="sf-view-badge">${_VIEW_LABELS[p.view] || p.view}</span>
+        <div class="sf-preset-info">
+          <span class="sf-preset-name">${_esc(p.name)}</span>
+          <span class="sf-preset-meta">${_formatFilters(p.filters)}</span>
+        </div>
+        <div class="sf-preset-actions">
+          <button class="btn btn-primary sf-apply-btn"  data-id="${_esc(p.id)}" title="Apply this view">↩ Apply</button>
+          <button class="btn sf-update-btn" data-id="${_esc(p.id)}" title="Overwrite with current view">⟳</button>
+          <button class="btn sf-delete-btn" data-id="${_esc(p.id)}" title="Delete this view">✕</button>
+        </div>
+      </div>`;
   }
 
   function _renderList() {
@@ -207,23 +268,34 @@ const SavedFilters = (() => {
     if (!container) return;
     const list = _load();
     if (list.length === 0) {
-      container.innerHTML = '<p class="sf-empty">Aucune vue sauvegardée pour l\'instant.</p>';
+      container.innerHTML = '<p class="sf-empty">No saved views yet.</p>';
       return;
     }
-    container.innerHTML = list.map(p => `
-      <div class="sf-preset-row">
-        <span class="sf-view-badge">${_VIEW_LABELS[p.view] || p.view}</span>
-        <div class="sf-preset-info">
-          <span class="sf-preset-name">${_esc(p.name)}</span>
-          <span class="sf-preset-meta">${_formatFilters(p.filters)}</span>
-        </div>
-        <div class="sf-preset-actions">
-          <button class="btn btn-primary sf-apply-btn"  data-id="${_esc(p.id)}" title="Appliquer cette vue">↩ Appliquer</button>
-          <button class="btn sf-update-btn" data-id="${_esc(p.id)}" title="Écraser avec la vue actuelle">⟳</button>
-          <button class="btn sf-delete-btn" data-id="${_esc(p.id)}" title="Supprimer cette vue">✕</button>
-        </div>
-      </div>
-    `).join("");
+
+    // Sprint 17 — grouper par scope
+    let activeId = null;
+    if (typeof ProfileManager !== "undefined") activeId = ProfileManager.getActiveId();
+
+    const mine   = list.filter(p => p.profileId && p.profileId === activeId);
+    const global = list.filter(p => !p.profileId);
+    const other  = list.filter(p => p.profileId && p.profileId !== activeId);
+
+    let html = "";
+
+    if (mine.length) {
+      html += `<div class="sf-group-label">This profile</div>`;
+      html += mine.map(p => _presetRowHTML(p, false)).join("");
+    }
+    if (global.length) {
+      html += `<div class="sf-group-label">Global</div>`;
+      html += global.map(p => _presetRowHTML(p, false)).join("");
+    }
+    if (other.length) {
+      html += `<div class="sf-group-label">Other profiles</div>`;
+      html += other.map(p => _presetRowHTML(p, true)).join("");
+    }
+
+    container.innerHTML = html;
   }
 
   function _toast(msg, type) {
@@ -245,7 +317,7 @@ const SavedFilters = (() => {
     if (preset) {
       if (nameInput) nameInput.value = "";
       _renderList();
-      _toast(`Vue "${preset.name}" sauvegardée.`, "success");
+      _toast(`View "${preset.name}" saved.`, "success");
     }
   }
 
@@ -255,7 +327,29 @@ const SavedFilters = (() => {
     _renderList();
     const modal = document.getElementById("modal-saved-filters");
     if (modal) modal.style.display = "flex";
+
+    // Sprint 17 — injecter/mettre à jour le hint de profil actif
+    _updateProfileHint();
+
     setTimeout(() => document.getElementById("sf-name-input")?.focus(), 50);
+  }
+
+  function _updateProfileHint() {
+    const saveRow = document.querySelector(".sf-save-row");
+    if (!saveRow) return;
+
+    // Supprimer l'ancien hint s'il existe
+    saveRow.querySelector(".sf-profile-hint")?.remove();
+
+    if (typeof ProfileManager === "undefined") return;
+    const p = ProfileManager.getActiveProfile();
+    if (!p) return;
+
+    const hint = document.createElement("div");
+    hint.className = "sf-profile-hint";
+    hint.innerHTML = `<span class="sf-scope sf-scope-profile">${p.badge || "◉"}</span>`
+                   + `<span class="sf-profile-hint-text">Will be linked to profile <strong>${_esc(p.name)}</strong></span>`;
+    saveRow.appendChild(hint);
   }
 
   function close() {

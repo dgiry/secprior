@@ -117,7 +117,7 @@ async function _fetchViaProxies(feedUrl, feedName) {
       } else if (proxy.format === "rss2json") {
         const json = await res.json();
         if (json.status !== "ok" || !json.items?.length) {
-          errors.push(`${proxy.url}: ${json.message || "réponse vide"}`); continue;
+          errors.push(`${proxy.url}: ${json.message || "empty response"}`); continue;
         }
         // Reconstruction RSS minimal depuis le JSON rss2json
         const items = json.items.map(i => `<item>
@@ -131,13 +131,13 @@ async function _fetchViaProxies(feedUrl, feedName) {
         text = await res.text();
       }
 
-      if (!text || text.length < 50) { errors.push(`${proxy.url}: réponse trop courte`); continue; }
+      if (!text || text.length < 50) { errors.push(`${proxy.url}: response too short`); continue; }
       // Supprimer le BOM UTF-8 si présent
       if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
       // Rejeter les réponses HTML
       const t = text.trimStart();
       if (t.startsWith("<!") || t.toLowerCase().startsWith("<html")) {
-        errors.push(`${proxy.url}: réponse HTML`); continue;
+        errors.push(`${proxy.url}: HTML response`); continue;
       }
       // Valider que le contenu est du XML parseable avant de retourner
       const testDoc = new DOMParser().parseFromString(text, "text/xml");
@@ -149,7 +149,7 @@ async function _fetchViaProxies(feedUrl, feedName) {
       errors.push(`${proxy.url}: ${e.message}`);
     }
   }
-  throw new Error(`Tous les proxies ont échoué pour ${feedName} (${errors.join(" | ")})`);
+  throw new Error(`All proxies failed for ${feedName} (${errors.join(" | ")})`);
 }
 
 /**
@@ -187,7 +187,7 @@ async function fetchFeed(feed) {
 
   // Détecter les erreurs de parsing XML
   const parseError = xmlDoc.querySelector("parsererror");
-  if (parseError) throw new Error(`Erreur XML pour ${feed.name}`);
+  if (parseError) throw new Error(`XML error for ${feed.name}`);
 
   return parseXML(xmlDoc, feed);
 }
@@ -202,7 +202,7 @@ async function fetchAllFeeds(forceRefresh = false) {
   if (!forceRefresh && !Storage.isCacheStale()) {
     const cache = Storage.getCache();
     if (cache && cache.items && cache.items.length > 0) {
-      console.log("[Feeds] Cache utilisé (%d articles)", cache.items.length);
+      console.log("[Feeds] Cache used (%d articles)", cache.items.length);
       // Réhydrater les dates (JSON.parse les strings en string)
       return cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
     }
@@ -243,7 +243,7 @@ async function fetchAllFeeds(forceRefresh = false) {
       FeedManager.recordFetchResult(feed, true, result.value.length, "");
     } else {
       errors.push(feed.name);
-      const msg = result.reason?.message || "Erreur inconnue";
+      const msg = result.reason?.message || "Unknown error";
       console.warn("[Feeds] ✗ %s : %s", feed.name, msg);
       // Mise à jour santé : erreur
       FeedManager.recordFetchResult(feed, false, 0, msg);
@@ -251,12 +251,12 @@ async function fetchAllFeeds(forceRefresh = false) {
   });
 
   if (errors.length > 0) {
-    console.warn("[Feeds] Sources en erreur :", errors.join(", "));
+    console.warn("[Feeds] Error sources:", errors.join(", "));
   }
 
   // Si tous les feeds ont échoué → utiliser les données de démo
   if (allArticles.length === 0 && typeof DEMO_ARTICLES !== "undefined") {
-    console.info("[Feeds] Aucun article récupéré. Mode démo activé.");
+    console.info("[Feeds] No article retrieved. Demo mode activated.");
     return DEMO_ARTICLES.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
   }
 

@@ -227,13 +227,13 @@ function computePriority(article) {
     const lbl = i.label || i.value || '?';
     switch (i.type) {
       case 'vendor':
-        return i.priority === 'high' ? `Vendeur critique surveillé : ${lbl}`
-                                     : `Vendeur surveillé : ${lbl}`;
+        return i.priority === 'high' ? `Critical watched vendor: ${lbl}`
+                                     : `Watched vendor: ${lbl}`;
       case 'product':
-        return i.priority === 'high' ? `Produit critique surveillé : ${lbl}`
-                                     : `Produit surveillé : ${lbl}`;
+        return i.priority === 'high' ? `Critical watched product: ${lbl}`
+                                     : `Watched product: ${lbl}`;
       case 'technology':
-        return `Technologie surveillée : ${lbl}`;
+        return `Watched technology: ${lbl}`;
       default: // keyword
         return i.priority === 'high' ? `Terme prioritaire : ${lbl}`
                                      : `Terme watchlist : ${lbl}`;
@@ -242,11 +242,11 @@ function computePriority(article) {
 
   // ── Construction des raisons lisibles (ordre : signal fort d'abord) ───────
   if (kev)
-    reasons.push("Exploitation active confirmée (CISA KEV)");
+    reasons.push("Active exploitation confirmed (CISA KEV)");
   if (epssHigh)
-    reasons.push(`Probabilité d'exploitation élevée : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
+    reasons.push(`High exploitation probability: ${(epss * 100).toFixed(0)}% (FIRST.org)`);
   else if (epssMed)
-    reasons.push(`Probabilité d'exploitation : ${(epss * 100).toFixed(0)}% (FIRST.org)`);
+    reasons.push(`Exploitation probability: ${(epss * 100).toFixed(0)}% (FIRST.org)`);
 
   if (hasWlItems) {
     // Trier par bonus décroissant, afficher les 2 plus importants
@@ -257,24 +257,24 @@ function computePriority(article) {
   } else if (wl) {
     // Fallback compat V1 : pas d'items structurés
     const terms = (article.watchlistMatches || []).slice(0, 2).join(', ');
-    reasons.push(`Terme watchlist matché : ${terms}`);
+    reasons.push(`Watchlist term matched: ${terms}`);
   }
 
   if (isZeroDay)
-    reasons.push("Vulnérabilité 0-day — aucun patch disponible");
+    reasons.push("Zero-day vulnerability — no patch available");
   if (trending)
-    reasons.push(`Couvert par ${article.trendingCount || sources} sources simultanément`);
+    reasons.push(`Covered by ${article.trendingCount || sources} sources simultaneously`);
   else if (sources > 1)
-    reasons.push(`Couvert par ${sources} sources distinctes`);
+    reasons.push(`Covered by ${sources} distinct sources`);
   if (iocCount > 0)
     reasons.push(`${iocCount} IOC${iocCount > 1 ? 's' : ''} extraits (IPs, domaines, hashes)`);
   if (hasAttack && !isZeroDay) {
     const tactics = article.attackTags.slice(0, 2).map(t => t.label).join(', ');
-    reasons.push(`Tactique ATT&CK détectée : ${tactics}`);
+    reasons.push(`ATT&CK tactic detected: ${tactics}`);
   }
   if (hasCVE) {
     const cveStr = article.cves[0] + (article.cves.length > 1 ? ` +${article.cves.length - 1}` : '');
-    reasons.push(`CVE référencé : ${cveStr}`);
+    reasons.push(`Referenced CVE: ${cveStr}`);
   }
   if (score > 0 && reasons.length === 0)
     reasons.push(`Score composite : ${score}/100`);
@@ -333,7 +333,7 @@ function computePriority(article) {
 
 function getPriorityMeta(level) {
   switch (level) {
-    case "critical_now": return { icon: "🔴", label: "Action immédiate",   css: "critical-now" };
+    case "critical_now": return { icon: "🔴", label: "Immediate action",   css: "critical-now" };
     case "investigate":  return { icon: "🟠", label: "À investiguer",      css: "investigate"  };
     case "watch":        return { icon: "🔵", label: "À surveiller",       css: "watch"        };
     default:             return { icon: "⚪", label: "Signal faible",       css: "low"          };

@@ -4,18 +4,28 @@
 const CONFIG = {
   // ── Détection environnement ────────────────────────────────────────────────
   // true  → déployé sur Vercel : toutes les APIs passent par /api/...
-  //          (clés sécurisées côté serveur, cache CDN, pas d'appels directs)
+  //          (clés sécurisées côté serveur dans les Variables d'Environnement Vercel)
   // false → développement local OU hébergement statique (Hostinger, GitHub Pages…)
   //          → les proxies CORS (allorigins.win) sont utilisés à la place
   //
-  // Détection Vercel : présence de x-vercel-id dans les headers OU hostname vercel.app
-  // Pour forcer le mode API sur un domaine custom Vercel, ajoutez-le ici :
-  //   VERCEL_DOMAINS: ["mondomaine.com"]
-  USE_API: (typeof location !== "undefined") && (
-    location.hostname.endsWith(".vercel.app") ||
-    // ↓ Ajoutez votre domaine custom Vercel ici si besoin
-    false
-  ),
+  // ── Si vous utilisez un domaine custom Vercel, ajoutez-le ici ─────────────
+  // Ex : ["cyberveille.monentreprise.fr", "soc-dashboard.com"]
+  VERCEL_CUSTOM_DOMAINS: [
+    // "mondomaine.com"
+  ],
+
+  // USE_API est calculé dynamiquement — ne pas modifier directement.
+  // Pour forcer le mode production sur un domaine non listé : ajoutez-le à VERCEL_CUSTOM_DOMAINS.
+  get USE_API() {
+    if (typeof location === "undefined") return false;
+    const host = location.hostname;
+    // Domaines Vercel natifs (.vercel.app)
+    if (host.endsWith(".vercel.app")) return true;
+    // Domaines custom explicitement déclarés dans VERCEL_CUSTOM_DOMAINS
+    if (this.VERCEL_CUSTOM_DOMAINS.includes(host)) return true;
+    // Tout autre domaine (local, Hostinger, GitHub Pages…) → mode statique
+    return false;
+  },
 
   // Proxy CORS de fallback (local uniquement, jamais en production)
   PROXY_URL: "https://api.allorigins.win/get?url=",

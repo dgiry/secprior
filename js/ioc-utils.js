@@ -73,14 +73,14 @@ const IOCUtils = (() => {
   async function copyOne(typeLabel, value) {
     await _write(value);
     const short = value.length > 28 ? value.slice(0, 14) + '…' + value.slice(-8) : value;
-    if (window.UI) UI.showToast(`📋 ${typeLabel} copié : ${short}`, 'success');
+    if (window.UI) UI.showToast(`📋 ${typeLabel} copied: ${short}`, 'success');
   }
 
   async function copyGroup(label, values) {
     if (!values.length) return;
     await _write(values.join('\n'));
     if (window.UI) UI.showToast(
-      `📋 ${values.length} ${label} copié${values.length > 1 ? 's' : ''}`, 'success'
+      `📋 ${values.length} ${label} copied`, 'success'
     );
   }
 
@@ -106,7 +106,7 @@ const IOCUtils = (() => {
       // Format TXT : un IOC par ligne, sections commentées
       const lines = [
         `# IOCs — ${contextLabel}`,
-        `# Exporté le ${new Date().toLocaleString('fr-FR')}`,
+        `# Exported on ${new Date().toLocaleString('en-US')}`,
         `# Total : ${total(iocs)} indicateur${total(iocs) > 1 ? 's' : ''}`,
         ''
       ];

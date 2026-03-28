@@ -75,7 +75,7 @@ const PWA = (() => {
       </span>
       <div class="pwa-banner-actions">
         <button id="pwa-install-btn" class="btn btn-primary pwa-btn">Installer</button>
-        <button id="pwa-install-dismiss" class="pwa-dismiss" title="Fermer">✕</button>
+        <button id="pwa-install-dismiss" class="pwa-dismiss" title="Close">✕</button>
       </div>
     `;
     // Insérer sous la navbar

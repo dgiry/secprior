@@ -95,10 +95,10 @@ const DEMO_ARTICLES = [
   {
     id: "demo3",
     source: "certfr", sourceName: "CERT-FR", sourceIcon: "🇫🇷",
-    title: "CERTFR-2024-AVI-0892 : Multiples vulnérabilités dans Microsoft Windows",
-    description: "De multiples vulnérabilités ont été découvertes dans Microsoft Windows. " +
-      "Certaines permettent une élévation de privilèges, d'autres une exécution de code arbitraire " +
-      "à distance. Un correctif d'urgence est disponible.",
+    title: "CERTFR-2024-AVI-0892: Multiple vulnerabilities in Microsoft Windows",
+    description: "Multiple vulnerabilities have been discovered in Microsoft Windows. " +
+      "Some allow privilege escalation, others allow remote code execution. " +
+      "An emergency patch is available.",
     link: "https://cert.ssi.gouv.fr",
     criticality: "high",
     cves:      [],
@@ -184,10 +184,10 @@ const DEMO_ARTICLES = [
   {
     id: "demo8",
     source: "zataz", sourceName: "Zataz", sourceIcon: "🟠",
-    title: "Fuite de données : 3 millions de dossiers médicaux français en vente sur le darkweb",
+    title: "Data breach: 3 million French medical records for sale on the darkweb",
     description: "Un acteur malveillant propose sur un forum cybercriminel russophone la vente de " +
-      "3 millions de dossiers médicaux appartenant à des patients français, incluant diagnostics, " +
-      "traitements et données d'assurance maladie.",
+      "3 million medical records belonging to French patients, including diagnoses, " +
+      "treatments and health insurance data.",
     link: "https://zataz.com",
     criticality: "high",
     cves:      [],
@@ -201,10 +201,10 @@ const DEMO_ARTICLES = [
   {
     id: "demo9",
     source: "certfr", sourceName: "CERT-FR", sourceIcon: "🇫🇷",
-    title: "CERTFR-2024-ACT-047 : Campagne d'hameçonnage ciblant les collectivités territoriales",
+    title: "CERTFR-2024-ACT-047: Phishing campaign targeting local government entities",
     description: "Le CERT-FR observe une recrudescence des attaques de phishing ciblant les " +
-      "collectivités territoriales françaises, usurpant l'identité de la DGFiP pour voler des " +
-      "identifiants d'accès.",
+      "French local government entities, impersonating the DGFiP to steal " +
+      "access credentials.",
     link: "https://cert.ssi.gouv.fr",
     criticality: "medium",
     cves:      [],
@@ -285,10 +285,9 @@ const DEMO_ARTICLES = [
   {
     id: "demo14",
     source: "zataz", sourceName: "Zataz", sourceIcon: "🟠",
-    title: "Rapport : L'état de la cybersécurité des PME françaises en 2024",
-    description: "Une étude de l'ANSSI révèle que 60% des PME françaises n'ont pas de plan de " +
-      "réponse aux incidents, et que le délai moyen de détection d'une intrusion reste supérieur " +
-      "à 200 jours.",
+    title: "Report: State of cybersecurity for French SMBs in 2024",
+    description: "An ANSSI study reveals that 60% of French SMBs have no incident response plan, " +
+      "and that the average intrusion detection delay remains above 200 days.",
     link: "https://zataz.com",
     criticality: "low",
     cves:      [],

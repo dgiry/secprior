@@ -11,11 +11,36 @@
 
 const IncidentPanel = (() => {
 
-  let _articles      = [];    // dernière liste d'articles reçue
-  let _filterBy      = "all"; // "all"|"multi"|"kev"|"watchlist"|"exploit"|"patch"|"high"|"ioc"
-  let _searchQuery   = "";    // filtre texte libre
-  let _statusFilter  = "all"; // "all" | EntityStatus.VALID_STATUSES
-  let _lastIncidents = [];    // cache pour export IOC au clic
+  let _articles      = [];        // dernière liste d'articles reçue
+  let _filterBy      = "all";    // "all"|"multi"|"kev"|"watchlist"|"exploit"|"patch"|"high"|"ioc"|"prio"
+  let _searchQuery   = "";       // filtre texte libre
+  let _statusFilter  = "all";    // "all" | EntityStatus.VALID_STATUSES
+  let _sortBy        = "default"; // "default" | "priority"
+  let _lastIncidents = [];       // cache pour export IOC au clic
+
+  // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
+  //
+  // Règle produit :
+  //   • toggle() simple (clic bouton)   → _resetFilters() avant rendu → vue large
+  //   • setFilters() depuis persona/preset → état filtré assumé, écrase le reset
+  //   • saved-filter                    → toggle() puis setFilters() → filtré assumé
+  //
+  // Cela garantit qu'ouvrir l'onglet Incidents sans contexte spécial
+  // affiche toujours tous les incidents sans filtre restrictif résiduel.
+
+  const _DEFAULTS = Object.freeze({
+    filterBy:    "all",
+    searchQuery: "",
+    statusFilter: "all",
+    sortBy:      "default"
+  });
+
+  function _resetFilters() {
+    _filterBy    = _DEFAULTS.filterBy;
+    _searchQuery = _DEFAULTS.searchQuery;
+    _statusFilter = _DEFAULTS.statusFilter;
+    _sortBy      = _DEFAULTS.sortBy;
+  }
 
   // ── Catégorisation d'angle (synchronisée avec cve-panel.js) ───────────────
 
@@ -43,6 +68,50 @@ const IncidentPanel = (() => {
   function _dominantAngle(angles) {
     const order = ["exploitation", "poc", "patch", "advisory", "news"];
     return order.find(p => angles.includes(p)) || "news";
+  }
+
+  // ── Agrégation priorité incident ─────────────────────────────────────────
+  // Remonte le niveau et le score les plus élevés parmi les articles de l'incident.
+  // Tolère les articles anciens sans priorityLevel (ignorés dans l'agrégation).
+
+  function _computeIncidentPriority(arts) {
+    const LEVELS = ["critical_now", "investigate", "watch", "low"];
+    const incidentPriorityScore = arts.reduce((m, a) => Math.max(m, a.priorityScore ?? 0), 0);
+    let incidentPriorityLevel = "low";
+    for (const lvl of LEVELS) {
+      if (arts.some(a => a.priorityLevel === lvl)) { incidentPriorityLevel = lvl; break; }
+    }
+    const topArts = arts.filter(a => a.priorityLevel === incidentPriorityLevel);
+    const priorityReasons = [...new Set(topArts.flatMap(a => a.priorityReasons || []))].slice(0, 4);
+    return { incidentPriorityScore, incidentPriorityLevel, priorityReasons };
+  }
+
+  // ── Résumé lisible incident ───────────────────────────────────────────────
+  // Phrase courte combinant l'angle dominant, les vendors/CVEs et les signaux clés.
+
+  function _makeIncidentSummary(i) {
+    const dominant  = _dominantAngle(i.angles);
+    const ANGLE_TXT = {
+      exploitation: "Active exploitation", poc: "PoC published",
+      patch: "Patch available",            advisory: "Advisory", news: "Monitoring"
+    };
+    const parts = [];
+    let lead = ANGLE_TXT[dominant] || "Incident";
+    if (i.vendors.length) lead += ` — ${i.vendors.slice(0, 2).join(", ")}`;
+    parts.push(lead);
+    if (i.cves.length)
+      parts.push(i.cves.slice(0, 2).join(" · ") + (i.cves.length > 2 ? ` +${i.cves.length - 2}` : ""));
+    const sigs = [];
+    if (i.kev)             sigs.push("KEV confirmed");
+    if (i.watchlistHit)    sigs.push("Watchlist");
+    if (i.maxEpss != null) sigs.push(`EPSS ${Math.round(i.maxEpss * 100)}%`);
+    if (sigs.length) parts.push(sigs.join(", "));
+    parts.push(
+      `${i.articleCount} article${i.articleCount !== 1 ? "s" : ""}` +
+      ` · ${i.sourceCount} source${i.sourceCount !== 1 ? "s" : ""}`
+    );
+    if (i.rawIocCount > 0) parts.push(`${i.rawIocCount} IOC`);
+    return parts.join(" — ");
   }
 
   // ── Union-Find léger ──────────────────────────────────────────────────────
@@ -177,21 +246,28 @@ const IncidentPanel = (() => {
     // Comptage brut des IOCs (somme articles, doublons possibles — utilisé pour filtre/badge)
     const rawIocCount = arts.reduce((n, a) => n + (a.iocCount || 0), 0);
 
-    return {
+    // Priorité agrégée + résumé lisible
+    const { incidentPriorityScore, incidentPriorityLevel, priorityReasons } =
+      _computeIncidentPriority(arts);
+
+    const incident = {
       incidentId, title,
       articleCount: arts.length, sourceCount: sources.length,
       articles: sorted, cves, vendors, sources,
       maxScore, maxEpss, kev, watchlistHit, trending, attackTags, angles,
-      firstSeen, lastSeen, rawIocCount
+      firstSeen, lastSeen, rawIocCount,
+      incidentPriorityScore, incidentPriorityLevel, priorityReasons
     };
+    incident.summary = _makeIncidentSummary(incident);
+    return incident;
   }
 
   function _makeTitle(cves, vendors, angles, primaryArticle) {
     const dominant = _dominantAngle(angles);
     const angleLabel = {
-      exploitation: "exploitation active",
-      poc:          "PoC publié",
-      patch:        "correctif disponible",
+      exploitation: "active exploitation",
+      poc:          "PoC published",
+      patch:        "patch available",
       advisory:     "advisory"
     };
 
@@ -215,15 +291,15 @@ const IncidentPanel = (() => {
 
   function _fmtDate(iso) {
     if (!iso) return "—";
-    try { return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }); }
+    try { return new Date(iso).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }); }
     catch { return "—"; }
   }
 
   function _fmtDateTime(pubDate) {
     const d = pubDate instanceof Date ? pubDate : (pubDate ? new Date(pubDate) : null);
     if (!d || isNaN(d)) return "—";
-    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
-         + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })
+         + " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   }
 
   // ── Rendu ─────────────────────────────────────────────────────────────────
@@ -248,6 +324,14 @@ const IncidentPanel = (() => {
     if (_filterBy === "patch")     incidents = incidents.filter(i => i.angles.includes("patch"));
     if (_filterBy === "high")      incidents = incidents.filter(i => i.maxScore >= 70);
     if (_filterBy === "ioc")       incidents = incidents.filter(i => i.rawIocCount > 0);
+    if (_filterBy === "prio")      incidents = incidents.filter(i => i.incidentPriorityLevel === "critical_now");
+
+    // Tri priorité
+    if (_sortBy === "priority") {
+      incidents = incidents.slice().sort((a, b) =>
+        (b.incidentPriorityScore ?? 0) - (a.incidentPriorityScore ?? 0)
+      );
+    }
 
     // Filtre texte
     if (_searchQuery) {
@@ -273,7 +357,7 @@ const IncidentPanel = (() => {
     list.innerHTML = `
       ${_controlsHTML()}
       ${incidents.length === 0
-        ? `<p class="ip-empty">Aucun incident correspondant${_searchQuery ? ` à "${_searchQuery}"` : ""}.</p>`
+        ? `<p class="ip-empty">No matching incident${_searchQuery ? ` for "${_searchQuery}"` : ""}.</p>`
         : `<table class="ip-table">
             <thead>
               <tr class="ip-thead">
@@ -281,9 +365,9 @@ const IncidentPanel = (() => {
                 <th class="ip-th-num">Art.</th>
                 <th class="ip-th-num">Score</th>
                 <th class="ip-th-num">EPSS</th>
-                <th>Signaux</th>
+                <th>Signals</th>
                 <th>CVE / Angles</th>
-                <th class="ip-th-num">Vu le</th>
+                <th class="ip-th-num">Seen</th>
               </tr>
             </thead>
             <tbody>
@@ -295,6 +379,11 @@ const IncidentPanel = (() => {
     // Filtres
     list.querySelectorAll(".ip-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); });
+    });
+
+    // Tri
+    list.querySelectorAll(".ip-sort-btn").forEach(btn => {
+      btn.addEventListener("click", () => { _sortBy = btn.dataset.sort; _render(); });
     });
 
     // Filtres statut analyste
@@ -318,6 +407,13 @@ const IncidentPanel = (() => {
         inp.addEventListener("blur", e => {
           const block = e.target.closest(".es-block");
           EntityStatus.updateNote("incident", block.dataset.eid, e.target.value);
+        });
+        inp.addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+      });
+      list.querySelectorAll(".es-block .es-owner-input").forEach(inp => {
+        inp.addEventListener("blur", e => {
+          const block = e.target.closest(".es-block");
+          EntityStatus.updateOwner("incident", block.dataset.eid, e.target.value);
         });
         inp.addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
       });
@@ -372,6 +468,10 @@ const IncidentPanel = (() => {
       });
     });
 
+    // ── Actions rapides — résumés analyste / exécutif / export JSON ────────
+    if (typeof QuickActions !== "undefined")
+      QuickActions.bindIncidentPanel(list, _lastIncidents);
+
     // Toggle détail sur clic ligne
     list.querySelectorAll(".ip-row").forEach(row => {
       row.addEventListener("click", () => {
@@ -397,28 +497,37 @@ const IncidentPanel = (() => {
     if (typeof EntityStatus !== "undefined") {
       const btns = ["all", ...EntityStatus.VALID_STATUSES].map(s => {
         const m     = EntityStatus.STATUS_META[s];
-        const label = s === "all" ? "Tous statuts" : m.emoji + "\u00a0" + m.label;
+        const label = s === "all" ? "All statuses" : m.emoji + "\u00a0" + m.label;
         return `<button class="ip-status-btn${sf === s ? " active" : ""}" data-status="${s}">${label}</button>`;
       }).join("");
       statusBarHTML = `<div class="ip-status-bar">${btns}</div>`;
     }
 
+    const critCount = _lastIncidents.filter(i => i.incidentPriorityLevel === "critical_now").length;
+    const iocCount  = _lastIncidents.filter(i => i.rawIocCount > 0).length;
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
           <input type="search" class="ip-search-input"
-                 placeholder="🔎 Rechercher incident, CVE, vendor, produit..."
+                 placeholder="🔎 Search incident, CVE, vendor, product..."
                  value="${_searchQuery.replace(/"/g, "&quot;")}">
         </div>
         <div class="ip-filter-bar">
-          <button class="ip-filter-btn${f==="all"       ?" active":""}" data-filter="all">Tous</button>
+          <button class="ip-filter-btn${f==="all"       ?" active":""}" data-filter="all">All</button>
+          <button class="ip-filter-btn${f==="prio"      ?" active":""}" data-filter="prio">🔴 Critical${critCount ? ` (${critCount})` : ""}</button>
           <button class="ip-filter-btn${f==="multi"     ?" active":""}" data-filter="multi">📎 Multi-source</button>
           <button class="ip-filter-btn${f==="kev"       ?" active":""}" data-filter="kev">🚨 KEV</button>
           <button class="ip-filter-btn${f==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist</button>
           <button class="ip-filter-btn${f==="exploit"   ?" active":""}" data-filter="exploit">💀 Exploit</button>
           <button class="ip-filter-btn${f==="patch"     ?" active":""}" data-filter="patch">🩹 Patch</button>
-          <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">🔴 Score ≥ 70</button>
-          <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 Avec IOC${(() => { const n = _lastIncidents.filter(i => i.rawIocCount > 0).length; return n ? ` (${n})` : ""; })()}</button>
+          <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">📊 Score ≥ 70</button>
+          <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 With IOC${iocCount ? ` (${iocCount})` : ""}</button>
+        </div>
+        <div class="ip-sort-bar">
+          <span class="ip-dim ip-sort-label">Sort:</span>
+          <button class="ip-sort-btn${_sortBy==="default"  ?" active":""}" data-sort="default">📅 Default</button>
+          <button class="ip-sort-btn${_sortBy==="priority" ?" active":""}" data-sort="priority">🔺 Priority</button>
         </div>
         ${statusBarHTML}
       </div>`;
@@ -437,7 +546,7 @@ const IncidentPanel = (() => {
       iocTotal   = IOCUtils.total(iocs);
       iocSection = iocTotal > 0
         ? IOCUtils.iocBlockHTML(iocs, i.incidentId)
-        : `<p class="ip-ioc-empty">🔗 Aucun IOC détecté pour cet incident.</p>`;
+        : `<p class="ip-ioc-empty">🔗 No IOC detected for this incident.</p>`;
     }
 
     const signals = [
@@ -460,10 +569,25 @@ const IncidentPanel = (() => {
 
     const cveCellHTML = [cveHTML, anglesHTML].filter(Boolean).join(" ");
 
+    // Ligne de priorité (uniquement si non-low et données disponibles)
+    const _pm = typeof getPriorityMeta === "function"
+      ? getPriorityMeta(i.incidentPriorityLevel)
+      : { icon: "⚪", label: i.incidentPriorityLevel || "—", css: "low" };
+    const prioLine = (i.incidentPriorityLevel && i.incidentPriorityLevel !== "low")
+      ? `<div class="ip-prio-line prio-${_pm.css}">${_pm.icon} <strong>${_pm.label}</strong>${
+          i.incidentPriorityScore > 0
+            ? ` <span class="ip-prio-score">${i.incidentPriorityScore} pts</span>` : ""
+        }${
+          i.priorityReasons[0]
+            ? ` · <span class="ip-prio-reason">${i.priorityReasons[0]}</span>` : ""
+        }</div>`
+      : "";
+
     return `
-      <tr class="ip-row" data-iid="${safeId}" title="Cliquer pour voir la timeline">
+      <tr class="ip-row" data-iid="${safeId}" title="Click to see timeline">
         <td class="ip-title-cell">
           <span id="es-slot-incident-${safeId}" class="es-badge-slot">${typeof EntityStatus !== "undefined" ? EntityStatus.badgeHTML("incident", i.incidentId) : ""}</span>
+          ${prioLine}
           <span class="ip-title">${i.title}</span>
           ${i.vendors.length
             ? `<span class="ip-dim ip-vendors-sub">${i.vendors.slice(0, 3).join(" · ")}</span>` : ""}
@@ -479,6 +603,8 @@ const IncidentPanel = (() => {
         <td colspan="7">
           <div class="ip-detail-inner">
             ${_detailHeaderHTML(i)}
+            ${typeof QuickActions !== "undefined" ? QuickActions.incidentButtonsHTML(i.incidentId) : ""}
+            ${typeof Recommender !== "undefined" ? Recommender.renderHTML(i, 'incident') : ""}
             ${typeof EntityStatus !== "undefined" ? EntityStatus.statusBlockHTML("incident", i.incidentId) : ""}
             ${iocSection}
             <div class="ip-timeline">
@@ -490,10 +616,29 @@ const IncidentPanel = (() => {
   }
 
   function _detailHeaderHTML(i) {
-    const parts = [
+    const pm = typeof getPriorityMeta === "function"
+      ? getPriorityMeta(i.incidentPriorityLevel)
+      : { icon: "⚪", label: "—", css: "low" };
+
+    // Bloc priorité — toujours affiché (y compris "low" pour transparence)
+    const prioHeader = `
+      <div class="ip-prio-header prio-${pm.css}">
+        <span class="ip-prio-badge">${pm.icon} <strong>${pm.label}</strong></span>
+        ${i.incidentPriorityScore > 0
+          ? `<span class="ip-dim ip-prio-pts">Score&nbsp;${i.incidentPriorityScore}&nbsp;pts</span>` : ""}
+        ${i.priorityReasons.length
+          ? `<span class="ip-prio-reasons">${i.priorityReasons.join(" · ")}</span>` : ""}
+      </div>`;
+
+    // Résumé lisible
+    const summaryLine = i.summary
+      ? `<p class="ip-summary">${i.summary}</p>` : "";
+
+    // Méta secondaire : CVEs, score, EPSS, timeline, ATT&CK
+    const meta = [
       i.cves.length  ? `<strong>${i.cves.join("  ·  ")}</strong>` : "",
       `${i.articleCount} art. · ${i.sourceCount} src`,
-      i.maxScore > 0    ? `score max <strong>${i.maxScore}</strong>` : "",
+      i.maxScore > 0    ? `max score <strong>${i.maxScore}</strong>` : "",
       i.maxEpss != null ? `EPSS max <strong>${Math.round(i.maxEpss * 100)}%</strong>` : "",
       i.kev ? `<span class="ip-badge ip-kev" style="font-size:.65rem">🚨 KEV</span>` : "",
       i.attackTags.length
@@ -501,7 +646,8 @@ const IncidentPanel = (() => {
       i.firstSeen && i.lastSeen && i.firstSeen !== i.lastSeen
         ? `${_fmtDate(i.firstSeen)} → ${_fmtDate(i.lastSeen)}` : ""
     ].filter(Boolean).join(" &nbsp;·&nbsp; ");
-    return `<p class="ip-detail-head">${parts}</p>`;
+
+    return `${prioHeader}${summaryLine}<p class="ip-detail-head">${meta}</p>`;
   }
 
   function _timelineRowHTML(a) {
@@ -527,7 +673,7 @@ const IncidentPanel = (() => {
         <span class="ip-tl-cri">${criBadge}</span>
         <span class="ip-tl-src ip-dim">${a.sourceName || "?"}</span>
         <span class="ip-tl-badges">${badges}</span>
-        <a ${href} class="ip-tl-title">${a.title || "(sans titre)"}</a>
+        <a ${href} class="ip-tl-title">${a.title || "(no title)"}</a>
       </div>`;
   }
 
@@ -544,7 +690,13 @@ const IncidentPanel = (() => {
     const nowVisible = panel.style.display === "none";
     panel.style.display = nowVisible ? "block" : "none";
     btn?.classList.toggle("active", nowVisible);
-    if (nowVisible) _render();
+    if (nowVisible) {
+      // Vue large par défaut à chaque ouverture sans contexte explicite.
+      // Si une persona ou un saved-filter appelle setFilters() juste après,
+      // celui-ci écrase cet état et re-rend avec les filtres assumés.
+      _resetFilters();
+      _render();
+    }
   }
 
   function update(articles) {
@@ -555,13 +707,17 @@ const IncidentPanel = (() => {
 
   // ── API publique filtres (pour SavedFilters) ──────────────────────────────
   function getFilters() {
-    return { filterBy: _filterBy, searchQuery: _searchQuery, statusFilter: _statusFilter };
+    return { filterBy: _filterBy, searchQuery: _searchQuery, statusFilter: _statusFilter, sortBy: _sortBy };
   }
   function setFilters(f) {
     if (f.filterBy     !== undefined) _filterBy     = f.filterBy;
     if (f.searchQuery  !== undefined) _searchQuery  = f.searchQuery;
     if (f.statusFilter !== undefined) _statusFilter = f.statusFilter;
-    _render();
+    if (f.sortBy       !== undefined) _sortBy       = f.sortBy;
+    // Re-rendre seulement si le panneau est ouvert (persona/saved-filter ouvrent le
+    // panneau via toggle() avant d'appeler setFilters(), donc il sera visible ici).
+    const panel = document.getElementById("incident-panel");
+    if (panel && panel.style.display !== "none") _render();
   }
 
   return { init, toggle, update, buildIncidentIndex, getFilters, setFilters };

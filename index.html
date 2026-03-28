@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CyberVeille Pro — Dashboard de veille cybersécurité en temps réel">
+  <meta name="description" content="CyberVeille Pro — Real-time cyber threat intelligence dashboard">
   <title>CyberVeille Pro 🛡️</title>
 
   <!-- PWA -->
@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=15">
+  <link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
 
@@ -26,97 +26,149 @@
   <nav class="navbar">
     <div class="navbar-brand">🛡️ Cyber<span>Veille</span> Pro</div>
 
+    <!-- ── G1 : Contexte — profil · vues · watchlist ─────────────────────── -->
+    <span class="nav-sep" aria-hidden="true"></span>
+
+    <button id="btn-profile-panel" class="btn" title="Active profile dashboard — watchlist hits, top threats, KPIs">
+      👤 Profile
+    </button>
+
+    <button id="btn-saved-filters" class="btn" title="Save / recall a filtered view">
+      💾 Views
+    </button>
+
+    <button id="btn-watchlist" class="btn" title="Manage watchlist">
+      👁 Watchlist<span id="watchlist-count"></span>
+    </button>
+
+    <!-- ── G2 : Filtres — recherche · criticité · source · date · priorité · tri · statut ── -->
+    <span class="nav-sep" aria-hidden="true"></span>
+
     <input
       type="search"
       id="search-input"
       class="search-input"
-      placeholder="🔍 Rechercher... (ex: ransomware, CVE)"
+      placeholder="🔍 Search... (e.g. ransomware, CVE)"
       autocomplete="off"
     >
 
-    <select id="filter-criticality" class="select-filter" title="Filtrer par criticité">
-      <option value="all">🎯 Toutes criticités</option>
-      <option value="high">🔴 Haute</option>
-      <option value="medium">🟠 Moyenne</option>
-      <option value="low">🟢 Basse</option>
+    <select id="filter-criticality" class="select-filter" title="Filter by severity">
+      <option value="all">🎯 All severities</option>
+      <option value="high">🔴 High</option>
+      <option value="medium">🟠 Medium</option>
+      <option value="low">🟢 Low</option>
     </select>
 
-    <select id="filter-source" class="select-filter" title="Filtrer par source">
+    <select id="filter-source" class="select-filter" title="Filter by source">
       <!-- Peuplé dynamiquement par ui.js -->
     </select>
 
-    <select id="filter-date" class="select-filter" title="Filtrer par période">
-      <option value="all">📅 Toute période</option>
-      <option value="24h">⏱ Dernières 24h</option>
-      <option value="7d">📆 7 derniers jours</option>
-      <option value="30d">🗓 30 derniers jours</option>
+    <select id="filter-date" class="select-filter" title="Filter by time period">
+      <option value="all">📅 All time</option>
+      <option value="24h">⏱ Last 24h</option>
+      <option value="7d">📆 Last 7 days</option>
+      <option value="30d">🗓 Last 30 days</option>
     </select>
 
-    <button id="btn-favs" class="btn" title="Mes favoris seulement">
-      ★ Favoris (<span id="fav-count">0</span>)
+    <select id="filter-priority-level" class="select-filter" title="Filter by priority level">
+      <option value="all">🔺 All priorities</option>
+      <option value="critical_now">🚨 Critical</option>
+      <option value="investigate">🔍 Investigate</option>
+      <option value="watch">👁 Watch</option>
+      <option value="low">⬇ Low</option>
+    </select>
+
+    <select id="sort-by" class="select-filter" title="Article sort order">
+      <option value="default">📅 Sort: Date</option>
+      <option value="priority">🔺 Sort: Priority</option>
+    </select>
+
+    <select id="filter-status" class="select-filter" title="Filter by analyst status">
+      <option value="all">📋 All statuses</option>
+      <option value="new">· New</option>
+      <option value="acknowledged">📥 Acknowledged</option>
+      <option value="investigating">🔍 Investigating</option>
+      <option value="mitigated">✅ Mitigated</option>
+      <option value="ignored">🚫 Ignored</option>
+    </select>
+
+    <button id="btn-risk-filter" class="btn" title="Operational threat filters (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
+      🎯 Real risk<span id="risk-nav-badge"></span>
     </button>
 
-    <button id="btn-export" class="btn" title="Exporter les articles filtrés en CSV">
-      ⬇ CSV
+    <!-- ── G3 : Analyse — incidents · visibilité · CVEs · vendors · briefing · stats · IOC · santé ── -->
+    <span class="nav-sep" aria-hidden="true"></span>
+
+    <button id="btn-incidents" class="btn btn-incidents-hero" title="Consolidated incidents view (Union-Find CVE + relatedArticles)">
+      🔗 Incidents
     </button>
 
-    <button id="btn-refresh" class="btn" title="Forcer la mise à jour des flux">
-      ↻ Actualiser
+    <button id="btn-visibility" class="btn" title="Visibility view — KPIs, feeds, enrichment, top vendors/incidents">
+      👁 Visibility
     </button>
 
-    <button id="btn-watchlist" class="btn" title="Gérer la watchlist">
-      👁 Watchlist<span id="watchlist-count"></span>
-    </button>
-
-    <button id="btn-risk-filter" class="btn" title="Filtres menace opérationnelle (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
-      🎯 Risque réel<span id="risk-nav-badge"></span>
-    </button>
-
-    <button id="btn-ioc-filter" class="btn" title="Afficher uniquement les articles contenant des IOC détectés (IPs, domaines, hashes, URLs)">
-      🔗 IOC
-    </button>
-
-    <button id="btn-stats" class="btn" title="Dashboard statistiques">
-      📊 Stats
-    </button>
-
-    <button id="btn-briefing" class="btn" title="Aperçu du briefing serveur (sélection moteur digest)">
-      📰 Briefing
-    </button>
-
-    <button id="btn-health" class="btn" title="État opérationnel du moteur serveur">
-      🩺 Santé
-    </button>
-
-    <button id="btn-vendors" class="btn" title="Vendors et assets exposés dans la veille">🏢 Vendors</button>
-
-    <button id="btn-cve" class="btn" title="Corrélation CVE ↔ articles détectés">
+    <button id="btn-cve" class="btn" title="CVE ↔ detected articles correlation">
       🔍 CVEs
     </button>
 
-    <button id="btn-incidents" class="btn" title="Vue incidents consolidés (Union-Find CVE + relatedArticles)">
-      🎯 Incidents
+    <button id="btn-vendors" class="btn" title="Vendors and exposed assets in the feed">🏢 Vendors</button>
+
+    <button id="btn-briefing" class="btn" title="Server briefing preview (digest engine selection)">
+      📰 Briefing
     </button>
 
-    <button id="btn-visibility" class="btn" title="Vue visibilité — KPIs, flux, enrichissement, top vendors/incidents">
-      👁 Visibilité
+    <button id="btn-stats" class="btn" title="Statistics dashboard">
+      📊 Stats
     </button>
 
-    <button id="btn-saved-filters" class="btn" title="Sauvegarder / rappeler une vue filtrée">
-      💾 Vues
+    <button id="btn-ioc-filter" class="btn" title="Show only articles containing detected IOCs (IPs, domains, hashes, URLs)">
+      🔗 IOC
     </button>
 
-    <button id="btn-pdf" class="btn" title="Générer le rapport PDF hebdomadaire">
-      📄 Rapport PDF
+    <button id="btn-health" class="btn" title="Operational status of the server engine">
+      🩺 Health
     </button>
 
-    <button id="btn-settings" class="btn" title="Paramètres alertes email/webhook">
-      ⚙️ Alertes
+    <!-- ── G4 : Actions / Système — top prio · favoris · actualiser · alertes · PDF · CSV · config ── -->
+    <span class="nav-sep" aria-hidden="true"></span>
+
+    <button id="btn-top-priorities" class="btn" title="Critical articles sorted by descending priority">
+      🚨 Top priorities
+    </button>
+
+    <button id="btn-favs" class="btn" title="My favorites only">
+      ★ Favorites (<span id="fav-count">0</span>)
+    </button>
+
+    <button id="btn-refresh" class="btn" title="Force feed update">
+      ↻ Refresh
+    </button>
+
+    <button id="btn-settings" class="btn" title="Email/webhook alert settings">
+      ⚙️ Alerts
+    </button>
+
+    <button id="btn-pdf" class="btn" title="Generate weekly PDF report">
+      📄 PDF Report
+    </button>
+
+    <button id="btn-export" class="btn" title="Export filtered articles to CSV">
+      ⬇ CSV
+    </button>
+
+    <button id="btn-config-export" class="btn" title="Export or import configuration (profiles, watchlists, feeds, presets…)">
+      📦 Config
     </button>
   </nav>
 
+  <!-- ── Barre profil d'exposition (peuplée par profile-switcher.js) ─────────── -->
+  <div id="profile-bar" class="profile-bar"></div>
+
   <!-- ── Barre filtre Risque Réel (injectée par risk-filter.js) ────────────── -->
   <div id="risk-filter-container"></div>
+
+  <!-- ── Dashboard Profil actif (collapsible) ──────────────────────────────── -->
+  <div id="profile-panel" class="profile-panel" style="display:none"></div>
 
   <!-- ── Dashboard Statistiques (collapsible) ─────────────────────────────── -->
   <div id="stats-panel" class="stats-panel" style="display:none">
@@ -138,11 +190,11 @@
         </div>
         <div class="kpi-card kpi-kev">
           <span class="kpi-value" id="kpi-kev">—</span>
-          <span class="kpi-label">⚠ KEV actifs</span>
+          <span class="kpi-label">⚠ Active KEV</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-epss">—</span>
-          <span class="kpi-label">📊 EPSS moyen</span>
+          <span class="kpi-label">📊 Avg EPSS</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-trending">—</span>
@@ -154,52 +206,52 @@
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-score">—</span>
-          <span class="kpi-label">⚡ Score moy.</span>
+          <span class="kpi-label">⚡ Avg score</span>
         </div>
       </div>
 
       <!-- KPI digest quality row -->
-      <div class="kpi-section-label">Qualité moteur digest</div>
+      <div class="kpi-section-label">Digest engine quality</div>
       <div class="kpi-grid" id="kpi-digest-grid">
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-eligible">—</span>
-          <span class="kpi-label">🎯 Éligibles</span>
+          <span class="kpi-label">🎯 Eligible</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-topics">—</span>
-          <span class="kpi-label">🔑 Sujets uniques</span>
+          <span class="kpi-label">🔑 Unique topics</span>
           <span class="kpi-sub" id="kpi-topics-sub"></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-grouped">—</span>
-          <span class="kpi-label">📎 Groupes fusionnés</span>
+          <span class="kpi-label">📎 Merged groups</span>
           <span class="kpi-sub" id="kpi-grouped-sub"></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-enriched">—</span>
-          <span class="kpi-label">💉 Enrichis KEV/EPSS/CVSS</span>
+          <span class="kpi-label">💉 Enriched KEV/EPSS/CVSS</span>
           <span class="kpi-sub" id="kpi-enriched-sub"></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-cves">—</span>
-          <span class="kpi-label">🔍 CVEs uniques</span>
+          <span class="kpi-label">🔍 Unique CVEs</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-feed-err">—</span>
-          <span class="kpi-label">⚠ Flux en erreur</span>
+          <span class="kpi-label">⚠ Feed errors</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-enrich-rate">—</span>
-          <span class="kpi-label">📈 Taux enrichissement</span>
+          <span class="kpi-label">📈 Enrichment rate</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-reduction-rate">—</span>
-          <span class="kpi-label">🗜 Taux réduction fusion</span>
+          <span class="kpi-label">🗜 Merge reduction rate</span>
           <span class="kpi-sub" id="kpi-reduction-rate-sub"></span>
         </div>
         <div class="kpi-card">
           <span class="kpi-value" id="kpi-briefing-top">—</span>
-          <span class="kpi-label">📬 Top briefing maintenant</span>
+          <span class="kpi-label">📬 Top briefing now</span>
           <span class="kpi-sub" id="kpi-briefing-top-sub"></span>
         </div>
       </div>
@@ -208,7 +260,7 @@
       <div class="charts-grid">
         <!-- Donut criticité -->
         <div class="chart-card">
-          <h4 class="chart-title">Distribution criticité</h4>
+          <h4 class="chart-title">Severity distribution</h4>
           <div class="chart-wrap chart-wrap-sm">
             <div id="chart-crit"></div>
           </div>
@@ -216,7 +268,7 @@
 
         <!-- Bar sources -->
         <div class="chart-card chart-card-wide">
-          <h4 class="chart-title">Articles par source</h4>
+          <h4 class="chart-title">Articles by source</h4>
           <div class="chart-wrap">
             <canvas id="chart-source"></canvas>
           </div>
@@ -224,7 +276,7 @@
 
         <!-- Line timeline -->
         <div class="chart-card chart-card-wide">
-          <h4 class="chart-title">Timeline 7 derniers jours</h4>
+          <h4 class="chart-title">7-day timeline</h4>
           <div class="chart-wrap">
             <canvas id="chart-timeline"></canvas>
           </div>
@@ -234,11 +286,11 @@
       <!-- Bottom row : ATT&CK + top CVEs -->
       <div class="charts-grid charts-grid-2">
         <div class="chart-card">
-          <h4 class="chart-title">🎯 Top tactiques MITRE ATT&CK</h4>
+          <h4 class="chart-title">🎯 Top MITRE ATT&CK tactics</h4>
           <div id="attack-list" class="attack-list"></div>
         </div>
         <div class="chart-card">
-          <h4 class="chart-title">🔍 Top CVEs détectés</h4>
+          <h4 class="chart-title">🔍 Top detected CVEs</h4>
           <div id="top-cves" class="cve-list"></div>
         </div>
       </div>
@@ -250,9 +302,9 @@
   <div id="briefing-panel" class="briefing-panel" style="display:none">
     <div class="stats-panel-inner">
       <div class="bp-header">
-        <h3 class="bp-title-h3">📰 Briefing — Sélection du moteur digest</h3>
+        <h3 class="bp-title-h3">📰 Briefing — Digest engine selection</h3>
         <span id="briefing-meta" class="bp-meta"></span>
-        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="BriefingPanel.refresh()">↻ Rafraîchir</button>
+        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="BriefingPanel.refresh()">↻ Refresh</button>
       </div>
       <div id="briefing-list"></div>
     </div>
@@ -262,8 +314,8 @@
   <div id="health-panel" class="health-panel" style="display:none">
     <div class="stats-panel-inner">
       <div class="bp-header">
-        <h3 class="bp-title-h3">🩺 Santé — État opérationnel du moteur serveur</h3>
-        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="HealthPanel.refresh()">↻ Rafraîchir</button>
+        <h3 class="bp-title-h3">🩺 Health — Operational status of the server engine</h3>
+        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="HealthPanel.refresh()">↻ Refresh</button>
       </div>
       <div id="health-list"></div>
     </div>
@@ -272,7 +324,7 @@
   <!-- ── Panneau Vendors / Assets exposés (collapsible) ──────────────────── -->
   <div id="vendor-panel" class="vendor-panel" style="display:none">
     <div class="bp-header">
-      <h3 class="bp-title-h3">🏢 Vendors / Assets exposés</h3>
+      <h3 class="bp-title-h3">🏢 Vendors / Exposed assets</h3>
       <span class="bp-meta" id="vendor-meta"></span>
     </div>
     <div id="vendor-list"></div>
@@ -281,7 +333,7 @@
   <!-- ── Panneau Corrélation CVE ↔ Articles (collapsible) ────────────────── -->
   <div id="cve-panel" class="vendor-panel" style="display:none">
     <div class="bp-header">
-      <h3 class="bp-title-h3">🔍 Corrélation CVE ↔ Articles</h3>
+      <h3 class="bp-title-h3">🔍 CVE ↔ Articles Correlation</h3>
       <span class="bp-meta" id="cve-meta"></span>
     </div>
     <div id="cve-list"></div>
@@ -290,7 +342,7 @@
   <!-- ── Panneau Vue Incidents Consolidés (collapsible) ───────────────────── -->
   <div id="incident-panel" class="vendor-panel" style="display:none">
     <div class="bp-header">
-      <h3 class="bp-title-h3">🎯 Incidents Consolidés</h3>
+      <h3 class="bp-title-h3">🎯 Consolidated Incidents</h3>
       <span class="bp-meta" id="incident-meta"></span>
     </div>
     <div id="incident-list"></div>
@@ -299,7 +351,7 @@
   <!-- ── Panneau Visibilité (collapsible) ─────────────────────────────────── -->
   <div id="visibility-panel" class="vendor-panel" style="display:none">
     <div class="bp-header">
-      <h3 class="bp-title-h3">👁 Visibilité</h3>
+      <h3 class="bp-title-h3">👁 Visibility</h3>
       <span class="bp-meta" id="vb-meta"></span>
     </div>
     <div id="visibility-content"></div>
@@ -308,17 +360,17 @@
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
   <div id="demo-bar" style="display:none; background:#2d1b00; border-bottom:1px solid #f0883e;
        padding:.4rem 1rem; font-size:.78rem; color:#f0883e; align-items:center; gap:.5rem;">
-    ⚠️ <strong>MODE DÉMO</strong> — Les flux RSS live ne sont pas accessibles depuis cet environnement.
-    Déployez l'app sur un serveur public pour recevoir les vraies alertes en temps réel.
+    ⚠️ <strong>DEMO MODE</strong> — Live RSS feeds are not accessible from this environment.
+    Deploy the app on a public server to receive real-time alerts.
   </div>
 
   <!-- ── Barre de statut ──────────────────────────────────────────────────── -->
   <div class="statusbar">
     <span><span class="dot"></span>Live</span>
-    <span>Sources : <span id="statusbar-feed-count">…</span> flux actifs</span>
-    <span>Actualisation auto : 10 min</span>
-    <span>Dernière MàJ : <strong id="last-update">—</strong></span>
-    <span style="margin-left:auto"><strong id="article-count">0</strong> articles affichés</span>
+    <span>Sources: <span id="statusbar-feed-count">…</span> active feeds</span>
+    <span>Auto-refresh: 10 min</span>
+    <span>Last update: <strong id="last-update">—</strong></span>
+    <span style="margin-left:auto"><strong id="article-count">0</strong> articles displayed</span>
   </div>
 
   <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
@@ -331,7 +383,7 @@
   <!-- ── Spinner de chargement ──────────────────────────────────────────────── -->
   <div id="spinner">
     <div class="spin"></div>
-    <span>Chargement des flux cybersécurité…</span>
+    <span>Loading cybersecurity feeds…</span>
   </div>
 
   <!-- ── Zone de notifications toast ──────────────────────────────────────── -->
@@ -341,41 +393,41 @@
   <div id="modal-watchlist" class="modal-overlay" style="display:none" onclick="if(event.target===this)WatchlistModal.close()">
     <div class="modal-box" style="width:min(480px,95vw)">
       <div class="modal-header">
-        <h2>👁 Watchlist — Termes surveillés</h2>
+        <h2>👁 Watchlist — Monitored terms</h2>
         <button class="modal-close" onclick="WatchlistModal.close()">✕</button>
       </div>
 
       <div class="settings-group">
         <p class="settings-hint" style="margin-top:0">
-          Surveillez des vendeurs, produits, technologies ou mots-clés.
-          Les articles correspondants reçoivent le badge <strong style="color:#d2a8ff">👁 Vous concerne</strong>.
+          Monitor vendors, products, technologies or keywords.
+          Matching articles receive the <strong style="color:#d2a8ff">👁 Relevant</strong> badge.
         </p>
         <div class="watchlist-items" id="watchlist-items"></div>
         <div class="watchlist-add-form">
           <div class="watchlist-add-selects">
-            <select id="watchlist-type" class="wl-select" title="Type de terme">
-              <option value="keyword">Mot-clé</option>
-              <option value="vendor">Vendeur</option>
-              <option value="product">Produit</option>
-              <option value="technology">Techno</option>
+            <select id="watchlist-type" class="wl-select" title="Term type">
+              <option value="keyword">Keyword</option>
+              <option value="vendor">Vendor</option>
+              <option value="product">Product</option>
+              <option value="technology">Technology</option>
             </select>
-            <select id="watchlist-priority" class="wl-select" title="Priorité">
-              <option value="medium">🟡 Moyenne</option>
-              <option value="high">🔴 Haute</option>
-              <option value="low">🟢 Basse</option>
+            <select id="watchlist-priority" class="wl-select" title="Priority">
+              <option value="medium">🟡 Medium</option>
+              <option value="high">🔴 High</option>
+              <option value="low">🟢 Low</option>
             </select>
           </div>
           <div class="watchlist-add-row">
             <input id="watchlist-input" type="text" class="settings-input"
-                   placeholder="Ex : Fortinet, CVE-2024, Exchange, ransomware…">
-            <button class="btn btn-primary" onclick="WatchlistModal.add()">+ Ajouter</button>
+                   placeholder="e.g. Fortinet, CVE-2024, Exchange, ransomware…">
+            <button class="btn btn-primary" onclick="WatchlistModal.add()">+ Add</button>
           </div>
         </div>
-        <p class="settings-hint">Appuyez sur <strong>Entrée</strong> ou cliquez sur + Ajouter. Non sensible à la casse.</p>
+        <p class="settings-hint">Press <strong>Enter</strong> or click + Add. Case-insensitive.</p>
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-primary" onclick="WatchlistModal.close()">Fermer</button>
+        <button class="btn btn-primary" onclick="WatchlistModal.close()">Close</button>
       </div>
     </div>
   </div>
@@ -384,17 +436,17 @@
   <div id="modal-settings" class="modal-overlay" style="display:none" onclick="if(event.target===this)SettingsModal.close()">
     <div class="modal-box modal-box-lg">
       <div class="modal-header">
-        <h2>⚙️ Paramètres</h2>
+        <h2>⚙️ Settings</h2>
         <button class="modal-close" onclick="SettingsModal.close()">✕</button>
       </div>
 
       <!-- ── Onglets ──────────────────────────────────────────────────────── -->
       <div class="settings-tabs">
         <button class="settings-tab settings-tab-active" data-tab="alerts"
-                onclick="SettingsModal.switchTab('alerts')">⚙️ Alertes</button>
+                onclick="SettingsModal.switchTab('alerts')">⚙️ Alerts</button>
         <button class="settings-tab" data-tab="feeds"
                 onclick="SettingsModal.switchTab('feeds')">
-          📡 Flux RSS <span id="fm-active-badge"></span>
+          📡 RSS Feeds <span id="fm-active-badge"></span>
         </button>
       </div>
 
@@ -408,13 +460,13 @@
           <label class="toggle-label">
             <input type="checkbox" id="alert-enabled">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            Activer les alertes automatiques
+            Enable automatic alerts
           </label>
         </div>
 
         <!-- Canal -->
         <div class="settings-group">
-          <label class="settings-label">Canal d'envoi</label>
+          <label class="settings-label">Alert channel</label>
           <div class="radio-group">
             <label class="radio-label">
               <input type="radio" name="alert-channel" value="webhook">
@@ -422,7 +474,7 @@
             </label>
             <label class="radio-label">
               <input type="radio" name="alert-channel" value="resend">
-              ✉️ Resend <span class="channel-tag tag-recommended">Recommandé</span>
+              ✉️ Resend <span class="channel-tag tag-recommended">Recommended</span>
             </label>
             <label class="radio-label">
               <input type="radio" name="alert-channel" value="sendgrid">
@@ -430,11 +482,11 @@
             </label>
             <label class="radio-label">
               <input type="radio" name="alert-channel" value="emailjs">
-              📧 EmailJS (email direct navigateur)
+              📧 EmailJS (direct browser email)
             </label>
             <label class="radio-label">
               <input type="radio" name="alert-channel" value="mailto">
-              📬 mailto: (ouvre votre client email)
+              📬 mailto: (opens your email client)
             </label>
           </div>
         </div>
@@ -447,55 +499,73 @@
           <p class="settings-hint">
             Compatible Slack Incoming Webhooks, Discord, Zapier, Make, n8n, ou tout endpoint HTTP POST JSON.
           </p>
-          <button class="btn btn-test" onclick="SettingsModal.testWebhook()">🧪 Tester le webhook</button>
+          <button class="btn btn-test" onclick="SettingsModal.testWebhook()">🧪 Test webhook</button>
         </div>
 
         <!-- Section Resend -->
         <div id="section-resend" class="settings-group" style="display:none">
-          <div class="security-notice">
-            ⚠️ <strong>Clé API exposée côté navigateur.</strong>
-            Pour la production, utilisez un proxy serverless (Vercel/Netlify function).
-            <a href="https://resend.com/docs" target="_blank">Docs Resend ↗</a>
+          <div id="resend-local-notice" class="security-notice">
+            ⚠️ <strong>API key exposed client-side.</strong>
+            For production, use a serverless proxy (Vercel/Netlify function).
+            <a href="https://resend.com/docs" target="_blank">Resend docs ↗</a>
           </div>
-          <label class="settings-label">Clé API Resend <span class="settings-hint-inline">re_xxxxxxxxxxxx</span></label>
+          <div id="resend-prod-notice" class="settings-prod-notice" style="display:none">
+            ✅ <strong>Vercel production mode</strong> — API key is read from <code>RESEND_API_KEY</code> (Vercel environment variables). No key to enter here.
+          </div>
+          <div id="resend-key-row">
+          <label class="settings-label">Resend API key <span class="settings-hint-inline">re_xxxxxxxxxxxx</span></label>
           <input id="alert-resend-key" type="password" class="settings-input"
                  placeholder="re_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-          <label class="settings-label">Expéditeur <span class="settings-hint-inline">(domaine vérifié requis en prod)</span></label>
+          </div>
+          <label class="settings-label">Sender <span class="settings-hint-inline">(verified domain required in prod)</span></label>
           <input id="alert-resend-from" type="text" class="settings-input"
-                 placeholder="CyberVeille Pro &lt;alerts@votredomaine.fr&gt;">
+                 placeholder="CyberVeille Pro &lt;alerts@yourdomain.com&gt;">
           <p class="settings-hint">
-            Laissez vide pour utiliser l'expéditeur sandbox Resend
+            Leave empty to use Resend's sandbox sender
             <code>CyberVeille Pro &lt;onboarding@resend.dev&gt;</code>
-            — fonctionnel sans configuration, aussi bien en local qu'en mode API.<br>
-            Compte gratuit sur <a href="https://resend.com" target="_blank">resend.com</a>
-            — 3 000 emails/mois, 100/jour.
+            — works without configuration, both locally and in API mode.<br>
+            Free account at <a href="https://resend.com" target="_blank">resend.com</a>
+            — 3,000 emails/month, 100/day.
           </p>
-          <label class="settings-label">Email destinataire</label>
-          <input id="alert-resend-to" type="email" class="settings-input" placeholder="soc@exemple.fr">
-          <button class="btn btn-test" onclick="SettingsModal.testResend()">🧪 Envoyer un email test</button>
+          <label class="settings-label">Recipient email</label>
+          <input id="alert-resend-to" type="email" class="settings-input" placeholder="soc@example.com">
+          <div id="resend-token-row">
+            <label class="settings-label">Optional token <span class="settings-hint-inline">(if <code>ALERT_TOKEN</code> set on Vercel)</span></label>
+            <input id="alert-token" type="password" class="settings-input" placeholder="Leave empty if ALERT_TOKEN not configured" autocomplete="off">
+          </div>
+          <button class="btn btn-test" onclick="SettingsModal.testResend()">🧪 Send test email</button>
         </div>
 
         <!-- Section SendGrid -->
         <div id="section-sendgrid" class="settings-group" style="display:none">
-          <div class="security-notice">
-            ⚠️ <strong>Clé API exposée côté navigateur.</strong>
-            Pour la production, utilisez un proxy serverless (Vercel/Netlify function).
-            <a href="https://docs.sendgrid.com/api-reference/mail-send" target="_blank">Docs SendGrid ↗</a>
+          <div id="sg-local-notice" class="security-notice">
+            ⚠️ <strong>API key exposed client-side.</strong>
+            For production, use a serverless proxy (Vercel/Netlify function).
+            <a href="https://docs.sendgrid.com/api-reference/mail-send" target="_blank">SendGrid docs ↗</a>
           </div>
-          <label class="settings-label">Clé API SendGrid <span class="settings-hint-inline">SG.xxxxxxxxxxxx</span></label>
+          <div id="sg-prod-notice" class="settings-prod-notice" style="display:none">
+            ✅ <strong>Vercel production mode</strong> — API key is read from <code>SENDGRID_API_KEY</code> (Vercel environment variables). No key to enter here.
+          </div>
+          <div id="sg-key-row">
+          <label class="settings-label">SendGrid API key <span class="settings-hint-inline">SG.xxxxxxxxxxxx</span></label>
           <input id="alert-sg-key" type="password" class="settings-input"
                  placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-          <label class="settings-label">Expéditeur vérifié <span class="settings-hint-inline">(Single Sender Verification requise)</span></label>
-          <input id="alert-sg-from" type="email" class="settings-input" placeholder="alerts@votredomaine.fr">
+          </div>
+          <label class="settings-label">Verified sender <span class="settings-hint-inline">(Single Sender Verification required)</span></label>
+          <input id="alert-sg-from" type="email" class="settings-input" placeholder="alerts@yourdomain.com">
           <p class="settings-hint">
-            L'adresse expéditeur doit être vérifiée dans votre compte SendGrid
+            The sender address must be verified in your SendGrid account
             (Settings → Sender Authentication → Single Sender Verification).<br>
-            Compte gratuit sur <a href="https://sendgrid.com" target="_blank">sendgrid.com</a>
-            — 100 emails/jour.
+            Free account at <a href="https://sendgrid.com" target="_blank">sendgrid.com</a>
+            — 100 emails/day.
           </p>
           <label class="settings-label">Email destinataire</label>
-          <input id="alert-sg-to" type="email" class="settings-input" placeholder="soc@exemple.fr">
-          <button class="btn btn-test" onclick="SettingsModal.testSendGrid()">🧪 Envoyer un email test</button>
+          <input id="alert-sg-to" type="email" class="settings-input" placeholder="soc@example.com">
+          <div id="sg-token-row">
+            <label class="settings-label">Optional token <span class="settings-hint-inline">(if <code>ALERT_TOKEN</code> configured on Vercel)</span></label>
+            <input id="alert-sg-token" type="password" class="settings-input" placeholder="Leave empty if ALERT_TOKEN not configured" autocomplete="off">
+          </div>
+          <button class="btn btn-test" onclick="SettingsModal.testSendGrid()">🧪 Send test email</button>
         </div>
 
         <!-- Section EmailJS -->
@@ -504,62 +574,62 @@
           <input id="alert-ejs-service" type="text" class="settings-input" placeholder="service_xxxxxxx">
           <label class="settings-label">Template ID</label>
           <input id="alert-ejs-template" type="text" class="settings-input" placeholder="template_xxxxxxx">
-          <label class="settings-label">Clé publique</label>
+          <label class="settings-label">Public key</label>
           <input id="alert-ejs-key" type="text" class="settings-input" placeholder="xxxxxxxxxxxxxxxxxxxx">
           <label class="settings-label">Email destinataire</label>
-          <input id="alert-recipient" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <input id="alert-recipient" type="email" class="settings-input" placeholder="soc@example.com">
           <p class="settings-hint">
-            Créez un compte gratuit sur <a href="https://www.emailjs.com" target="_blank">emailjs.com</a>
-            (200 emails/mois gratuits). Votre template doit contenir les variables :
+            Create a free account at <a href="https://www.emailjs.com" target="_blank">emailjs.com</a>
+            (200 free emails/month). Your template must include the variables:
             <code>to_email</code>, <code>subject</code>, <code>message_html</code>.
           </p>
-          <button class="btn btn-test" onclick="SettingsModal.testEmailJS()">🧪 Envoyer un email test</button>
+          <button class="btn btn-test" onclick="SettingsModal.testEmailJS()">🧪 Send test email</button>
         </div>
 
         <!-- Section mailto -->
         <div id="section-mailto" class="settings-group" style="display:none">
           <label class="settings-label">Email destinataire</label>
-          <input id="alert-mailto-email" type="email" class="settings-input" placeholder="soc@exemple.fr">
+          <input id="alert-mailto-email" type="email" class="settings-input" placeholder="soc@example.com">
           <p class="settings-hint">
-            Ouvre votre client email avec les alertes pré-remplies. Nécessite une action manuelle.
+            Opens your email client with pre-filled alerts. Requires manual action.
           </p>
         </div>
 
-        <!-- Mode d'envoi -->
+        <!-- Send mode -->
         <div class="settings-group">
           <label class="settings-label">Mode d'envoi</label>
           <select id="alert-mode" class="select-filter" style="width:100%">
-            <option value="immediate">⚡ Immédiat — dès qu'un article critique est détecté</option>
-            <option value="urgent_only">🚨 Urgent uniquement — KEV actif ou EPSS ≥ 70 %</option>
-            <option value="daily_digest">📋 Digest quotidien — résumé envoyé 1× par jour</option>
-            <option value="weekly_digest">📅 Digest hebdomadaire — résumé envoyé 1× par semaine</option>
+            <option value="immediate">⚡ Immediate — as soon as a critical article is detected</option>
+            <option value="urgent_only">🚨 Urgent only — active KEV or EPSS ≥ 70%</option>
+            <option value="daily_digest">📋 Daily digest — summary sent 1× per day</option>
+            <option value="weekly_digest">📅 Weekly digest — summary sent 1× per week</option>
           </select>
           <p class="settings-hint" id="alert-mode-hint"></p>
           <button class="btn" id="btn-flush-digest" style="display:none"
                   onclick="AlertManager.flushDigest()">
-            📤 Envoyer le digest maintenant
+            📤 Send digest now
             <span id="digest-queue-count"></span>
           </button>
           <!-- Heure d'envoi — visible seulement pour daily/weekly digest -->
           <div id="digest-hour-group" style="display:none;margin-top:12px">
             <label class="settings-label" style="font-size:12px;margin-bottom:4px">
-              🕐 Heure d'envoi du briefing
+              🕐 Briefing send time
             </label>
             <input type="time" id="alert-digest-hour" class="settings-input"
                    value="08:00" style="width:130px">
             <!-- Jour d'envoi — visible seulement pour weekly_digest -->
             <div id="digest-weekday-group" style="display:none;margin-top:10px">
               <label class="settings-label" style="font-size:12px;margin-bottom:4px">
-                📅 Jour d'envoi hebdomadaire
+                📅 Weekly send day
               </label>
               <select id="alert-digest-weekday" class="select-filter" style="width:100%">
-                <option value="1">Lundi</option>
-                <option value="2">Mardi</option>
-                <option value="3">Mercredi</option>
-                <option value="4">Jeudi</option>
-                <option value="5">Vendredi</option>
-                <option value="6">Samedi</option>
-                <option value="0">Dimanche</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
               </select>
             </div>
             <p class="settings-hint" id="digest-hour-hint" style="margin-top:6px"></p>
@@ -569,10 +639,10 @@
         <!-- Seuil & cooldown -->
         <div class="settings-row-inline">
           <div class="settings-group" style="flex:1">
-            <label class="settings-label">Seuil de criticité</label>
+            <label class="settings-label">Severity threshold</label>
             <select id="alert-threshold" class="select-filter" style="width:100%">
-              <option value="high">🔴 Haute uniquement</option>
-              <option value="medium">🟠 Moyenne + Haute</option>
+              <option value="high">🔴 High only</option>
+              <option value="medium">🟠 Medium + High</option>
             </select>
           </div>
           <div class="settings-group" style="flex:1">
@@ -580,30 +650,30 @@
             <input id="alert-cooldown" type="number" class="settings-input" min="5" max="1440" value="30">
           </div>
           <div class="settings-group" style="flex:1">
-            <label class="settings-label">Max articles/alerte</label>
+            <label class="settings-label">Max articles/alert</label>
             <input id="alert-batch" type="number" class="settings-input" min="1" max="20" value="5">
           </div>
         </div>
 
         <div class="modal-footer">
-          <button class="btn" onclick="SettingsModal.close()">Annuler</button>
-          <button class="btn btn-primary" onclick="SettingsModal.save()">💾 Enregistrer</button>
+          <button class="btn" onclick="SettingsModal.close()">Cancel</button>
+          <button class="btn btn-primary" onclick="SettingsModal.save()">💾 Save</button>
         </div>
 
         <!-- ── Historique des alertes ─────────────────────────────────── -->
         <div class="settings-group">
           <div class="ah-header">
-            <span class="settings-label" style="margin:0;display:inline">📋 Historique des alertes</span>
+            <span class="settings-label" style="margin:0;display:inline">📋 Alert history</span>
             <span id="alert-hist-count" class="ah-count-badge"></span>
-            <button class="btn ah-clear-btn" onclick="SettingsModal.clearAlertHistoryUI()">🗑 Vider</button>
+            <button class="btn ah-clear-btn" onclick="SettingsModal.clearAlertHistoryUI()">🗑 Clear</button>
           </div>
           <div class="ah-filter-bar">
             <button class="ah-filter-btn active" data-filter="all"
-              onclick="SettingsModal.filterAlertHistory('all',this)">Tous</button>
+              onclick="SettingsModal.filterAlertHistory('all',this)">All</button>
             <button class="ah-filter-btn" data-filter="success"
-              onclick="SettingsModal.filterAlertHistory('success',this)">✅ Succès</button>
+              onclick="SettingsModal.filterAlertHistory('success',this)">✅ Success</button>
             <button class="ah-filter-btn" data-filter="error"
-              onclick="SettingsModal.filterAlertHistory('error',this)">❌ Erreurs</button>
+              onclick="SettingsModal.filterAlertHistory('error',this)">❌ Errors</button>
           </div>
           <div id="alert-history-list"></div>
         </div>
@@ -617,14 +687,14 @@
 
         <!-- Barre de stats + filtres -->
         <div class="fm-stats-bar">
-          <span id="fm-count-stats" class="fm-count-stats">Chargement…</span>
+          <span id="fm-count-stats" class="fm-count-stats">Loading…</span>
           <div class="fm-filter-pills">
             <button class="fm-filter-pill fm-filter-active" data-filter="all"
-                    onclick="SettingsModal.renderFeeds('all')">Tous</button>
+                    onclick="SettingsModal.renderFeeds('all')">All</button>
             <button class="fm-filter-pill" data-filter="active"
-                    onclick="SettingsModal.renderFeeds('active')">Actifs</button>
+                    onclick="SettingsModal.renderFeeds('active')">Active</button>
             <button class="fm-filter-pill" data-filter="error"
-                    onclick="SettingsModal.renderFeeds('error')">En erreur</button>
+                    onclick="SettingsModal.renderFeeds('error')">Error</button>
           </div>
         </div>
 
@@ -633,36 +703,36 @@
 
         <!-- Formulaire d'ajout -->
         <div class="fm-add-panel">
-          <h4 class="fm-section-title">➕ Ajouter un flux personnalisé</h4>
+          <h4 class="fm-section-title">➕ Add custom feed</h4>
           <div class="fm-add-grid">
             <input id="fm-new-name" type="text" class="settings-input"
-                   placeholder="Nom  (ex : ANSSI)">
+                   placeholder="Name  (e.g. ANSSI)">
             <input id="fm-new-url" type="url" class="settings-input"
-                   placeholder="URL RSS  (https://…/feed.xml)">
+                   placeholder="RSS URL  (https://…/feed.xml)">
             <select id="fm-new-category" class="select-filter">
               <option value="news">📰 News</option>
               <option value="advisory">🔔 Advisory</option>
               <option value="exploit">🧨 Exploit</option>
               <option value="threat">🕵️ Threat Intel</option>
               <option value="cert">🏛 CERT</option>
-              <option value="research">🔬 Recherche</option>
+              <option value="research">🔬 Research</option>
             </select>
             <input id="fm-new-icon" type="text" class="settings-input fm-icon-input"
                    placeholder="📡" maxlength="4">
           </div>
           <div id="fm-add-errors" class="fm-error-panel" style="display:none"></div>
-          <button class="btn btn-primary" onclick="SettingsModal.addFeed()">➕ Ajouter ce flux</button>
+          <button class="btn btn-primary" onclick="SettingsModal.addFeed()">➕ Add feed</button>
         </div>
 
         <!-- Actions globales -->
         <div class="fm-footer-actions">
-          <button class="btn" title="Supprimer tous les flux personnalisés"
-                  onclick="SettingsModal.resetCustomFeeds()">🗑 Réinitialiser flux custom</button>
-          <button class="btn" title="Réactiver tous les flux par défaut désactivés"
-                  onclick="SettingsModal.restoreDefaultFeeds()">↺ Restaurer défauts</button>
+          <button class="btn" title="Delete all custom feeds"
+                  onclick="SettingsModal.resetCustomFeeds()">🗑 Reset custom feeds</button>
+          <button class="btn" title="Re-enable all disabled default feeds"
+                  onclick="SettingsModal.restoreDefaultFeeds()">↺ Restore defaults</button>
           <button class="btn btn-primary" onclick="SettingsModal.applyAndRefresh()"
-                  title="Fermer et relancer immédiatement la collecte RSS">↺ Appliquer et actualiser</button>
-          <button class="btn" onclick="SettingsModal.close()">Fermer</button>
+                  title="Close and immediately restart RSS collection">↺ Apply and refresh</button>
+          <button class="btn" onclick="SettingsModal.close()">Close</button>
         </div>
 
       </div><!-- /settings-tab-feeds -->
@@ -675,17 +745,17 @@
        onclick="if(event.target===this)SavedFilters.close()">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>💾 Vues sauvegardées</h2>
+        <h2>💾 Saved views</h2>
         <button class="modal-close" onclick="SavedFilters.close()">✕</button>
       </div>
       <div class="sf-save-row">
         <input id="sf-name-input" type="text" class="sf-save-input"
-               placeholder="Nom de la vue (ex : Cisco critiques KEV)" maxlength="60">
-        <button id="sf-save-btn" class="btn btn-primary">💾 Sauvegarder la vue actuelle</button>
+               placeholder="View name (e.g. Cisco critical KEV)" maxlength="60">
+        <button id="sf-save-btn" class="btn btn-primary">💾 Save current view</button>
       </div>
       <div id="sf-preset-list" class="sf-preset-list"></div>
       <div class="modal-footer">
-        <button class="btn" onclick="SavedFilters.close()">Fermer</button>
+        <button class="btn" onclick="SavedFilters.close()">Close</button>
       </div>
     </div>
   </div>
@@ -694,37 +764,45 @@
   <div id="pdf-report"></div>
 
   <!-- ── Scripts (ordre d'injection important) ─────────────────────────────── -->
-  <script src="js/pwa.js?v=13"></script>
-  <script src="js/article-modal.js?v=13"></script>
-  <script src="js/config.js?v=13"></script>
-  <script src="js/feed-manager.js?v=13"></script>
-  <script src="js/stats.js?v=13"></script>
-  <script src="js/briefing-panel.js?v=14"></script>
-  <script src="js/health-panel.js?v=17"></script>
-  <script src="js/demo-data.js?v=13"></script>
-  <script src="js/scorer.js?v=13"></script>
+  <script src="js/pwa.js?v=14"></script>
+  <script src="js/recommender.js?v=2"></script>
+  <script src="js/quick-actions.js?v=6"></script>
+  <script src="js/article-modal.js?v=18"></script>
+  <script src="js/config.js?v=14"></script>
+  <script src="js/feed-manager.js?v=14"></script>
+  <script src="js/stats.js?v=14"></script>
+  <script src="js/briefing-panel.js?v=15"></script>
+  <script src="js/health-panel.js?v=18"></script>
+  <script src="js/demo-data.js?v=14"></script>
+  <script src="js/scorer.js?v=14"></script>
   <script src="js/storage.js?v=13"></script>
-  <script src="js/feeds.js?v=13"></script>
+  <script src="js/feeds.js?v=14"></script>
   <script src="js/enricher.js?v=13"></script>
   <script src="js/deduplicator.js?v=13"></script>
-  <script src="js/contextualizer.js?v=14"></script>
-  <script src="js/ioc-extractor.js?v=13"></script>
-  <script src="js/risk-filter.js?v=13"></script>
+  <script src="js/profile-manager.js?v=2"></script>
+  <script src="js/contextualizer.js?v=16"></script>
+  <script src="js/ioc-extractor.js?v=14"></script>
+  <script src="js/risk-filter.js?v=14"></script>
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
-  <script src="js/email-alerts.js?v=18"></script>
-  <script src="js/settings-modal.js?v=14"></script>
-  <script src="js/watchlist-modal.js?v=14"></script>
-  <script src="js/ui.js?v=13"></script>
-  <script src="js/pdf-report.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
-  <script src="js/vendor-panel.js?v=17"></script>
-  <script src="js/entity-status.js?v=1"></script>
-  <script src="js/ioc-utils.js?v=1"></script>
-  <script src="js/cve-panel.js?v=3"></script>
-  <script src="js/incident-panel.js?v=4"></script>
-  <script src="js/visibility-panel.js?v=1"></script>
-  <script src="js/saved-filters.js?v=2"></script>
+  <script src="js/email-alerts.js?v=19"></script>
+  <script src="js/settings-modal.js?v=15"></script>
+  <script src="js/watchlist-modal.js?v=15"></script>
+  <script src="js/ui.js?v=16"></script>
+  <script src="js/pdf-report.js?v=15"></script>
+  <script src="js/app.js?v=16"></script>
+  <script src="js/vendor-panel.js?v=18"></script>
+  <script src="js/entity-status.js?v=3"></script>
+  <script src="js/ioc-utils.js?v=2"></script>
+  <script src="js/cve-panel.js?v=5"></script>
+  <script src="js/incident-panel.js?v=9"></script>
+  <script src="js/visibility-panel.js?v=3"></script>
+  <script src="js/saved-filters.js?v=5"></script>
+  <script src="js/persona-presets.js?v=6"></script>
+  <script src="js/profile-switcher.js?v=4"></script>
+  <script src="js/profile-panel.js?v=3"></script>
+  <script src="js/onboarding.js?v=3"></script>
+  <script src="js/config-export.js?v=2"></script>
 
 </body>
 </html>

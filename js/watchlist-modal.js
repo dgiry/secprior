@@ -28,7 +28,7 @@ const WatchlistModal = (() => {
     if (!container) return;
 
     if (list.length === 0) {
-      container.innerHTML = `<span class="wl-empty">Aucun terme surveillé. Ajoutez des éléments ci-dessous.</span>`;
+      container.innerHTML = `<span class="wl-empty">No monitored terms. Add items below.</span>`;
     } else {
       // Grouper par type pour une lecture plus propre
       const byType = {};
@@ -62,15 +62,15 @@ const WatchlistModal = (() => {
     const cls    = item.enabled ? 'wl-item' : 'wl-item wl-item-disabled';
     return `
       <div class="${cls}" data-id="${item.id}">
-        <span class="wl-prio-dot" title="Priorité : ${pMeta.label}">${pMeta.dot}</span>
+        <span class="wl-prio-dot" title="Priority: ${pMeta.label}">${pMeta.dot}</span>
         <span class="wl-item-label" title="${item.value}">${lblEsc}</span>
         <span class="wl-item-type ${tMeta.css}">${tMeta.label}</span>
         <button class="wl-toggle-btn" onclick="WatchlistModal.toggle('${idEsc}')"
-                title="${item.enabled ? 'Désactiver temporairement' : 'Réactiver'}">
+                title="${item.enabled ? 'Temporarily disable' : 'Re-enable'}">
           ${item.enabled ? '⏸' : '▶'}
         </button>
         <button class="wl-remove-btn" onclick="WatchlistModal.remove('${idEsc}')"
-                title="Supprimer définitivement">✕</button>
+                title="Delete permanently">✕</button>
       </div>`;
   }
 
@@ -119,9 +119,9 @@ const WatchlistModal = (() => {
     if (!btn) return;
     btn.classList.toggle("active", act > 0);
     btn.title = act > 0
-      ? `Watchlist : ${act} terme${act > 1 ? 's' : ''} actif${act > 1 ? 's' : ''}` +
-        (total > act ? ` (${total - act} désactivé${total - act > 1 ? 's' : ''})` : '')
-      : "Gérer la watchlist";
+      ? `Watchlist: ${act} active term${act > 1 ? 's' : ''}` +
+        (total > act ? ` (${total - act} disabled)` : '')
+      : "Manage watchlist";
 
     const badge = document.getElementById("watchlist-count");
     if (badge) badge.textContent = act > 0 ? ` (${act})` : "";

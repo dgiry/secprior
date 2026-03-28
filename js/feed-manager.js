@@ -105,7 +105,7 @@ const FeedManager = (() => {
 
     // Nom
     if (!name)           errors.push("Le nom est requis");
-    else if (name.length > 80) errors.push("Nom trop long (max 80 caractères)");
+    else if (name.length > 80) errors.push("Name too long (max 80 characters)");
 
     // URL
     if (!url) {
@@ -127,7 +127,7 @@ const FeedManager = (() => {
       const norm = u => u.trim().replace(/\/+$/, "").toLowerCase();
       const all  = getAllFeeds();
       const dup  = all.find(f => f.id !== skipId && norm(f.url) === norm(url));
-      if (dup) errors.push(`Cette URL est déjà utilisée par « ${dup.name} »`);
+      if (dup) errors.push(`This URL is already used by «${dup.name}»`);
     }
 
     return { valid: errors.length === 0, errors };
@@ -164,7 +164,7 @@ const FeedManager = (() => {
 
     feeds.push(feed);
     const saved = _save(STORAGE_KEY, feeds);
-    if (!saved) return { ok: false, errors: ["Espace de stockage insuffisant (localStorage plein). Supprimez des flux personnalisés."] };
+    if (!saved) return { ok: false, errors: ["Insufficient storage (localStorage full). Delete custom feeds."] };
     console.log("[FeedManager] Flux ajouté :", feed.name, feed.id);
     return { ok: true, feed };
   }
@@ -178,7 +178,7 @@ const FeedManager = (() => {
   function updateFeed(feedId, patch) {
     const feeds = loadCustomFeeds();
     const idx   = feeds.findIndex(f => f.id === feedId);
-    if (idx === -1) return { ok: false, error: "Flux introuvable" };
+    if (idx === -1) return { ok: false, error: "Feed not found" };
 
     const merged = { ...feeds[idx], ...patch };
     // Revalider seulement si les champs structurants changent
@@ -199,7 +199,7 @@ const FeedManager = (() => {
   function removeFeed(feedId) {
     const feeds = loadCustomFeeds();
     const idx   = feeds.findIndex(f => f.id === feedId);
-    if (idx === -1) return { ok: false, error: "Flux introuvable (ou flux par défaut non supprimable)" };
+    if (idx === -1) return { ok: false, error: "Feed not found (or default feed cannot be deleted)" };
     const name = feeds[idx].name;
     feeds.splice(idx, 1);
     saveCustomFeeds(feeds);
@@ -224,7 +224,7 @@ const FeedManager = (() => {
     }
     // Flux par défaut → override
     const isDefault = (CONFIG.FEEDS || []).some(f => f.id === feedId);
-    if (!isDefault) return { ok: false, error: "Flux introuvable" };
+    if (!isDefault) return { ok: false, error: "Feed not found" };
     const ov = _loadOverrides();
     ov[feedId] = enabled;
     _saveOverrides(ov);
@@ -282,8 +282,8 @@ const FeedManager = (() => {
         ok:        true,
         itemCount: articles.length,
         message:   articles.length > 0
-          ? `Flux valide — ${articles.length} articles trouvés`
-          : "Flux accessible mais vide (0 articles récupérés)"
+          ? `Valid feed — ${articles.length} articles found`
+          : "Feed accessible but empty (0 articles fetched)"
       };
       _updateHealth(feed.id, result, !!feed.isDefault);
       return result;
@@ -291,7 +291,7 @@ const FeedManager = (() => {
       const result = {
         ok:        false,
         itemCount: 0,
-        message:   e.message || "Erreur réseau, CORS ou format XML invalide"
+        message:   e.message || "Network error, CORS issue or invalid XML format"
       };
       _updateHealth(feed.id, result, !!feed.isDefault);
       return result;
