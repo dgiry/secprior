@@ -3678,6 +3678,7 @@ body.modal-open { overflow: hidden; }
 .ai-brief-text {
   font-size: .82rem; line-height: 1.6;
   color: var(--text); margin: 0 0 .45rem;
+  overflow-wrap: break-word; word-break: break-word;
 }
 .ai-brief-nextstep-sec { border-color: rgba(163,113,247,.3); }
 .ai-brief-nextstep-sec .ai-brief-sec-title { color: #a371f7; }
@@ -3769,6 +3770,7 @@ body.modal-open { overflow: hidden; }
 .ai-brief-line {
   font-size: .82rem; line-height: 1.6;
   color: var(--text); margin: 0;
+  overflow-wrap: break-word; word-break: break-word;
 }
 .ai-brief-share-lines .ai-brief-line {
   font-weight: 500;

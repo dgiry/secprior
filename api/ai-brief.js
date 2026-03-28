@@ -152,7 +152,7 @@ module.exports = async (req, res) => {
   const result = {
     // Core brief (v1/v2 — unchanged limits)
     analystBrief:   _postProcess(parsed.analystBrief,    900, { trimSentences: 5 }),
-    executiveBrief: _postProcess(parsed.executiveBrief,  320, { trimSentences: 2 }),
+    executiveBrief: _postProcess(parsed.executiveBrief,  480, { trimSentences: 2 }),
     nextStep:       _postProcess(parsed.nextStep,        260, { trimSentences: 1, checkVerb: true }),
     // Action outputs (v3 — new)
     ticketDraft:    _postProcess(parsed.ticketDraft    || "", 1200, { isStructured: true }),
