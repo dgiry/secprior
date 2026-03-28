@@ -60,6 +60,7 @@ const PDFReport = (() => {
     return `
       <div class="rpt-header">
         <div class="rpt-logo">🛡️ ThreatLens</div>
+        <div class="rpt-subtitle">Context-aware SecOps prioritization</div>
         <div class="rpt-title">Cybersecurity Threat Intelligence Report</div>
         <div class="rpt-period">${weekLabel}</div>
         <div class="rpt-generated">Generated on ${new Date().toLocaleString("en-US")} · ${articles.length} articles analyzed</div>

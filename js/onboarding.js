@@ -115,7 +115,7 @@ const Onboarding = (() => {
         <div class="ob-brand">
           <span class="ob-tag">🛡 ThreatLens</span>
           <span class="ob-tagline">
-            Cyber threat intelligence · explainable prioritization · analyst actions in 1 click
+            Context-aware SecOps prioritization
           </span>
         </div>
         <button class="ob-close" title="Dismiss" aria-label="Close guide">✕</button>
