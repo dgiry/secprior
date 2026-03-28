@@ -3,12 +3,13 @@
 // Permet de transporter la configuration utilisateur entre navigateurs ou machines.
 //
 // Sections exportées :
-//   • cv_profiles     — profils d'exposition + watchlists
-//   • cv_saved_filters — presets sauvegardés
-//   • cv_custom_feeds  — flux RSS personnalisés
-//   • cv_feed_overrides — états actif/inactif des flux par défaut
-//   • cv_alert_settings — paramètres alertes (webhook, email…)
-//   • cv_favorites     — articles mis en favoris
+//   • cv_profiles        — profils d'exposition + watchlists
+//   • cv_saved_filters   — presets sauvegardés
+//   • cv_custom_feeds    — flux RSS personnalisés
+//   • cv_feed_overrides  — états actif/inactif des flux par défaut
+//   • cv_alert_settings  — paramètres alertes (webhook, email…)
+//   • cv_favorites       — articles mis en favoris
+//   • cv_entity_statuses — workflow incidents (statut, owner, note)
 //
 // Stratégies d'import :
 //   FUSIONNER  — ajoute les éléments absents, conserve l'existant en cas de conflit
@@ -47,7 +48,8 @@ const ConfigExport = (() => {
     customFeeds:   'cv_custom_feeds',
     feedOverrides: 'cv_feed_overrides',
     alertSettings: 'cv_alert_settings',
-    favorites:     'cv_favorites'
+    favorites:     'cv_favorites',
+    workflow:      'cv_entity_statuses'   // incident workflow — status / owner / note
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -90,12 +92,13 @@ const ConfigExport = (() => {
       exportedAt:   new Date().toISOString(),
       app:          'CyberVeille Pro',
       safeExport:   !includeSensitive,   // flag lisible à l'import
-      profiles:     _read(KEYS.profiles)      ?? null,
-      savedFilters: _read(KEYS.savedFilters)  ?? [],
-      customFeeds:  _read(KEYS.customFeeds)   ?? [],
-      feedOverrides:_read(KEYS.feedOverrides) ?? {},
+      profiles:        _read(KEYS.profiles)      ?? null,
+      savedFilters:    _read(KEYS.savedFilters)  ?? [],
+      customFeeds:     _read(KEYS.customFeeds)   ?? [],
+      feedOverrides:   _read(KEYS.feedOverrides) ?? {},
       alertSettings,
-      favorites:    _read(KEYS.favorites)     ?? []
+      favorites:       _read(KEYS.favorites)     ?? [],
+      entityStatuses:  _read(KEYS.workflow)      ?? {}
     };
 
     const suffix = includeSensitive ? '' : '-safe';
@@ -246,11 +249,35 @@ const ConfigExport = (() => {
     return safe.length;
   }
 
+  // ── Import — workflow (entity statuses) ───────────────────────────────────
+  //
+  // Merge  : local gagne les conflits — les choix de l'analyste sont préservés.
+  //          Les entrées absentes localement sont importées.
+  // Replace: le store entier est remplacé par les données importées.
+
+  function _mergeEntityStatuses(incoming) {
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return 0;
+    const local  = _read(KEYS.workflow) ?? {};
+    const merged = { ...incoming, ...local }; // local gagne les conflits
+    const added  = Object.keys(incoming).filter(k => !local[k]).length;
+    _write(KEYS.workflow, merged);
+    return added;
+  }
+
+  function _replaceEntityStatuses(incoming) {
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      _write(KEYS.workflow, {});
+      return 0;
+    }
+    _write(KEYS.workflow, incoming);
+    return Object.keys(incoming).length;
+  }
+
   // ── Import — dispatcher ────────────────────────────────────────────────────
 
   function applyImport(data, mode) {
     const m = mode === 'merge';
-    const r = { profiles: 0, savedFilters: 0, customFeeds: 0, favorites: 0 };
+    const r = { profiles: 0, savedFilters: 0, customFeeds: 0, favorites: 0, entityStatuses: 0 };
 
     if (data.profiles !== undefined) {
       r.profiles = m ? _mergeProfiles(data.profiles) : _replaceProfiles(data.profiles);
@@ -269,6 +296,11 @@ const ConfigExport = (() => {
     }
     if (data.favorites !== undefined) {
       r.favorites = m ? _mergeFavorites(data.favorites) : _replaceFavorites(data.favorites);
+    }
+    if (data.entityStatuses !== undefined) {
+      r.entityStatuses = m
+        ? _mergeEntityStatuses(data.entityStatuses)
+        : _replaceEntityStatuses(data.entityStatuses);
     }
     return r;
   }
@@ -316,6 +348,8 @@ const ConfigExport = (() => {
     const feedCount    = (_read(KEYS.customFeeds)  ?? []).length;
     const favCount     = (_read(KEYS.favorites)    ?? []).length;
     const hasAlerts    = !!_read(KEYS.alertSettings)?.channel;
+    const wfData       = _read(KEYS.workflow) ?? {};
+    const wfCount      = Object.values(wfData).filter(e => e.status && e.status !== 'new').length;
 
     modal.innerHTML = `
       <div class="cex-box">
@@ -337,6 +371,7 @@ const ConfigExport = (() => {
               <span class="cex-chip">${filterCount} preset${filterCount !== 1 ? 's' : ''}</span>
               <span class="cex-chip">${feedCount} custom feed${feedCount !== 1 ? 's' : ''}</span>
               <span class="cex-chip">${favCount} favorite${favCount !== 1 ? 's' : ''}</span>
+              ${wfCount > 0 ? `<span class="cex-chip">🔍 ${wfCount} tracked incident${wfCount !== 1 ? 's' : ''}</span>` : ''}
               ${hasAlerts ? '<span class="cex-chip cex-chip-warn">⚠ alert settings</span>' : ''}
             </div>
             ${hasAlerts ? `
@@ -415,6 +450,7 @@ const ConfigExport = (() => {
     const filterCount  = (data.savedFilters ?? []).length;
     const feedCount    = (data.customFeeds  ?? []).length;
     const favCount     = (data.favorites    ?? []).length;
+    const wfCount      = Object.values(data.entityStatuses ?? {}).filter(e => e.status && e.status !== 'new').length;
     const exportDate   = data.exportedAt
       ? new Date(data.exportedAt).toLocaleDateString('en-US',
           { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -434,6 +470,7 @@ const ConfigExport = (() => {
           <span class="cex-chip">${filterCount} preset${filterCount !== 1 ? 's' : ''}</span>
           <span class="cex-chip">${feedCount} custom feed${feedCount !== 1 ? 's' : ''}</span>
           <span class="cex-chip">${favCount} favorite${favCount !== 1 ? 's' : ''}</span>
+          ${wfCount > 0 ? `<span class="cex-chip">🔍 ${wfCount} tracked incident${wfCount !== 1 ? 's' : ''}</span>` : ''}
         </div>
         <div class="cex-mode-row">
           <button class="btn cex-mode-btn" id="cex-merge-btn">
@@ -482,10 +519,11 @@ const ConfigExport = (() => {
     if (!zone) return;
     const modeLabel = mode === 'merge' ? 'Merge' : 'Replace';
     const details = [
-      r.profiles     > 0 ? `${r.profiles} profile(s)` : null,
-      r.savedFilters > 0 ? `${r.savedFilters} preset(s)` : null,
-      r.customFeeds  > 0 ? `${r.customFeeds} custom feed(s)` : null,
-      r.favorites    > 0 ? `${r.favorites} favorite(s)` : null
+      r.profiles       > 0 ? `${r.profiles} profile(s)` : null,
+      r.savedFilters   > 0 ? `${r.savedFilters} preset(s)` : null,
+      r.customFeeds    > 0 ? `${r.customFeeds} custom feed(s)` : null,
+      r.favorites      > 0 ? `${r.favorites} favorite(s)` : null,
+      r.entityStatuses > 0 ? `${r.entityStatuses} workflow entry(ies)` : null
     ].filter(Boolean).join(' · ') || 'no new items';
 
     zone.innerHTML = `
