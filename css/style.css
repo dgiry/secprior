@@ -2600,8 +2600,12 @@ body.modal-open { overflow: hidden; }
 .hp-error   { color: var(--err); }
 
 /* Feeds en erreur */
-.hp-row-ok    { color: var(--ok); font-size: .78rem; padding: .3rem 0; }
+.hp-row-ok    { color: var(--ok); font-size: .78rem; padding: .3rem 0;
+                display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .hp-null-row  { color: var(--text2); font-size: .78rem; opacity: .6; padding: .3rem 0; }
+.hp-feed-total     { font-size: .72rem; color: var(--text2); }
+.hp-feed-total-row { font-size: .72rem; color: var(--text2); padding: .25rem 0 .1rem;
+                     border-top: 1px solid var(--border); margin-top: .2rem; }
 .hp-err-count {
   display: inline-block; background: var(--err); color: #fff;
   font-size: .62rem; padding: .05rem .35rem;

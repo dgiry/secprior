@@ -152,14 +152,24 @@ const HealthPanel = (() => {
     const okCount  = typeof totalFeeds === "number" && totalFeeds > 0
       ? totalFeeds - errCount : "—";
 
+    // Total active feeds from FeedManager (full inventory, not just last run)
+    const allActive = typeof FeedManager !== "undefined"
+      ? FeedManager.getActiveCount() : null;
+    const totalStr = allActive != null
+      ? `<span class="hp-feed-total">· ${allActive} active feeds configured</span>`
+      : "";
+
     if (errCount === 0) {
       const okLabel = typeof okCount === "number"
         ? `✅ ${okCount}/${total} OK`
         : "✅ All feeds OK";
       return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 RSS Feeds (last run)</div>
-  <div class="hp-row hp-row-ok">${okLabel}</div>
+  <div class="hp-section-head">📡 RSS Feeds</div>
+  <div class="hp-row hp-row-ok">
+    <span>Last run: ${okLabel}</span>
+    ${totalStr}
+  </div>
 </div>`;
     }
     const rows = feedErrors.map(f => {
@@ -177,8 +187,9 @@ const HealthPanel = (() => {
       : `${errCount} with errors`;
     return `
 <div class="hp-section">
-  <div class="hp-section-head">📡 RSS Feeds (last run) <span class="hp-err-count">${errLabel}</span></div>
+  <div class="hp-section-head">📡 RSS Feeds — last run <span class="hp-err-count">${errLabel}</span></div>
   ${rows}
+  ${allActive != null ? `<div class="hp-row hp-feed-total-row">${allActive} active feeds configured</div>` : ""}
 </div>`;
   }
 
@@ -206,7 +217,7 @@ const HealthPanel = (() => {
       const ls  = r.lastStats || {};
       const feedsTotal = (ls.feedsOk ?? 0) + (ls.feedsErr ?? 0);
       const feedsStr   = feedsTotal > 0
-        ? `<span class="${ls.feedsErr > 0 ? "hp-hist-feeds-warn" : "hp-hist-feeds-ok"}">${ls.feedsOk ?? 0}/${feedsTotal} flux</span>`
+        ? `<span class="${ls.feedsErr > 0 ? "hp-hist-feeds-warn" : "hp-hist-feeds-ok"}">${ls.feedsOk ?? 0}/${feedsTotal} feeds</span>`
         : "";
       const errBadge = ls.feedsErr > 0
         ? `<span class="hp-pill hp-warn hp-pill-sm">${ls.feedsErr} err</span>`
@@ -217,7 +228,7 @@ const HealthPanel = (() => {
       return `<tr class="${isLast ? "hp-hist-last" : ""}">
   <td class="hp-hist-ts">${ts}${slotStr}</td>
   <td>${badge}</td>
-  <td class="hp-hist-stats">${feedsStr} ${ls.rawArticles ?? "—"} bruts · ${ls.uniqueArticles ?? "—"} uniq · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
+  <td class="hp-hist-stats">${feedsStr} ${ls.rawArticles ?? "—"} raw · ${ls.uniqueArticles ?? "—"} unique · top <strong>${ls.topCount ?? "—"}</strong> ${errBadge}</td>
   <td>${reason}</td>
 </tr>`;
     }).join("");
