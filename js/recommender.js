@@ -140,7 +140,7 @@ const Recommender = (() => {
         ? "Check patch availability for the identified CVEs."
         : "Consult security advisories from the affected vendors.");
 
-    return { id: 'patch', icon: '🩹', title: 'Patch et mitigation', items };
+    return { id: 'patch', icon: '🩹', title: 'Patch & mitigation', items };
   }
 
   // ── Section 3 : Contrôles compensatoires ──────────────────────────────────
@@ -171,7 +171,7 @@ const Recommender = (() => {
     if (!items.length)
       items.push("Enable advanced logging on potentially exposed systems.");
 
-    return { id: 'compensatoires', icon: '🛡️', title: 'Contrôles compensatoires', items };
+    return { id: 'compensatoires', icon: '🛡️', title: 'Compensating controls', items };
   }
 
   // ── Section 4 : SOC / SIEM / EDR ──────────────────────────────────────────
@@ -198,7 +198,7 @@ const Recommender = (() => {
     if (!items.length)
       items.push("Review recent access logs on potentially exposed systems.");
 
-    return { id: 'soc', icon: '🖥️', title: 'Vérifications SOC / SIEM / EDR', items };
+    return { id: 'soc', icon: '🖥️', title: 'SOC / SIEM / EDR checks', items };
   }
 
   // ── Section 5 : Escalade recommandée ──────────────────────────────────────
@@ -225,7 +225,7 @@ const Recommender = (() => {
     if (n.multiSource && (n.priorityLevel === 'critical_now' || n.priorityLevel === 'investigate'))
       items.push("Coordinate with infrastructure, application, and security teams.");
 
-    return { id: 'escalade', icon: '📢', title: 'Escalade recommandée', items };
+    return { id: 'escalade', icon: '📢', title: 'Recommended escalation', items };
   }
 
   // ── Rendu HTML ─────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ const Recommender = (() => {
     return `
       <div class="reco-block">
         <div class="reco-header">
-          <span class="reco-header-label">⚡ Recommandations actionnables</span>
+          <span class="reco-header-label">⚡ Actionable recommendations</span>
           <span class="reco-header-hint">Based on available signals · Adapt to your context</span>
         </div>
         <div class="reco-cats">${catsHTML}</div>
