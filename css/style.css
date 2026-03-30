@@ -3361,6 +3361,13 @@ body.modal-open { overflow: hidden; }
   line-height: 1.35;
 }
 .card-priority-line strong { font-weight: 700; }
+/* ── Sprint Surface the Reasoning — raisons visibles directement ─────────── */
+/* Séparateur · entre le niveau et chaque raison */
+.card-why-sep    { opacity: .4; margin: 0 2px; flex-shrink: 0; }
+/* 2e/3e raison — légèrement atténuée pour hiérarchiser visuellement */
+.card-why-dim    { opacity: .78; }
+/* 2e raison dans la ligne priorité incident */
+.ip-prio-reason-dim { opacity: .75; }
 
 .prio-critical-now {
   color: #f85149;
@@ -3415,8 +3422,8 @@ body.modal-open { overflow: hidden; }
   gap: 4px;
 }
 .art-priority-reasons li {
-  font-size: .77rem;
-  color: var(--text2);
+  font-size: .78rem;
+  color: var(--text);   /* text2 → text : les raisons sont du contenu primaire */
   display: flex;
   align-items: flex-start;
   gap: 6px;

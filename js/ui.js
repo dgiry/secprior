@@ -58,15 +58,19 @@ const UI = (() => {
       : "";
 
     // ── Ligne de priorité explicable ─────────────────────────────────────────
-    // Affiche le niveau et la première raison uniquement si non-low.
+    // Affiche le niveau + jusqu'à 3 raisons (critical_now) ou 2 (autres niveaux)
+    // directement dans la carte — plus de tooltip masqué.
     // Tolère l'absence de priorityLevel (articles chargés depuis cache ancien).
     let priorityLine = "";
     if (article.priorityLevel && article.priorityLevel !== "low") {
-      const pm     = getPriorityMeta(article.priorityLevel);
-      const reason = article.priorityReasons?.[0] || "";
-      priorityLine = `<div class="card-priority-line prio-${pm.css}" title="${
-        (article.priorityReasons || []).join('\n')
-      }">${pm.icon} <strong>${pm.label}</strong>${reason ? ` · ${reason}` : ""}</div>`;
+      const pm      = getPriorityMeta(article.priorityLevel);
+      const reasons = article.priorityReasons || [];
+      const maxR    = article.priorityLevel === "critical_now" ? 3 : 2;
+      const shown   = reasons.slice(0, maxR);
+      const reasonsHTML = shown.map((r, idx) =>
+        `<span class="card-why-sep" aria-hidden="true">·</span><span class="card-why-reason${idx > 0 ? " card-why-dim" : ""}">${r}</span>`
+      ).join("");
+      priorityLine = `<div class="card-priority-line prio-${pm.css}">${pm.icon} <strong>${pm.label}</strong>${reasonsHTML}</div>`;
     }
 
     // Badge résumé IOC — compteur rapide dans la rangée principale des signaux

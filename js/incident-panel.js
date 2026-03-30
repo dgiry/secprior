@@ -573,13 +573,16 @@ const IncidentPanel = (() => {
     const _pm = typeof getPriorityMeta === "function"
       ? getPriorityMeta(i.incidentPriorityLevel)
       : { icon: "⚪", label: i.incidentPriorityLevel || "—", css: "low" };
+    // Afficher jusqu'à 2 raisons dans la ligne de résumé de la rangée incident.
+    // Le détail complet (Why / Key signals / Focus) reste dans _reasoningBlockHTML().
     const prioLine = (i.incidentPriorityLevel && i.incidentPriorityLevel !== "low")
       ? `<div class="ip-prio-line prio-${_pm.css}">${_pm.icon} <strong>${_pm.label}</strong>${
           i.incidentPriorityScore > 0
             ? ` <span class="ip-prio-score">${i.incidentPriorityScore} pts</span>` : ""
         }${
-          i.priorityReasons[0]
-            ? ` · <span class="ip-prio-reason">${i.priorityReasons[0]}</span>` : ""
+          i.priorityReasons.slice(0, 2).map((r, idx) =>
+            ` · <span class="ip-prio-reason${idx > 0 ? " ip-prio-reason-dim" : ""}">${r}</span>`
+          ).join("")
         }</div>`
       : "";
 
