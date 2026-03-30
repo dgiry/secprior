@@ -187,6 +187,29 @@ a:hover { text-decoration: underline; }
 .statusbar .dot { display: inline-block; width: 8px; height: 8px;
   border-radius: 50%; background: var(--ok); margin-right: .3rem; }
 
+/* ── CVE Link badge (status bar) ────────────────────────────────────────── */
+.cve-link-badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: rgba(163,113,247,.12);
+  border: 1px solid rgba(163,113,247,.45);
+  color: #a371f7;
+  border-radius: 4px;
+  padding: .1rem .45rem;
+  font-size: .72rem; font-weight: 600;
+  margin-left: .25rem;
+  animation: cveLinkIn .15s ease;
+}
+@keyframes cveLinkIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.cve-link-badge-close {
+  background: none; border: none; color: #a371f7;
+  cursor: pointer; font-size: .75rem; padding: 0 .1rem;
+  opacity: .65; line-height: 1; transition: opacity .12s;
+}
+.cve-link-badge-close:hover { opacity: 1; }
+
 /* ── Main layout ────────────────────────────────────────────────────────── */
 .main { flex: 1; padding: 1rem; max-width: 1400px; margin: 0 auto; width: 100%; }
 

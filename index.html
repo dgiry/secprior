@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=39">
+  <link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body>
 
@@ -398,6 +398,11 @@
     <span>Auto-refresh: 10 min</span>
     <span>Last update: <strong id="last-update">—</strong></span>
     <span style="margin-left:auto"><strong id="article-count">0</strong> articles displayed</span>
+    <span id="cve-link-badge" class="cve-link-badge" style="display:none"
+          title="Feed filtré par cette CVE — cliquer ✕ pour revenir à la vue globale">
+      🔗&nbsp;<span class="cve-link-badge-id"></span>
+      <button class="cve-link-badge-close" onclick="App.clearCVEFilter()" title="Libérer le filtre">✕</button>
+    </span>
   </div>
 
   <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
@@ -931,11 +936,11 @@
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=17"></script>
   <script src="js/pdf-report.js?v=18"></script>
-  <script src="js/app.js?v=19"></script>
+  <script src="js/app.js?v=20"></script>
   <script src="js/vendor-panel.js?v=18"></script>
   <script src="js/entity-status.js?v=3"></script>
   <script src="js/ioc-utils.js?v=2"></script>
-  <script src="js/cve-panel.js?v=7"></script>
+  <script src="js/cve-panel.js?v=8"></script>
   <script src="js/incident-panel.js?v=11"></script>
   <script src="js/visibility-panel.js?v=3"></script>
   <script src="js/saved-filters.js?v=5"></script>

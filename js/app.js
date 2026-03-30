@@ -13,7 +13,8 @@ const App = (() => {
     sortBy: "default",    // default (date) | priority (priorityScore desc)
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
-    timerId: null
+    timerId: null,
+    _cveLinkId: null      // CVE actuellement liée au feed (null = pas de lien actif)
   };
 
   // ─── Refresh principal via Pipeline ────────────────────────────────────────
@@ -97,7 +98,16 @@ const App = (() => {
 
   // ─── Rendu avec filtres ────────────────────────────────────────────────────
   function render() {
-    const filtered = UI.applyFilters(state.articles, {
+    // Pré-filtre CVE : si un lien est actif, restreindre aux articles de cette CVE
+    let articlesToFilter = state.articles;
+    if (state._cveLinkId) {
+      const cve = state._cveLinkId.toUpperCase();
+      articlesToFilter = state.articles.filter(a =>
+        (a.cveIds || a.cves || []).some(c => c.toUpperCase() === cve)
+      );
+    }
+
+    const filtered = UI.applyFilters(articlesToFilter, {
       query:         state.query,
       criticality:   state.criticality,
       source:        state.source,
@@ -110,6 +120,31 @@ const App = (() => {
     });
     UI.renderCards(filtered);
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
+  }
+
+  // ─── Lien CVE → Feed ───────────────────────────────────────────────────────
+  function _updateCVELinkBadge() {
+    const badge = document.getElementById("cve-link-badge");
+    if (!badge) return;
+    if (state._cveLinkId) {
+      badge.style.display = "inline-flex";
+      const labelEl = badge.querySelector(".cve-link-badge-id");
+      if (labelEl) labelEl.textContent = state._cveLinkId;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  function filterByCVE(cveId) {
+    state._cveLinkId = cveId ? cveId.toUpperCase() : null;
+    _updateCVELinkBadge();
+    render();
+  }
+
+  function clearCVEFilter() {
+    state._cveLinkId = null;
+    _updateCVELinkBadge();
+    render();
   }
 
   // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
@@ -441,7 +476,8 @@ const App = (() => {
     return "main";
   }
 
-  return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel };
+  return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
+           filterByCVE, clearCVEFilter };
 })();
 
 // Démarrer quand le DOM est prêt
