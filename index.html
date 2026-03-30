@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=31">
+  <link rel="stylesheet" href="css/style.css?v=33">
 </head>
 <body>
 
@@ -29,20 +29,84 @@
       <span class="navbar-brand-sub">Context-aware SecOps prioritization</span>
     </div>
 
-    <!-- ── G1 : Contexte — profil · vues · watchlist ─────────────────────── -->
+    <!-- ── G1 : Chemin principal — profil · top prio · incidents · CVEs ─── -->
     <span class="nav-sep" aria-hidden="true"></span>
 
     <button id="btn-profile-panel" class="btn" title="Active profile dashboard — watchlist hits, top threats, KPIs">
       👤 Profile
     </button>
 
-    <button id="btn-saved-filters" class="btn" title="Save / recall a filtered view">
-      💾 Views
+    <button id="btn-top-priorities" class="btn btn-top-prio" title="Critical articles sorted by descending priority">
+      🚨 Top Priorities
     </button>
 
-    <button id="btn-watchlist" class="btn" title="Manage watchlist">
-      👁 Watchlist<span id="watchlist-count"></span>
+    <span class="nav-sep" aria-hidden="true"></span>
+
+    <button id="btn-incidents" class="btn btn-incidents-hero" title="Consolidated incidents view (Union-Find CVE + relatedArticles)">
+      🔗 Incidents
     </button>
+
+    <button id="btn-cve" class="btn" title="CVE ↔ detected articles correlation">
+      🔍 CVEs
+    </button>
+
+    <!-- Analytics dropdown — Stats · Visibility · Vendors -->
+    <div class="nav-menu" id="nav-analytics-menu">
+      <button class="btn nav-menu-trigger" id="btn-analytics-menu"
+              title="Analytics views — Stats, Visibility, Vendors">
+        📊 Analytics ▾
+      </button>
+      <div class="nav-menu-popover" id="nav-analytics-popover" style="display:none" role="menu">
+        <button id="btn-stats" class="nav-menu-item"
+                title="Statistics dashboard — KPIs, charts, ATT&CK tactics">
+          📊 Stats
+        </button>
+        <button id="btn-visibility" class="nav-menu-item"
+                title="Visibility view — KPIs, feeds, enrichment, top vendors/incidents">
+          👁 Visibility
+        </button>
+        <button id="btn-vendors" class="nav-menu-item"
+                title="Vendors and exposed assets in the feed">
+          🏢 Vendors
+        </button>
+      </div>
+    </div>
+
+    <!-- Tools dropdown — Briefing · Health · PDF · CSV · Config · Settings -->
+    <div class="nav-menu" id="nav-tools-menu">
+      <button class="btn nav-menu-trigger" id="btn-tools-menu"
+              title="Operations tools — Briefing, Health, Export, Settings">
+        🛠 Tools ▾
+      </button>
+      <div class="nav-menu-popover" id="nav-tools-popover" style="display:none" role="menu">
+        <button id="btn-briefing" class="nav-menu-item"
+                title="Server briefing preview (digest engine selection)">
+          📰 Briefing
+        </button>
+        <button id="btn-health" class="nav-menu-item"
+                title="Operational status of the server engine">
+          🩺 Health
+        </button>
+        <div class="nav-menu-sep" role="separator"></div>
+        <button id="btn-pdf" class="nav-menu-item"
+                title="Generate weekly PDF report">
+          📄 PDF Report
+        </button>
+        <button id="btn-export" class="nav-menu-item"
+                title="Export filtered articles to CSV">
+          ⬇ CSV Export
+        </button>
+        <button id="btn-config-export" class="nav-menu-item"
+                title="Export or import configuration (profiles, watchlists, feeds, presets…)">
+          📦 Config
+        </button>
+        <div class="nav-menu-sep" role="separator"></div>
+        <button id="btn-settings" class="nav-menu-item"
+                title="Alert rules, RSS feeds and integrations settings">
+          ⚙️ Settings
+        </button>
+      </div>
+    </div>
 
     <!-- ── G2 : Filtres — recherche · criticité · source · date · priorité · tri · statut ── -->
     <span class="nav-sep" aria-hidden="true"></span>
@@ -99,44 +163,15 @@
       🎯 Real risk<span id="risk-nav-badge"></span>
     </button>
 
-    <!-- ── G3 : Analyse — incidents · visibilité · CVEs · vendors · briefing · stats · IOC · santé ── -->
+    <!-- ── G3 : Utilitaires — watchlist · vues sauvegardées · favoris · actualiser ─── -->
     <span class="nav-sep" aria-hidden="true"></span>
 
-    <button id="btn-incidents" class="btn btn-incidents-hero" title="Consolidated incidents view (Union-Find CVE + relatedArticles)">
-      🔗 Incidents
+    <button id="btn-watchlist" class="btn" title="Manage watchlist">
+      👁 Watchlist<span id="watchlist-count"></span>
     </button>
 
-    <button id="btn-visibility" class="btn" title="Visibility view — KPIs, feeds, enrichment, top vendors/incidents">
-      👁 Visibility
-    </button>
-
-    <button id="btn-cve" class="btn" title="CVE ↔ detected articles correlation">
-      🔍 CVEs
-    </button>
-
-    <button id="btn-vendors" class="btn" title="Vendors and exposed assets in the feed">🏢 Vendors</button>
-
-    <button id="btn-briefing" class="btn" title="Server briefing preview (digest engine selection)">
-      📰 Briefing
-    </button>
-
-    <button id="btn-stats" class="btn" title="Statistics dashboard">
-      📊 Stats
-    </button>
-
-    <button id="btn-ioc-filter" class="btn" title="Show only articles containing detected IOCs (IPs, domains, hashes, URLs)">
-      🔗 IOC
-    </button>
-
-    <button id="btn-health" class="btn" title="Operational status of the server engine">
-      🩺 Health
-    </button>
-
-    <!-- ── G4 : Actions / Système — top prio · favoris · actualiser · alertes · PDF · CSV · config ── -->
-    <span class="nav-sep" aria-hidden="true"></span>
-
-    <button id="btn-top-priorities" class="btn" title="Critical articles sorted by descending priority">
-      🚨 Top priorities
+    <button id="btn-saved-filters" class="btn" title="Save / recall a filtered view">
+      💾 Views
     </button>
 
     <button id="btn-favs" class="btn" title="My favorites only">
@@ -147,21 +182,10 @@
       ↻ Refresh
     </button>
 
-    <button id="btn-settings" class="btn" title="Email/webhook alert settings">
-      ⚙️ Alerts
-    </button>
-
-    <button id="btn-pdf" class="btn" title="Generate weekly PDF report">
-      📄 PDF Report
-    </button>
-
-    <button id="btn-export" class="btn" title="Export filtered articles to CSV">
-      ⬇ CSV
-    </button>
-
-    <button id="btn-config-export" class="btn" title="Export or import configuration (profiles, watchlists, feeds, presets…)">
-      📦 Config
-    </button>
+    <!-- btn-ioc-filter: supprimé de la navbar (accessible via la barre Risque Réel) -->
+    <!-- Conservé comme élément invisible pour compatibilité app.js -->
+    <button id="btn-ioc-filter" style="display:none" aria-hidden="true" tabindex="-1"
+            title="IOC filter (accessible via Real risk bar)"></button>
   </nav>
 
   <!-- ── Barre profil d'exposition (peuplée par profile-switcher.js) ─────────── -->
@@ -826,8 +850,8 @@
   <!-- ── Scripts (ordre d'injection important) ─────────────────────────────── -->
   <script src="js/pwa.js?v=15"></script>
   <script src="js/recommender.js?v=3"></script>
-  <script src="js/ai-brief.js?v=3"></script>
-  <script src="js/quick-actions.js?v=9"></script>
+  <script src="js/ai-brief.js?v=4"></script>
+  <script src="js/quick-actions.js?v=10"></script>
   <script src="js/article-modal.js?v=19"></script>
   <script src="js/config.js?v=14"></script>
   <script src="js/feed-manager.js?v=14"></script>
@@ -851,7 +875,7 @@
   <script src="js/watchlist-modal.js?v=15"></script>
   <script src="js/ui.js?v=16"></script>
   <script src="js/pdf-report.js?v=18"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/app.js?v=18"></script>
   <script src="js/vendor-panel.js?v=18"></script>
   <script src="js/entity-status.js?v=3"></script>
   <script src="js/ioc-utils.js?v=2"></script>

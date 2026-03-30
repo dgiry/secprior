@@ -103,12 +103,16 @@ const AIBrief = (() => {
     if (inc.vendors?.length) ctx.vendors = inc.vendors.slice(0, 5);
 
     // Couverture
-    if (inc.watchlistHit === true) ctx.watchlistHit = true;
+    if (inc.watchlistMatches?.length) ctx.watchlistHits = inc.watchlistMatches.slice(0, 5);
+    else if (inc.watchlistHit === true) ctx.watchlistHit = true;
     if (inc.trending === true)     ctx.trending     = true;
     if ((inc.rawIocCount || 0) > 0) ctx.iocCount    = inc.rawIocCount;
     if (inc.attackTags?.length)    ctx.attackTags   = inc.attackTags.slice(0, 4);
     if (inc.firstSeen)             ctx.firstSeen    = String(inc.firstSeen).slice(0, 25);
     if (inc.lastSeen)              ctx.lastSeen     = String(inc.lastSeen).slice(0, 25);
+
+    // Angles de couverture (PoC · Exploitation · Patch · Advisory · News)
+    if (inc.angles?.length)        ctx.angles       = inc.angles.slice(0, 5);
 
     return ctx;
   }
@@ -311,11 +315,23 @@ const AIBrief = (() => {
       : (entity.title || "Article");
     const shortTitle = String(rawTitle).slice(0, 70) + (rawTitle.length > 70 ? "…" : "");
 
+    // Build incident context badge (article count · source count)
+    let contextBadge = "";
+    if (type === "incident") {
+      const parts = ["Incident"];
+      if (entity.articleCount) parts.push(`${entity.articleCount} article${entity.articleCount !== 1 ? "s" : ""}`);
+      if (entity.sourceCount)  parts.push(`${entity.sourceCount} source${entity.sourceCount !== 1 ? "s" : ""}`);
+      contextBadge = `<span class="ai-brief-context-badge">${_esc(parts.join(" · "))}</span>`;
+    }
+
     overlay.innerHTML = `
       <div class="ai-brief-box" role="dialog" aria-modal="true">
         <div class="ai-brief-modal-hd">
           <span class="ai-brief-modal-logo">✦</span>
-          <span class="ai-brief-modal-title">${_esc(shortTitle)}</span>
+          <div class="ai-brief-modal-hd-text">
+            <span class="ai-brief-modal-title">${_esc(shortTitle)}</span>
+            ${contextBadge}
+          </div>
           <button class="ai-brief-modal-close" id="ai-brief-close" title="Close">✕</button>
         </div>
         <div class="ai-brief-modal-body" id="ai-brief-body">

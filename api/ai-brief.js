@@ -45,7 +45,8 @@ const ALLOWED_FIELDS = new Set([
   "vendors", "watchlistHits", "watchlistHit", "iocCount",
   "trending", "trendingCount", "attackTags",
   "articleCount", "sourceCount", "sources",
-  "summary", "firstSeen", "lastSeen"
+  "summary", "firstSeen", "lastSeen",
+  "angles"
 ]);
 
 // Fields that represent actual security signals (used for signalCount — excludes metadata)
@@ -339,6 +340,7 @@ function _buildUserPrompt(ctx) {
     if (ctx.sourceCount)  lines.push(`Distinct sources: ${ctx.sourceCount}`);
     if (ctx.firstSeen)    lines.push(`First seen: ${String(ctx.firstSeen).slice(0, 10)}`);
     if (ctx.lastSeen)     lines.push(`Last activity: ${String(ctx.lastSeen).slice(0, 10)}`);
+    if (ctx.angles?.length) lines.push(`Coverage angles: ${ctx.angles.join(", ")}`);
   }
 
   const descLen = String(ctx.description || "").length;

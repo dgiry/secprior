@@ -109,6 +109,43 @@ const App = (() => {
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
   }
 
+  // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
+  function _closeNavDropdowns() {
+    document.querySelectorAll(".nav-menu-popover").forEach(p => { p.style.display = "none"; });
+    document.querySelectorAll(".nav-menu-trigger").forEach(t => t.classList.remove("active"));
+  }
+
+  function _initNavDropdowns() {
+    ["analytics", "tools"].forEach(name => {
+      const trigger = document.getElementById(`btn-${name}-menu`);
+      const popover = document.getElementById(`nav-${name}-popover`);
+      if (!trigger || !popover) return;
+
+      trigger.addEventListener("click", e => {
+        e.stopPropagation();
+        const isOpen = popover.style.display !== "none";
+        _closeNavDropdowns();
+        if (!isOpen) {
+          popover.style.display = "flex";
+          trigger.classList.add("active");
+        }
+      });
+
+      // Close dropdown when any item inside is clicked (the panel will open independently)
+      popover.addEventListener("click", () => {
+        _closeNavDropdowns();
+      });
+    });
+
+    // Close on any outside click
+    document.addEventListener("click", _closeNavDropdowns);
+
+    // Close on Escape key
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") _closeNavDropdowns();
+    });
+  }
+
   // ─── Planification auto-refresh ────────────────────────────────────────────
   function scheduleRefresh() {
     if (state.timerId) clearInterval(state.timerId);
@@ -236,6 +273,9 @@ const App = (() => {
 
     // ── Initialiser le modal Paramètres ──────────────────────────────────────
     SettingsModal.init();
+
+    // ── Dropdowns de navigation (Analytics, Tools) ───────────────────────────
+    _initNavDropdowns();
 
     // ── Watchlist modal ───────────────────────────────────────────────────────
     WatchlistModal.init();

@@ -1377,9 +1377,9 @@ const QuickActions = (() => {
 
   // ── HTML des boutons — incident ───────────────────────────────────────────
 
-  // Sprint 23 — 3 actions primaires visibles + dropdown "···" (2 secondaires)
-  // Primaires : Exécutif · Ticket · Partager  (usage fréquent, visible tout de suite)
-  // Secondaires : Analyste · Export JSON        (usage moins fréquent, dans le dropdown)
+  // Sprint 24 — 4 actions primaires visibles + dropdown "···" (2 secondaires)
+  // Primaires : Exécutif · Ticket · Partager · ✦ AI Brief  (usage fréquent, visible tout de suite)
+  // Secondaires : Analyste · Export JSON                    (usage moins fréquent, dans le dropdown)
   function _incidentButtonsHTML(incidentId) {
     const iid = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
     return `
@@ -1396,6 +1396,10 @@ const QuickActions = (() => {
                 title="Share — Slack/Teams or internal email">
           📤 Share
         </button>
+        <button class="qa-btn qa-btn-sm qa-btn-ai qa-ai-brief-inc" data-iid="${incidentId}"
+                title="Generate an AI-assisted analyst brief, executive brief and next step — incident scope">
+          ✦ AI Brief
+        </button>
         <div class="qa-actions-menu qa-inc-more" data-iid="${incidentId}">
           <button class="qa-btn qa-btn-sm qa-actions-trigger qa-inc-more-trigger"
                   title="More actions — analyst summary, JSON export">
@@ -1409,11 +1413,6 @@ const QuickActions = (() => {
             <button class="qa-actions-item qa-json-inc" data-iid="${incidentId}"
                     title="Export enriched JSON payload (webhook / integration)">
               📤 Export JSON
-            </button>
-            <div class="qa-actions-sep" role="separator"></div>
-            <button class="qa-actions-item qa-actions-item-ai qa-ai-brief-inc" data-iid="${incidentId}"
-                    title="Generate an AI-assisted analyst brief, executive brief and next step">
-              ✦ AI Brief
             </button>
           </div>
         </div>
