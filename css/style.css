@@ -3834,6 +3834,23 @@ body.modal-open { overflow: hidden; }
   letter-spacing: .04em; flex-shrink: 0;
 }
 
+/* Stale date — filtre TV1 obsolètes : label complet rouge discret */
+.wl-stale-since {
+  font-size: .62rem;
+  color: #f87171;
+  background: rgba(248,113,113,.08);
+  border: 1px solid rgba(248,113,113,.2);
+  border-radius: 3px; padding: 0 .35rem;
+  white-space: nowrap; flex-shrink: 0;
+}
+/* Stale age — autres filtres : âge relatif très discret, tooltip pour la date */
+.wl-stale-age {
+  font-size: .62rem;
+  color: var(--text2);
+  opacity: .6;
+  white-space: nowrap; flex-shrink: 0;
+}
+
 /* TV1 sync button in watchlist modal footer */
 .btn-tv1-wl {
   color: #60a5fa;

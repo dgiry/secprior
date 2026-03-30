@@ -136,21 +136,63 @@ const WatchlistModal = (() => {
     _updateBtn();
   }
 
+  // ── Helpers de formatage des dates ──────────────────────────────────────
+
+  /** Retourne "3 avril 2026" (fr-FR) depuis un ISO string. */
+  function _fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch { return iso.slice(0, 10); }
+  }
+
+  /** Retourne "il y a 3 j" / "il y a 2 h" / "il y a 5 min" depuis un ISO string. */
+  function _relativeAge(iso) {
+    try {
+      const diff = Date.now() - new Date(iso).getTime();
+      const days = Math.floor(diff / 86_400_000);
+      const hrs  = Math.floor(diff / 3_600_000);
+      const mins = Math.floor(diff / 60_000);
+      if (days >= 1)  return `il y a ${days} j`;
+      if (hrs  >= 1)  return `il y a ${hrs} h`;
+      if (mins >= 1)  return `il y a ${mins} min`;
+      return "à l'instant";
+    } catch { return ''; }
+  }
+
   function _itemHTML(item) {
     const pMeta  = Contextualizer.WL_PRIORITIES[item.priority] || Contextualizer.WL_PRIORITIES.medium;
     const tMeta  = Contextualizer.WL_TYPES[item.type]          || Contextualizer.WL_TYPES.keyword;
     const idEsc  = item.id.replace(/'/g, "\\'");
     const lblEsc = (item.label || item.value || '').replace(/</g, '&lt;');
     const cls    = item.enabled ? 'wl-item' : 'wl-item wl-item-disabled';
-    // TV1 badge — shown for items synced from Trend Vision One
-    const tv1Badge = item.source === 'tv1'
-      ? '<span class="wl-tv1-badge" title="Synced from Trend Vision One">TV1</span>'
+
+    // TV1 badge — tooltip enrichi de la date d'obsolescence si disponible
+    const staleDateFull = (item.source === 'tv1' && item.staleAt)
+      ? ` — Obsolète depuis le ${_fmtDate(item.staleAt)}`
       : '';
+    const tv1Badge = item.source === 'tv1'
+      ? `<span class="wl-tv1-badge" title="Synced from Trend Vision One${staleDateFull}">TV1</span>`
+      : '';
+
+    // Indicateur d'obsolescence :
+    //   • filtre tv1_stale → label complet visible "Obsolète depuis le 3 avril 2026"
+    //   • autres filtres   → âge relatif compact "il y a 3 j" (ne surcharge pas la vue)
+    let staleHint = '';
+    if (item.source === 'tv1' && !item.enabled && item.staleAt) {
+      if (_currentFilter === 'tv1_stale') {
+        staleHint = `<span class="wl-stale-since">Obsolète depuis le ${_fmtDate(item.staleAt)}</span>`;
+      } else {
+        const age = _relativeAge(item.staleAt);
+        if (age) staleHint = `<span class="wl-stale-age" title="Obsolète depuis le ${_fmtDate(item.staleAt)}">${age}</span>`;
+      }
+    }
+
     return `
       <div class="${cls}" data-id="${item.id}">
         <span class="wl-prio-dot" title="Priority: ${pMeta.label}">${pMeta.dot}</span>
         <span class="wl-item-label" title="${item.value}">${lblEsc}</span>
         ${tv1Badge}
+        ${staleHint}
         <span class="wl-item-type ${tMeta.css}">${tMeta.label}</span>
         <button class="wl-toggle-btn" onclick="WatchlistModal.toggle('${idEsc}')"
                 title="${item.enabled ? 'Temporarily disable' : 'Re-enable'}">
