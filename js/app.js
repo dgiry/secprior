@@ -295,8 +295,17 @@ const App = (() => {
     const favCount = document.getElementById("fav-count");
     if (favCount) favCount.textContent = Storage.getFavoriteCount();
 
+    // ── Restaurer le persona stocké — filtres AVANT le premier rendu ─────────
+    // Évite le flash "all articles" : les filtres sont en place quand refresh()
+    // appelle render() pour la première fois avec les articles chargés.
+    if (typeof PersonaPresets !== 'undefined') PersonaPresets.silentRestoreFilters();
+
     // ── Lancer le premier fetch ───────────────────────────────────────────────
     await refresh(false);
+
+    // ── Ouvrir le panneau du persona restauré (données maintenant disponibles) ─
+    if (typeof PersonaPresets !== 'undefined') PersonaPresets.silentRestorePanel();
+
     scheduleRefresh();
   }
 

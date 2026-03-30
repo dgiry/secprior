@@ -1,8 +1,13 @@
-// persona-presets.js — Vues métier persona CyberVeille Pro
+// persona-presets.js v7 — Vues métier persona ThreatLens
 //
 // Injecte une barre compacte de vues persona en dessous de la barre Risque Réel.
 // Chaque vue active un ensemble cohérent de filtres et ouvre le bon panneau.
 // Les saved-filters utilisateur ne sont pas touchés — ce sont deux systèmes distincts.
+//
+// v7 — Persistance localStorage + restore avant/après refresh + onboarding integration
+//   pickAndActivate(id)       — onboarding: seed watchlist + activate + persist
+//   silentRestoreFilters()    — avant refresh: applique filtres sans toast ni panel
+//   silentRestorePanel()      — après refresh: ouvre le bon panneau
 //
 // Vues disponibles :
 //   🔴 Analyste SOC    — incidents actifs, workflow investigating
@@ -14,6 +19,35 @@
 const PersonaPresets = (() => {
 
   let _activeId = null;
+
+  const PERSONA_KEY = 'cv_active_persona';
+
+  // ── Graines watchlist par persona (seed si watchlist vide au premier lancement) ─
+  const WATCHLIST_SEEDS = {
+    today: ['ransomware', 'zero-day', 'actively exploited', 'CISA KEV', 'critical vulnerability'],
+    soc:   ['phishing', 'exploitation', 'lateral movement', 'backdoor', 'C2', 'incident response'],
+    vuln:  ['CVE', 'patch', 'CVSS', 'NVD', 'advisory', 'privilege escalation', 'unpatched'],
+    ciso:  ['breach', 'supply chain', 'nation-state', 'APT', 'data leak', 'regulatory'],
+    mssp:  ['campaign', 'threat actor', 'IOC', 'multi-source', 'watchlist', 'exposure']
+  };
+
+  // ── Filtres par persona (séparés de apply() pour restore pré-refresh) ────
+  const PERSONA_FILTERS = {
+    today: { priorityLevel: 'critical_now', sortBy: 'priority', date: '24h' },
+    soc:   { priorityLevel: 'all',          sortBy: 'priority' },
+    vuln:  { priorityLevel: 'all',          sortBy: 'priority' },
+    ciso:  { priorityLevel: 'critical_now', sortBy: 'priority' },
+    mssp:  { priorityLevel: 'all',          sortBy: 'priority' }
+  };
+
+  // ── Panel associé à chaque persona ───────────────────────────────────────
+  const PERSONA_PANEL = {
+    today: 'main',
+    soc:   'incidents',
+    vuln:  'cves',
+    ciso:  'visibility',
+    mssp:  'incidents'
+  };
 
   // ── Définitions des vues persona ─────────────────────────────────────────
 
@@ -155,6 +189,7 @@ const PersonaPresets = (() => {
     if (!persona) return;
 
     _activeId = id;
+    try { localStorage.setItem(PERSONA_KEY, id); } catch {}
     try {
       persona.apply();
     } catch (err) {
@@ -170,12 +205,63 @@ const PersonaPresets = (() => {
 
   function _reset() {
     _activeId = null;
+    try { localStorage.removeItem(PERSONA_KEY); } catch {}
     _setAppFilters({});     // → tous les filtres à their defaults
     _closeAllPanels();
     _render();
     // Sync ligne persona dans la barre profil (Sprint 24)
     if (typeof ProfileSwitcher !== 'undefined') ProfileSwitcher.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Onboarding integration ─────────────────────────────────────────────
+  // Seed la watchlist du profil actif si elle est vide, puis active le persona.
+  // Appelé par l'overlay onboarding au choix de persona.
+  function pickAndActivate(id) {
+    // Seed watchlist si vide (uniquement au premier choix)
+    if (typeof ProfileManager !== 'undefined') {
+      const wl = ProfileManager.getActiveWatchlist();
+      if (!Array.isArray(wl) || wl.length === 0) {
+        const seeds = WATCHLIST_SEEDS[id] || [];
+        const items = seeds.map((kw, i) => ({
+          id:      `wl_seed_${id}_${i}`,
+          type:    'keyword',
+          label:   kw,
+          value:   kw,
+          enabled: true,
+          priority:'medium'
+        }));
+        if (items.length > 0) ProfileManager.saveActiveWatchlist(items);
+      }
+    }
+    _activate(id); // persiste, toast, filtre, rendu
+  }
+
+  // ── Restore split (avant / après refresh) ─────────────────────────────
+  // silentRestoreFilters() — appelé AVANT refresh() dans app.init()
+  //   → applique les filtres du persona stocké sans ouvrir de panneau
+  //   → évite le flash "all articles" avant le premier rendu
+  function silentRestoreFilters() {
+    let id;
+    try { id = localStorage.getItem(PERSONA_KEY); } catch {}
+    if (!id) return;
+    const persona = PERSONAS.find(p => p.id === id);
+    if (!persona) return;
+    _activeId = id;
+    _setAppFilters(PERSONA_FILTERS[id] || {});
+    _render(); // highlight pill dans la barre
+    // Sync barre profil
+    if (typeof ProfileSwitcher !== 'undefined') ProfileSwitcher.render();
+  }
+
+  // silentRestorePanel() — appelé APRÈS refresh() dans app.init()
+  //   → ouvre le panneau associé au persona (données disponibles)
+  //   → silencieux : pas de toast, pas de re-filtrage
+  function silentRestorePanel() {
+    let id;
+    try { id = localStorage.getItem(PERSONA_KEY); } catch {}
+    if (!id || id !== _activeId) return; // sécurité : filtres déjà appliqués
+    _openPanel(PERSONA_PANEL[id] || 'main');
   }
 
   // ── API de synchronisation multi-contexte (Sprint 21) ─────────────────────
@@ -263,7 +349,14 @@ const PersonaPresets = (() => {
     _render();
   }
 
-  return { init, clearActive, getActivePersona };
+  return {
+    init,
+    clearActive,
+    getActivePersona,
+    pickAndActivate,
+    silentRestoreFilters,
+    silentRestorePanel
+  };
 })();
 
 // Auto-init : le DOM est prêt (script en fin de body)

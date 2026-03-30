@@ -1,17 +1,20 @@
-// onboarding.js v2 — Guide démarrage + packaging démo CyberVeille Pro
+// onboarding.js v6 — First-run persona picker overlay
 //
-// Carte "Démarrage / Démo" affichée à la première visite :
-//   • Pipeline Signal → Priorité → Incident → Action
-//   • 6 différenciateurs clés (priorisation, vues, profils, incidents, actions, partage)
-//   • Parcours démo 3 clics clairement narratif
-//   • CTAs par rôle : Analyste SOC / CISO Manager / Incidents / OK
-//   • Hint flottant "étape suivante" activé au clic sur un CTA démo
+// v6 — Remplace la carte tardive (après chargement du feed) par une overlay
+//      fullscreen qui apparaît IMMÉDIATEMENT au premier lancement.
 //
-// Dismissed définitivement via localStorage cv_onboarding_v1_seen
-// Re-déclenchable via Onboarding.showTour() (bouton "?" dans la barre Vues)
+// Parcours :
+//   1. Premier lancement → overlay persona picker (fullscreen, bloquant visuellement)
+//   2. L'utilisateur choisit son espace de travail (persona)
+//   3. PersonaPresets.pickAndActivate(id) :
+//      → seed watchlist si vide
+//      → active les filtres du persona
+//      → persiste l'ID pour les sessions suivantes
+//   4. Overlay se ferme avec animation → articles déjà chargés en arrière-plan
+//   5. Retours suivants : overlay non montrée, persona restauré via app.js
 //
-// Injection : avant #feed-grid, dans <main class="main">
-// Auto-init : attend que le feed soit peuplé (MutationObserver)
+// Rappelable via Onboarding.showTour() (bouton "?" dans la barre Vues)
+// Clé de stockage : cv_onboarding_v1_seen (inchangée pour compat)
 
 const Onboarding = (() => {
 
@@ -27,243 +30,131 @@ const Onboarding = (() => {
     try { localStorage.setItem(SEEN_KEY, '1'); } catch {}
   }
 
-  // ── Dismiss (smooth fade-out) ─────────────────────────────────────────────
+  // ── Dismiss ───────────────────────────────────────────────────────────────
 
   function dismiss() {
     _markSeen();
-    const el = document.getElementById('onboarding-card');
+    const el = document.getElementById('ob-overlay')
+            || document.getElementById('onboarding-card'); // compat v5
     if (!el) return;
-    el.style.opacity      = '0';
-    el.style.maxHeight    = '0';
-    el.style.marginBottom = '0';
-    el.style.padding      = '0';
-    setTimeout(() => el.remove(), 320);
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 280);
   }
 
-  // ── Hint flottant "étape suivante" ────────────────────────────────────────
-  // Apparaît en bas à droite après un clic CTA — guide le démo sans modal.
+  // ── Données persona pour l'overlay ───────────────────────────────────────
 
-  function _showDemoHint(html, autoSec = 12) {
-    let hint = document.getElementById('ob-demo-hint');
-    if (!hint) {
-      hint = document.createElement('div');
-      hint.id = 'ob-demo-hint';
-      hint.className = 'ob-hint';
-      document.body.appendChild(hint);
+  const _PICKER_PERSONAS = [
+    {
+      id:   'today',
+      icon: '🚨',
+      name: 'Top Priorities',
+      desc: 'Critical alerts of the last 24h, ranked by KEV and EPSS score',
+      kws:  ['ransomware', '0-day', 'CISA KEV']
+    },
+    {
+      id:   'soc',
+      icon: '🔴',
+      name: 'SOC Analyst',
+      desc: 'All consolidated incidents sorted by priority · full analyst view',
+      kws:  ['exploitation', 'lateral movement', 'C2']
+    },
+    {
+      id:   'vuln',
+      icon: '🔍',
+      name: 'Vuln Mgmt',
+      desc: 'Priority CVEs by KEV and EPSS · patch tracking focus',
+      kws:  ['CVE', 'CVSS', 'unpatched']
+    },
+    {
+      id:   'ciso',
+      icon: '📊',
+      name: 'CISO / Manager',
+      desc: 'Global posture, top incidents, KPIs — synthetic executive view',
+      kws:  ['breach', 'APT', 'supply chain']
+    },
+    {
+      id:   'mssp',
+      icon: '🏢',
+      name: 'MSSP',
+      desc: 'Multi-source incidents · watchlist-driven · multi-tenant context',
+      kws:  ['campaign', 'IOC', 'threat actor']
     }
-    hint.innerHTML = `
-      <div class="ob-hint-inner">
-        <div class="ob-hint-content">${html}</div>
-        <button class="ob-hint-close" title="Close">✕</button>
-      </div>`;
-    hint.style.display = 'block';
-    hint.querySelector('.ob-hint-close')
-      ?.addEventListener('click', () => { hint.style.display = 'none'; });
-    clearTimeout(hint._timer);
-    hint._timer = setTimeout(() => { hint.style.display = 'none'; }, autoSec * 1000);
-  }
+  ];
 
-  // ── CTAs ──────────────────────────────────────────────────────────────────
-
-  function _goTopPrio() {
-    dismiss();
-    const pill = document.querySelector('[data-pid="today"]');
-    if (pill) { pill.click(); }
-    else { document.getElementById('btn-top-priorities')?.click(); }
-    setTimeout(() => _showDemoHint(
-      `<strong>📋 Step 2 of 3</strong><br>
-       In the feed, click on a <strong>🔴 critical</strong> article<br>
-       → in the modal: <strong>⚡ Actions ▾</strong> → Analyst summary or ITSM ticket`
-    ), 600);
-  }
-
-  function _goCISO() {
-    dismiss();
-    document.querySelector('[data-pid="ciso"]')?.click();
-    setTimeout(() => _showDemoHint(
-      `<strong>📋 Step 2 of 3</strong><br>
-       The <strong>👁 Visibility</strong> panel just opened<br>
-       → Posture KPIs, top vendors, top incidents of the current profile<br>
-       → Then click <strong>🔗 Incidents</strong> for the consolidated view`
-    ), 600);
-  }
-
-  function _goIncidents() {
-    dismiss();
-    document.querySelector('[data-pid="soc"]')?.click();
-    setTimeout(() => _showDemoHint(
-      `<strong>📋 Step 2 of 3</strong><br>
-       Click an incident in the list to see its <strong>CVE timeline</strong><br>
-       → <strong>⚡ Actions</strong> → Executive summary or ITSM JSON export<br>
-       → Then try <strong>📊 CISO View</strong> for the manager view`
-    ), 600);
-  }
-
-  // ── Rendu de la carte ─────────────────────────────────────────────────────
+  // ── Rendu de l'overlay ────────────────────────────────────────────────────
 
   function _render() {
-    const card = document.createElement('div');
-    card.id        = 'onboarding-card';
-    card.className = 'ob-card';
-    card.setAttribute('role', 'complementary');
-    card.setAttribute('aria-label', 'ThreatLens Quick Start Guide');
+    const overlay = document.createElement('div');
+    overlay.id        = 'ob-overlay';
+    overlay.className = 'ob-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'ThreatLens — Choose your workspace');
 
-    card.innerHTML = `
+    const personaCards = _PICKER_PERSONAS.map(p => `
+      <button class="ob-persona-card" data-persona-id="${p.id}" title="${p.desc}">
+        <span class="ob-persona-icon">${p.icon}</span>
+        <span class="ob-persona-name">${p.name}</span>
+        <span class="ob-persona-desc">${p.desc}</span>
+        <div class="ob-persona-kws">
+          ${p.kws.map(kw => `<span class="ob-persona-kw">${kw}</span>`).join('')}
+        </div>
+      </button>`).join('');
 
-      <!-- ── En-tête marque + tagline ── -->
-      <div class="ob-header">
-        <div class="ob-brand">
-          <span class="ob-tag">🛡 ThreatLens</span>
-          <span class="ob-tagline">
-            Context-aware SecOps prioritization
-          </span>
+    overlay.innerHTML = `
+      <div class="ob-picker">
+        <div class="ob-picker-header">
+          <div class="ob-picker-brand">🛡 ThreatLens</div>
+          <div class="ob-picker-tagline">Context-aware SecOps prioritization</div>
+          <div class="ob-picker-title">Choose your workspace</div>
+          <div class="ob-picker-sub">Sets up your filters and view — you can change it anytime</div>
         </div>
-        <button class="ob-close" title="Dismiss" aria-label="Close guide">✕</button>
-      </div>
-
-      <!-- ── Pipeline Signal → Priorité → Incident → Action ── -->
-      <div class="ob-pipeline" role="list">
-        <div class="ob-step" role="listitem"
-             title="Live RSS feeds — CERT-FR, CISA, NVD, vendor advisories, threat intel">
-          <span class="ob-step-icon">📡</span>
-          <span class="ob-step-label">Signal</span>
-          <span class="ob-step-sub">RSS · multi-sources</span>
+        <div class="ob-persona-grid">
+          ${personaCards}
         </div>
-        <span class="ob-arrow" aria-hidden="true">→</span>
-        <div class="ob-step" role="listitem"
-             title="Auto-scoring: CVSS · KEV CISA · EPSS · profile watchlist · ATT&CK — priority explained with reasons">
-          <span class="ob-step-icon">🎯</span>
-          <span class="ob-step-label">Priority</span>
-          <span class="ob-step-sub">KEV · EPSS · Score</span>
-        </div>
-        <span class="ob-arrow" aria-hidden="true">→</span>
-        <div class="ob-step" role="listitem"
-             title="Union-Find CVE + vendor — multiple linked articles = 1 incident with full timeline">
-          <span class="ob-step-icon">🔗</span>
-          <span class="ob-step-label">Incident</span>
-          <span class="ob-step-sub">CVE consolidation</span>
-        </div>
-        <span class="ob-arrow" aria-hidden="true">→</span>
-        <div class="ob-step" role="listitem"
-             title="Analyst summary · executive summary · ITSM ticket · Slack/Teams/email share — all in 1 click">
-          <span class="ob-step-icon">⚡</span>
-          <span class="ob-step-label">Action</span>
-          <span class="ob-step-sub">Summary · Ticket · Share</span>
-        </div>
-      </div>
-
-      <!-- ── 6 différenciateurs clés ── -->
-      <div class="ob-differentiators" aria-label="Key features">
-        <span class="ob-diff-chip ob-diff-hot"
-              title="Each alert is classified Critical Now / Investigate / Watch with explicit reasons (KEV, EPSS, ATT&CK, watchlist)">
-          🔴 Explainable prioritization
-        </span>
-        <span class="ob-diff-chip ob-diff-hot"
-              title="5 pre-configured business views: SOC Analyst, Vuln Mgmt, CISO/Manager, MSSP, Top priorities">
-          🎭 Business views
-        </span>
-        <span class="ob-diff-chip"
-              title="Multiple exposure profiles with dedicated watchlists — ideal for MSSP or multi-scope">
-          👥 Multi-exposure profiles
-        </span>
-        <span class="ob-diff-chip"
-              title="Union-Find CVE/vendor: multiple articles on the same topic = 1 consolidated incident with timeline">
-          🔗 Consolidated incidents
-        </span>
-        <span class="ob-diff-chip"
-              title="Analyst summary, executive summary, ITSM JSON ticket, Slack/Teams/email share — 1 click">
-          ⚡ Quick actions 1 click
-        </span>
-        <span class="ob-diff-chip"
-              title="Short Slack/Teams format · email brief · enriched webhook payload ready to use">
-          📤 Enriched sharing
-        </span>
-      </div>
-
-      <!-- ── Parcours démo 3 clics ── -->
-      <div class="ob-demo-guide">
-        <span class="ob-demo-label">3-click demo:</span>
-        <div class="ob-demo-steps">
-          <span class="ob-demo-step">
-            <span class="ob-demo-num">①</span>
-            <span>Click <strong>🚨 Top priorities</strong> below</span>
-          </span>
-          <span class="ob-demo-sep">→</span>
-          <span class="ob-demo-step">
-            <span class="ob-demo-num">②</span>
-            <span>Open an article → <strong>⚡ Actions ▾</strong></span>
-          </span>
-          <span class="ob-demo-sep">→</span>
-          <span class="ob-demo-step">
-            <span class="ob-demo-num">③</span>
-            <span>Try <strong>📊 CISO View</strong></span>
-          </span>
-        </div>
-      </div>
-
-      <!-- ── CTAs par rôle ── -->
-      <div class="ob-actions">
-        <button class="ob-cta ob-cta-primary"
-                title="Critical threats from the last 24h · KEV/EPSS scoring · automatic priority sort">
-          🚨 Top priorities
-        </button>
-        <button class="ob-cta"
-                title="CISO/Manager view — global posture, top incidents, KPIs — ideal for manager demo">
-          📊 CISO View
-        </button>
-        <button class="ob-cta"
-                title="SOC Analyst — all consolidated incidents sorted by priority · CVE timeline">
-          🔗 Incidents
-        </button>
-        <button class="ob-cta ob-cta-ok"
-                title="Start using the app">
-          ✓ OK
-        </button>
+        <button class="ob-picker-skip">Skip — explore freely →</button>
       </div>`;
 
-    // Bind boutons (pas d'onclick inline pour rester compatible CSP)
-    const [btnPrio, btnCiso, btnInc, btnOk] = card.querySelectorAll('.ob-cta');
-    btnPrio.addEventListener('click', _goTopPrio);
-    btnCiso.addEventListener('click', _goCISO);
-    btnInc.addEventListener('click',  _goIncidents);
-    btnOk.addEventListener('click',   dismiss);
-    card.querySelector('.ob-close').addEventListener('click', dismiss);
+    // Bind persona cards
+    overlay.querySelectorAll('.ob-persona-card').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.personaId;
+        if (typeof PersonaPresets !== 'undefined') PersonaPresets.pickAndActivate(pid);
+        dismiss();
+      });
+    });
 
-    return card;
+    // Bind skip
+    overlay.querySelector('.ob-picker-skip')?.addEventListener('click', dismiss);
+
+    return overlay;
   }
 
   // ── Injection dans le DOM ─────────────────────────────────────────────────
 
   function show() {
-    if (document.getElementById('onboarding-card')) return; // idempotent
+    if (document.getElementById('ob-overlay')) return; // idempotent
+    // Supprimer l'ancienne carte v5 si présente
+    document.getElementById('onboarding-card')?.remove();
 
-    const main = document.querySelector('main.main');
-    const grid = document.getElementById('feed-grid');
-    if (!main || !grid) return;
+    const overlay = _render();
+    document.body.appendChild(overlay);
 
-    const card = _render();
-    main.insertBefore(card, grid);
-
-    // Entrance animation
+    // Entrance animation (double rAF pour forcer la transition CSS)
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => { card.style.opacity = '1'; });
+      requestAnimationFrame(() => overlay.classList.add('ob-visible'));
     });
   }
 
-  // ── Auto-init : attend que le feed soit peuplé ────────────────────────────
+  // ── Auto-init : affiche immédiatement (pas d'attente du feed) ─────────────
 
-  function _waitForContent() {
+  function init() {
     if (_isSeen()) return;
-
-    const grid = document.getElementById('feed-grid');
-    if (!grid) { setTimeout(_waitForContent, 200); return; }
-
-    if (grid.children.length > 0) { setTimeout(show, 400); return; }
-
-    const obs = new MutationObserver(() => {
-      if (grid.children.length > 0) { obs.disconnect(); setTimeout(show, 400); }
-    });
-    obs.observe(grid, { childList: true });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', show);
+    } else {
+      show();
+    }
   }
 
   // ── Re-trigger (bouton "?" de la barre Vues métier) ───────────────────────
@@ -271,16 +162,6 @@ const Onboarding = (() => {
   function showTour() {
     try { localStorage.removeItem(SEEN_KEY); } catch {}
     show();
-  }
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-
-  function init() {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', _waitForContent);
-    } else {
-      _waitForContent();
-    }
   }
 
   return { init, dismiss, show, showTour };
