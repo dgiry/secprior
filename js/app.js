@@ -24,6 +24,9 @@ const App = (() => {
       const articles = await Pipeline.run(force);
       state.articles = articles;
 
+      // Persister les articles enrichis pour restauration au rechargement (TTL 6 h)
+      Storage.setArticles(articles);
+
       // Notifier les nouvelles alertes critiques (browser)
       UI.notifyCritical(articles);
 
@@ -340,7 +343,23 @@ const App = (() => {
     // appelle render() pour la première fois avec les articles chargés.
     if (typeof PersonaPresets !== 'undefined') PersonaPresets.silentRestoreFilters();
 
-    // ── Lancer le premier fetch ───────────────────────────────────────────────
+    // ── Restauration depuis le cache persistant (TTL 6 h) ─────────────────────
+    // Affiche immédiatement les articles de la session précédente pendant que
+    // refresh() revalide en arrière-plan. Aucun rendu visible si cache absent.
+    const _restoredArticles = Storage.getArticles();
+    if (_restoredArticles && _restoredArticles.length > 0) {
+      state.articles = _restoredArticles;
+      render();
+      StatsPanel.update(_restoredArticles);
+      VendorPanel.update(_restoredArticles);
+      CVEPanel.update(_restoredArticles);
+      IncidentPanel.update(_restoredArticles);
+      VisibilityPanel.update(_restoredArticles);
+      if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
+      ArticleModal.setArticles(_restoredArticles, state.nvdMap);
+    }
+
+    // ── Lancer le premier fetch (met à jour / remplace le cache restauré) ─────
     await refresh(false);
 
     // ── Ouvrir le panneau du persona restauré (données maintenant disponibles) ─
