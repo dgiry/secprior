@@ -21,8 +21,11 @@
 const { FEEDS }       = require("./_lib/feeds");
 const { loadLastRun, loadRunHistory, loadBriefingHistory } = require("./_lib/dedup-store");
 
-// Cron configuré dans vercel.json → toutes les minutes, décision dans le handler
-const CRON_SCHEDULE = "* * * * *";
+// Two vercel.json crons cover both offsets of America/Montreal:
+//   0 12 * * *  → 08:00 EDT (UTC-4, late Mar → early Nov)
+//   0 13 * * *  → 08:00 EST (UTC-5, Nov → late Mar)
+// The handler checks local Montreal time internally and skips if it's not DIGEST_HOUR.
+const CRON_SCHEDULE = "0 12,13 * * * UTC (≈ 08:00 Montréal)";
 
 module.exports = async (req, res) => {
   const channel = (process.env.DIGEST_CHANNEL || "resend").toLowerCase();
@@ -56,23 +59,23 @@ module.exports = async (req, res) => {
   const warnings = [];
 
   if (!email.recipient)
-    warnings.push("DIGEST_RECIPIENT manquant — le briefing ne peut pas être envoyé");
+    warnings.push("DIGEST_RECIPIENT missing — digest cannot be sent");
 
   if (channel === "resend" && !email.resend)
-    warnings.push("RESEND_API_KEY manquante");
+    warnings.push("RESEND_API_KEY missing");
   if (channel === "resend" && !email.resendFrom)
-    warnings.push("RESEND_FROM non configuré (utilisera onboarding@resend.dev)");
+    warnings.push("RESEND_FROM not configured (will use onboarding@resend.dev)");
 
   if (channel === "sendgrid" && !email.sendgrid)
-    warnings.push("SENDGRID_API_KEY manquante");
+    warnings.push("SENDGRID_API_KEY missing");
   if (channel === "sendgrid" && !email.sendgridFrom)
-    warnings.push("SENDGRID_FROM manquant");
+    warnings.push("SENDGRID_FROM missing");
 
   if (!email.cronSecret)
-    warnings.push("CRON_SECRET non configuré — endpoint /api/scheduled-digest non sécurisé");
+    warnings.push("CRON_SECRET not configured — /api/scheduled-digest endpoint is unsecured");
 
   if (!dedup.kvAvailable)
-    warnings.push("KV_REST_API_URL / KV_REST_API_TOKEN absents — déduplication inter-digest désactivée");
+    warnings.push("KV_REST_API_URL / KV_REST_API_TOKEN missing — run history and deduplication disabled");
 
   // ── Dernier run + historique (depuis KV) ─────────────────────────────────
   // null / [] si KV non configuré ou si aucun run n'a encore eu lieu.
@@ -86,7 +89,7 @@ module.exports = async (req, res) => {
     timestamp: new Date().toISOString(),
     cron: {
       schedule:    CRON_SCHEDULE,
-      description: "Toutes les minutes — décision d'envoi dans le handler selon l'heure ET la minute de Montréal"
+      description: "Two UTC slots cover EDT (UTC-4) and EST (UTC-5) — handler checks Montreal local time and skips if not DIGEST_HOUR"
     },
     digest: {
       hour:        process.env.DIGEST_HOUR    || "08:00",   // format HH ou HH:MM

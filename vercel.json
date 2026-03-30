@@ -6,8 +6,8 @@
     }
   },
   "crons": [
-    { "path": "/api/scheduled-digest", "schedule": "0 11 * * *" },
-    { "path": "/api/scheduled-digest", "schedule": "0 12 * * *" }
+    { "path": "/api/scheduled-digest", "schedule": "0 12 * * *" },
+    { "path": "/api/scheduled-digest", "schedule": "0 13 * * *" }
   ],
   "headers": [
     {

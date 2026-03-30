@@ -123,7 +123,10 @@ const HealthPanel = (() => {
       failed:     "Send failure — check email configuration",
       noArticles: "No article in the last 48h — briefing not sent"
     };
-    const impact = lr.lastResult ? (impactMap[lr.lastResult] || lr.lastResult) : "No run recorded";
+    const noRunLabel = d.dedup?.kvAvailable === false
+      ? "No run recorded — enable Vercel KV to track run history"
+      : "No run recorded";
+    const impact = lr.lastResult ? (impactMap[lr.lastResult] || lr.lastResult) : noRunLabel;
 
     // Cause principale (1re alerte ou raison d'échec)
     const cause = Array.isArray(d.warnings) && d.warnings.length
@@ -395,7 +398,7 @@ ${_renderSummary(d)}
 
 <!-- ── Déduplication KV ───────────────────────────────────────────────── -->
 <div class="hp-section">
-  <div class="hp-section-head">🔁 Déduplication KV</div>
+  <div class="hp-section-head">🔁 KV store / deduplication</div>
   <div class="hp-row"><span class="hp-lbl">Vercel KV</span><span>${_bool(dd.kvAvailable, "available", "not configured")}</span></div>
 </div>
 
