@@ -2,12 +2,25 @@
 //
 // Supporte le format V2 : { id, type, label, value, enabled, priority }
 // Rétrocompatible avec l'ancien format string[] (migration transparente via contextualizer.js)
+//
+// Polish TV1 (v3) :
+//   • Barre de filtres : Tous / Manuels / TV1 actifs / TV1 obsolètes
+//   • Bannière "mode démo" si la dernière sync TV1 était une sync démo
+//   • Action "Réactiver tous" sur le filtre TV1 obsolètes
+//   • Les items manuels ne sont jamais touchés par reactivateObsolete()
 
 const WatchlistModal = (() => {
+
+  // ── État filtre ─────────────────────────────────────────────────────────────
+
+  let _currentFilter = 'all'; // 'all' | 'manual' | 'tv1_active' | 'tv1_stale'
+
+  // ── Ouvrir / fermer ─────────────────────────────────────────────────────────
 
   function open() {
     const modal = document.getElementById("modal-watchlist");
     if (!modal) return;
+    _currentFilter = 'all'; // réinitialiser à chaque ouverture
     _render();
     modal.style.display = "flex";
     document.body.style.overflow = "hidden";
@@ -20,37 +33,106 @@ const WatchlistModal = (() => {
     document.body.style.overflow = "";
   }
 
-  // ── Rendu de la liste ──────────────────────────────────────────────────────
+  // ── Filtrage ────────────────────────────────────────────────────────────────
+
+  function _applyFilter(list, filter) {
+    switch (filter) {
+      case 'manual':     return list.filter(i => i.source !== 'tv1');
+      case 'tv1_active': return list.filter(i => i.source === 'tv1' && i.enabled);
+      case 'tv1_stale':  return list.filter(i => i.source === 'tv1' && !i.enabled);
+      default:           return list; // 'all'
+    }
+  }
+
+  // ── Rendu principal ─────────────────────────────────────────────────────────
 
   function _render() {
-    const list      = Contextualizer.getWatchlist();
+    const allItems  = Contextualizer.getWatchlist();
     const container = document.getElementById("watchlist-items");
     if (!container) return;
 
-    if (list.length === 0) {
-      container.innerHTML = `<span class="wl-empty">No monitored terms. Add items below.</span>`;
-    } else {
-      // Grouper par type pour une lecture plus propre
-      const byType = {};
-      list.forEach(item => {
-        if (!byType[item.type]) byType[item.type] = [];
-        byType[item.type].push(item);
-      });
+    // ── Compteurs pour les badges de filtre ────────────────────────────────
+    const counts = {
+      all:        allItems.length,
+      manual:     allItems.filter(i => i.source !== 'tv1').length,
+      tv1_active: allItems.filter(i => i.source === 'tv1' && i.enabled).length,
+      tv1_stale:  allItems.filter(i => i.source === 'tv1' && !i.enabled).length,
+    };
 
-      const ORDER = ['vendor', 'product', 'technology', 'keyword'];
-      const sections = ORDER.filter(t => byType[t]).map(type => {
-        const meta  = Contextualizer.WL_TYPES[type];
-        const items = byType[type];
-        return `
-          <div class="wl-group">
-            <div class="wl-group-label ${meta.css}">${meta.label}</div>
-            ${items.map(_itemHTML).join('')}
-          </div>`;
-      }).join('');
+    // ── Barre de filtres (injectée dans le container) ──────────────────────
+    const FILTERS = [
+      { key: 'all',        label: 'Tous'         },
+      { key: 'manual',     label: 'Manuels'      },
+      { key: 'tv1_active', label: 'TV1 actifs'   },
+      { key: 'tv1_stale',  label: 'TV1 obsolètes'},
+    ];
 
-      container.innerHTML = sections;
+    const filterBar = FILTERS.map(f => {
+      const active = _currentFilter === f.key ? ' wl-filter-active' : '';
+      const n      = counts[f.key];
+      const badge  = `<span class="wl-filter-count">${n}</span>`;
+      return `<button class="wl-filter-btn${active}" onclick="WatchlistModal.setFilter('${f.key}')">${f.label}${badge}</button>`;
+    }).join('');
+
+    let html = `<div class="wl-filter-bar">${filterBar}</div>`;
+
+    // ── Bannière mode démo TV1 ─────────────────────────────────────────────
+    if (typeof TV1Sync !== 'undefined' && (counts.tv1_active + counts.tv1_stale) > 0) {
+      const cfg = TV1Sync.loadConfig();
+      if (cfg.lastSyncSource === 'tv1_demo') {
+        html += `<div class="wl-demo-note">🔵 Les items TV1 affichés proviennent du jeu de données de démonstration, pas d'un inventaire réel. Ajoutez <code>TV1_API_KEY</code> dans Vercel pour activer la sync live.</div>`;
+      }
     }
 
+    // ── Appliquer le filtre ────────────────────────────────────────────────
+    const list = _applyFilter(allItems, _currentFilter);
+
+    // ── Bouton "Réactiver tous" — filtre TV1 obsolètes uniquement ──────────
+    if (_currentFilter === 'tv1_stale' && list.length > 0) {
+      html += `<div class="wl-reactivate-row">
+        <span class="settings-hint" style="flex:1;margin:0">
+          ${list.length} item${list.length > 1 ? 's' : ''} obsolète${list.length > 1 ? 's' : ''}
+        </span>
+        <button class="wl-reactivate-btn" onclick="WatchlistModal.reactivateObsolete()">
+          ▶ Réactiver tous
+        </button>
+      </div>`;
+    }
+
+    // ── Contenu filtré ─────────────────────────────────────────────────────
+    if (list.length === 0) {
+      const EMPTY = {
+        all:        'Aucun terme surveillé. Ajoutez des items ci-dessous.',
+        manual:     'Aucun item manuel.',
+        tv1_active: 'Aucun item TV1 actif.',
+        tv1_stale:  '✓ Aucun item TV1 obsolète.',
+      };
+      html += `<span class="wl-empty">${EMPTY[_currentFilter] || EMPTY.all}</span>`;
+      container.innerHTML = html;
+      _updateBtn();
+      return;
+    }
+
+    // Grouper par type
+    const byType = {};
+    list.forEach(item => {
+      if (!byType[item.type]) byType[item.type] = [];
+      byType[item.type].push(item);
+    });
+
+    const ORDER = ['vendor', 'product', 'technology', 'keyword'];
+    const sections = ORDER.filter(t => byType[t]).map(type => {
+      const meta  = Contextualizer.WL_TYPES[type];
+      const items = byType[type];
+      return `
+        <div class="wl-group">
+          <div class="wl-group-label ${meta.css}">${meta.label}</div>
+          ${items.map(_itemHTML).join('')}
+        </div>`;
+    }).join('');
+
+    html += sections;
+    container.innerHTML = html;
     _updateBtn();
   }
 
@@ -80,6 +162,11 @@ const WatchlistModal = (() => {
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
+
+  function setFilter(f) {
+    _currentFilter = f;
+    _render();
+  }
 
   function add() {
     const input  = document.getElementById("watchlist-input");
@@ -113,6 +200,32 @@ const WatchlistModal = (() => {
     _render();
   }
 
+  // ── Réactiver tous les items TV1 obsolètes ─────────────────────────────────
+  //
+  // Ne touche jamais aux items manuels (source !== 'tv1').
+  // Supprime le marqueur staleAt et repasse enabled à true.
+
+  function reactivateObsolete() {
+    const wl = Contextualizer.getWatchlist();
+    let count = 0;
+
+    const updated = wl.map(item => {
+      if (item.source !== 'tv1') return item; // jamais les manuels
+      if (item.enabled) return item;           // déjà actif
+      count++;
+      const { staleAt, ...rest } = item;       // supprimer le marqueur obsolète
+      return { ...rest, enabled: true };
+    });
+
+    if (count > 0) Contextualizer.saveWatchlist(updated);
+    _render();
+    if (count > 0) UI.showToast(
+      `▶ ${count} item${count > 1 ? 's' : ''} TV1 réactivé${count > 1 ? 's' : ''}`,
+      'success'
+    );
+    return count;
+  }
+
   // ── Compteur bouton navbar ─────────────────────────────────────────────────
 
   function _updateBtn() {
@@ -124,26 +237,24 @@ const WatchlistModal = (() => {
     if (!btn) return;
     btn.classList.toggle("active", act > 0);
     btn.title = act > 0
-      ? `Watchlist: ${act} active term${act > 1 ? 's' : ''}` +
-        (total > act ? ` (${total - act} disabled)` : '')
-      : "Manage watchlist";
+      ? `Watchlist: ${act} terme${act > 1 ? 's' : ''} actif${act > 1 ? 's' : ''}` +
+        (total > act ? ` (${total - act} désactivé${total - act > 1 ? 's' : ''})` : '')
+      : "Gérer la watchlist";
 
     const badge = document.getElementById("watchlist-count");
     if (badge) badge.textContent = act > 0 ? ` (${act})` : "";
   }
 
-  // ── Init ───────────────────────────────────────────────────────────────────
-
   // ── Sync depuis TV1 (appelé depuis le footer du modal watchlist) ─────────────
 
   async function syncFromTV1() {
     if (typeof TV1Sync === 'undefined') {
-      UI.showToast('TV1 module not loaded', 'error');
+      UI.showToast('Module TV1 non chargé', 'error');
       return;
     }
 
     const btn = document.getElementById('btn-tv1-sync-wl');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync…'; }
 
     try {
       const result = await TV1Sync.fetchPreview();
@@ -161,10 +272,10 @@ const WatchlistModal = (() => {
       _render(); // rafraîchir la liste après sync
 
       let msg = stats.added > 0
-        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} ajouté(s) depuis TV1`
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} ajouté${stats.added !== 1 ? 's' : ''} depuis TV1`
         : `ℹ Tous les items TV1 déjà présents`;
-      if (stats.skipped)  msg += ` · ${stats.skipped} déjà présent(s)`;
-      if (stats.disabled) msg += ` · ${stats.disabled} désactivé(s) (obsolètes)`;
+      if (stats.skipped)  msg += ` · ${stats.skipped} déjà présent${stats.skipped > 1 ? 's' : ''}`;
+      if (stats.disabled) msg += ` · ${stats.disabled} désactivé${stats.disabled > 1 ? 's' : ''} (obsolètes)`;
       UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
 
     } catch (err) {
@@ -174,11 +285,13 @@ const WatchlistModal = (() => {
     }
   }
 
-  // ── Refresh public (appelé par TV1Sync.importItems après import) ────────────
+  // ── Refresh public (appelé par TV1Sync après import) ────────────────────────
 
   function refresh() {
     _render();
   }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
 
   function init() {
     document.getElementById("btn-watchlist")?.addEventListener("click", open);
@@ -191,5 +304,5 @@ const WatchlistModal = (() => {
     _updateBtn();
   }
 
-  return { open, close, add, remove, toggle, refresh, syncFromTV1, init };
+  return { open, close, add, remove, toggle, setFilter, reactivateObsolete, refresh, syncFromTV1, init };
 })();

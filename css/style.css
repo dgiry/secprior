@@ -4089,6 +4089,99 @@ body.modal-open { overflow: hidden; }
   .ai-ticket-key { min-width: 4rem; }
 }
 
+/* ── Watchlist Polish — filter bar & TV1 obsoletes (Sprint TV1 v3) ─────────── */
+
+/* Filter bar container */
+.wl-filter-bar {
+  width: 100%; display: flex; gap: .35rem; flex-wrap: wrap;
+  padding: .5rem 0 .4rem; border-bottom: 1px solid var(--border);
+  margin-bottom: .4rem;
+}
+
+/* Individual filter button */
+.wl-filter-btn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .22rem .6rem;
+  font-size: .72rem; font-weight: 500;
+  color: var(--text2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.wl-filter-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--border2, var(--border));
+}
+.wl-filter-btn.wl-filter-active {
+  background: rgba(96,165,250,.12);
+  color: #60a5fa;
+  border-color: rgba(96,165,250,.35);
+  font-weight: 600;
+}
+
+/* Count badge inside filter button */
+.wl-filter-count {
+  display: inline-block;
+  background: var(--surface2);
+  color: var(--text2);
+  border-radius: 10px;
+  padding: 0 .4rem;
+  font-size: .67rem; font-weight: 600;
+  min-width: 1.2rem; text-align: center;
+}
+.wl-filter-btn.wl-filter-active .wl-filter-count {
+  background: rgba(96,165,250,.2);
+  color: #93c5fd;
+}
+
+/* Demo mode info banner */
+.wl-demo-note {
+  width: 100%;
+  background: rgba(251,191,36,.07);
+  border: 1px solid rgba(251,191,36,.25);
+  border-radius: 6px;
+  padding: .5rem .75rem;
+  font-size: .75rem; color: #fbbf24;
+  line-height: 1.5;
+  margin-bottom: .35rem;
+}
+.wl-demo-note code {
+  background: rgba(251,191,36,.12);
+  border-radius: 3px; padding: 0 .3rem;
+  font-size: .72rem;
+}
+
+/* Reactivate-all row (shown on tv1_stale filter) */
+.wl-reactivate-row {
+  width: 100%;
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .5rem;
+  background: rgba(239,68,68,.06);
+  border: 1px solid rgba(239,68,68,.18);
+  border-radius: 6px;
+  margin-bottom: .35rem;
+}
+
+/* "▶ Réactiver tous" button */
+.wl-reactivate-btn {
+  padding: .25rem .7rem;
+  font-size: .74rem; font-weight: 600;
+  color: #4ade80;
+  background: rgba(74,222,128,.08);
+  border: 1px solid rgba(74,222,128,.3);
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.wl-reactivate-btn:hover {
+  background: rgba(74,222,128,.16);
+  border-color: rgba(74,222,128,.55);
+}
+
 /* ── (suite styles existants) ────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
