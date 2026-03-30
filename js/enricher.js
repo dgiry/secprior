@@ -30,6 +30,37 @@ const Enricher = (() => {
     "gi"
   );
 
+  // ── Produits → vendor parent (normalisation NER) ──────────────────────────
+  // Quand un article mentionne "FortiGate" sans dire "Fortinet", on remonte
+  // au vendor parent pour que les recherches "fortinet" fonctionnent.
+  const PRODUCT_ALIASES = {
+    // Fortinet
+    "FortiGate":    "Fortinet", "FortiOS":       "Fortinet",
+    "FortiManager": "Fortinet", "FortiClient":   "Fortinet",
+    "FortiAnalyzer":"Fortinet", "FortiWeb":      "Fortinet",
+    "FortiProxy":   "Fortinet", "FortiSwitch":   "Fortinet",
+    "FortiSIEM":    "Fortinet", "FortiEDR":      "Fortinet",
+    "FortiNAC":     "Fortinet", "FortiSOAR":     "Fortinet",
+    "FortiMail":    "Fortinet",
+    // Palo Alto Networks
+    "PAN-OS":       "Palo Alto",
+    // VMware / Broadcom
+    "vCenter":      "VMware",   "ESXi":          "VMware",
+    "vSphere":      "VMware",   "Workstation":   "VMware",
+    // Cisco
+    "IOS XE":       "Cisco",    "NX-OS":         "Cisco",
+    "Meraki":       "Cisco",    "Webex":         "Cisco",
+    // Ivanti
+    "EPMM":         "Ivanti",   "MobileIron":    "Ivanti",
+  };
+
+  const PRODUCT_RE = new RegExp(
+    `\\b(${Object.keys(PRODUCT_ALIASES)
+      .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|")})\\b`,
+    "gi"
+  );
+
   // ── CISA KEV ──────────────────────────────────────────────────────────────
 
   async function _fetchKEV() {
@@ -112,7 +143,16 @@ const Enricher = (() => {
   // ── Extraction entités ────────────────────────────────────────────────────
 
   function _extractEntities(text) {
-    const vendors  = [...new Set((text.match(VENDOR_RE) || []).map(v => v.trim()))];
+    const vendorSet = new Set((text.match(VENDOR_RE) || []).map(v => v.trim()));
+
+    // Remonter les produits vers leur vendor parent (ex. "FortiGate" → "Fortinet")
+    (text.match(PRODUCT_RE) || []).forEach(p => {
+      const key    = Object.keys(PRODUCT_ALIASES).find(k => k.toLowerCase() === p.toLowerCase());
+      const parent = key ? PRODUCT_ALIASES[key] : null;
+      if (parent) vendorSet.add(parent);
+    });
+
+    const vendors  = [...vendorSet];
     const cves     = [...new Set((text.match(CVE_REGEX) || []).map(c => c.toUpperCase()))];
     // Version numbers: vX.X.X ou X.X.X (basique)
     const versions = [...new Set((text.match(/\bv?\d+\.\d+(?:\.\d+)?\b/g) || []))].slice(0, 5);
