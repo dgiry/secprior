@@ -3002,6 +3002,35 @@ body.modal-open { overflow: hidden; }
 /* État vide */
 .cp-empty         { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }
 
+/* Fallback vendor — articles sans CVE ID */
+.cp-vendor-fallback {
+  margin: .75rem 0 1rem;
+  border: 1px solid rgba(240,136,62,.35);
+  border-radius: 6px;
+  background: rgba(240,136,62,.04);
+  overflow: hidden;
+}
+.cp-vendor-fallback-hdr {
+  padding: .6rem .9rem;
+  font-size: .78rem;
+  color: #f0883e;
+  border-bottom: 1px solid rgba(240,136,62,.2);
+}
+.cp-vendor-fallback-articles { padding: .25rem .4rem; }
+.cp-vendor-fallback-note {
+  padding: .5rem .9rem;
+  font-size: .72rem;
+  color: var(--text2);
+  border-top: 1px solid rgba(240,136,62,.15);
+  background: rgba(240,136,62,.03);
+}
+.cp-vendor-fallback-note code {
+  background: rgba(255,255,255,.08);
+  padding: .1rem .3rem;
+  border-radius: 3px;
+  font-size: .72rem;
+}
+
 /* Lien CVE depuis Top CVEs (stats.js) */
 .cp-cve-link      { cursor:pointer; color:var(--accent); font-family:monospace;
                     font-size:.8rem; text-decoration:underline dotted; }
