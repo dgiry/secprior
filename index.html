@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=33">
+  <link rel="stylesheet" href="css/style.css?v=34">
 </head>
 <body>
 
@@ -453,7 +453,12 @@
         <p class="settings-hint">Press <strong>Enter</strong> or click + Add. Case-insensitive.</p>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="justify-content:space-between">
+        <button class="btn btn-tv1-wl" id="btn-tv1-sync-wl"
+                title="Import vendors, products and technologies from Trend Vision One"
+                onclick="WatchlistModal.syncFromTV1()">
+          🔵 Sync from TV1
+        </button>
         <button class="btn btn-primary" onclick="WatchlistModal.close()">Close</button>
       </div>
     </div>
@@ -819,6 +824,53 @@
           </p>
         </div>
 
+        <!-- ── Trend Vision One — Watchlist Sync ──────────────────────────── -->
+        <div class="settings-group">
+          <label class="settings-label">🔵 Trend Vision One — Watchlist Sync</label>
+          <p class="settings-hint">
+            Import vendors, products and technologies detected in your Trend Vision One
+            environment into ThreatLens watchlist. Reduces manual configuration and
+            immediately improves contextual relevance.
+          </p>
+
+          <label class="settings-label" for="tv1-region">TV1 Region</label>
+          <select id="tv1-region" class="select-filter" style="width:100%;margin-bottom:.75rem">
+            <option value="us">🌎 United States — api.xdr.trendmicro.com</option>
+            <option value="eu">🌍 Europe — api.eu.xdr.trendmicro.com</option>
+            <option value="au">🌏 Australia — api.au.xdr.trendmicro.com</option>
+            <option value="in">🌏 India — api.in.xdr.trendmicro.com</option>
+            <option value="sg">🌏 Singapore — api.sg.xdr.trendmicro.com</option>
+            <option value="jp">🌏 Japan — api.jp.xdr.trendmicro.com</option>
+          </select>
+
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-tv1-sync"
+                    onclick="SettingsModal.syncTV1Watchlist()">
+              🔄 Sync watchlist from Trend Vision One
+            </button>
+            <span id="tv1-sync-status" class="settings-hint"></span>
+          </div>
+
+          <!-- Preview area — populated dynamically by JS -->
+          <div id="tv1-preview" style="display:none;margin-top:.75rem"></div>
+        </div>
+
+        <!-- TV1 setup info -->
+        <div class="settings-group settings-info-box">
+          <label class="settings-label">Live sync setup</label>
+          <p class="settings-hint">
+            Add <code>TV1_API_KEY</code> to your Vercel environment variables to enable live
+            sync from your Trend Vision One instance.
+            Optionally add <code>TV1_REGION</code> as default region.
+            Without the API key, a curated demo dataset is used — still useful for demos
+            and initial configuration.
+          </p>
+          <p class="settings-hint" style="margin-top:.4rem">
+            Synced items are tagged <strong>TV1</strong> in the watchlist and never overwrite
+            manually added entries.
+          </p>
+        </div>
+
       </div><!-- /settings-tab-integrations -->
 
     </div><!-- /modal-box -->
@@ -871,8 +923,9 @@
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
   <script src="js/email-alerts.js?v=20"></script>
-  <script src="js/settings-modal.js?v=18"></script>
-  <script src="js/watchlist-modal.js?v=15"></script>
+  <script src="js/tv1-sync.js?v=1"></script>
+  <script src="js/settings-modal.js?v=19"></script>
+  <script src="js/watchlist-modal.js?v=16"></script>
   <script src="js/ui.js?v=16"></script>
   <script src="js/pdf-report.js?v=18"></script>
   <script src="js/app.js?v=18"></script>

@@ -1,4 +1,4 @@
-// settings-modal.js v18 — Modal Paramètres : Alertes · Flux RSS · Integrations
+// settings-modal.js v19 — Modal Paramètres : Alertes · Flux RSS · Integrations
 
 const SettingsModal = (() => {
 
@@ -53,6 +53,12 @@ const SettingsModal = (() => {
       const jira = JiraConfig.load();
       _val('jira-base-url',    jira.baseUrl    || '');
       _val('jira-project-key', jira.projectKey || '');
+    }
+    // ── Onglet Integrations — TV1 ────────────────────────────────────────────
+    if (typeof TV1Sync !== 'undefined') {
+      const tv1 = TV1Sync.loadConfig();
+      const sel = document.getElementById('tv1-region');
+      if (sel && tv1.region) sel.value = tv1.region;
     }
 
     _val("alert-enabled",     s.enabled,       "checked");
@@ -741,6 +747,106 @@ const SettingsModal = (() => {
     UI.showToast('🔗 Integrations saved', 'success');
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION — Trend Vision One Watchlist Sync
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function syncTV1Watchlist() {
+    if (typeof TV1Sync === 'undefined') {
+      UI.showToast('TV1 module not loaded', 'error');
+      return;
+    }
+
+    // Persist the selected region
+    const region = document.getElementById('tv1-region')?.value || 'us';
+    TV1Sync.saveConfig({ region });
+
+    const statusEl  = document.getElementById('tv1-sync-status');
+    const previewEl = document.getElementById('tv1-preview');
+    const btn       = document.getElementById('btn-tv1-sync');
+
+    if (statusEl)  statusEl.textContent = '⏳ Fetching from TV1…';
+    if (btn)       btn.disabled = true;
+    if (previewEl) previewEl.style.display = 'none';
+
+    try {
+      const result = await TV1Sync.fetchPreview();
+      if (statusEl) statusEl.textContent = '';
+
+      if (!result.items?.length) {
+        if (statusEl) statusEl.textContent = '⚠ No items returned from TV1.';
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      _renderTV1Preview(result, previewEl, btn);
+
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `⚠ ${err.message}`;
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function _renderTV1Preview(result, container, triggerBtn) {
+    if (!container) return;
+
+    const isDemo  = result.source === 'tv1_demo';
+    const typeIcon = { vendor: '🏢', product: '📦', technology: '⚙️', keyword: '🏷' };
+    const _e = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    const existingValues = new Set(
+      Contextualizer.getWatchlist().map(i => typeof i === 'string' ? i.toLowerCase() : (i.value || ''))
+    );
+
+    const itemsHTML = result.items.map(item => {
+      const alreadyIn = existingValues.has(item.value);
+      return `<div class="tv1-preview-item${alreadyIn ? ' tv1-preview-item-exists' : ''}">
+        <span class="tv1-preview-type">${typeIcon[item.type] || '🏷'}</span>
+        <span class="tv1-preview-label">${_e(item.label)}</span>
+        ${alreadyIn ? '<span class="tv1-preview-exists-badge">already in watchlist</span>' : ''}
+      </div>`;
+    }).join('');
+
+    const newCount = result.items.filter(i => !existingValues.has(i.value)).length;
+
+    container.innerHTML = `
+      <div class="tv1-preview-box">
+        <div class="tv1-preview-header">
+          ${isDemo
+            ? '<span class="tv1-source-badge tv1-demo-badge">Demo data</span>'
+            : '<span class="tv1-source-badge tv1-live-badge">● Live · Trend Vision One</span>'}
+          <span class="tv1-preview-count">${result.items.length} items detected</span>
+        </div>
+        ${result.note ? `<p class="settings-hint tv1-preview-note">${_e(result.note)}</p>` : ''}
+        <div class="tv1-preview-list">${itemsHTML}</div>
+        <div class="tv1-preview-actions">
+          <button class="btn btn-primary" id="btn-tv1-confirm"
+                  ${newCount === 0 ? 'disabled' : ''}>
+            ✅ Import ${newCount} new item${newCount !== 1 ? 's' : ''} into watchlist
+          </button>
+          <button class="btn" id="btn-tv1-cancel">Cancel</button>
+        </div>
+      </div>`;
+
+    container.style.display = 'block';
+
+    document.getElementById('btn-tv1-confirm')?.addEventListener('click', () => {
+      const stats = TV1Sync.importItems(result.items);
+      container.style.display = 'none';
+      if (triggerBtn) triggerBtn.disabled = false;
+      const msg = stats.added > 0
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} added from TV1` +
+          (stats.skipped ? ` · ${stats.skipped} already present` : '')
+        : `ℹ All items already in watchlist`;
+      UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
+    });
+
+    document.getElementById('btn-tv1-cancel')?.addEventListener('click', () => {
+      container.style.display = 'none';
+      if (triggerBtn) triggerBtn.disabled = false;
+    });
+  }
+
   // ── API publique ────────────────────────────────────────────────────────────
 
   return {
@@ -755,6 +861,8 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations
+    saveIntegrations,
+    // TV1 Watchlist Sync
+    syncTV1Watchlist
   };
 })();

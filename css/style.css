@@ -3779,6 +3779,72 @@ body.modal-open { overflow: hidden; }
   .cex-btn-safe, .cex-btn-full { width: 100%; text-align: center; }
 }
 
+/* ── TV1 Watchlist Sync — Sprint TV1 v1 ─────────────────────────────────── */
+
+/* Preview box in Settings → Integrations */
+.tv1-preview-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+}
+.tv1-preview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .55rem; flex-wrap: wrap; gap: .3rem;
+}
+.tv1-source-badge {
+  font-size: .68rem; font-weight: 700; border-radius: 4px;
+  padding: .1rem .45rem; text-transform: uppercase; letter-spacing: .05em;
+}
+.tv1-demo-badge  { color: #f59e0b; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); }
+.tv1-live-badge  { color: #34d399; background: rgba(52,211,153,.1);  border: 1px solid rgba(52,211,153,.25); }
+.tv1-preview-count { font-size: .75rem; color: var(--text2); }
+.tv1-preview-note  { margin: .2rem 0 .5rem; font-size: .75rem; }
+
+.tv1-preview-list {
+  display: flex; flex-wrap: wrap; gap: .35rem;
+  margin-bottom: .7rem; max-height: 160px; overflow-y: auto;
+}
+.tv1-preview-item {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: .18rem .5rem; font-size: .77rem;
+}
+.tv1-preview-item.tv1-preview-item-exists {
+  opacity: .5;
+}
+.tv1-preview-type  { color: var(--text2); font-size: .72rem; }
+.tv1-preview-label { color: var(--text); font-weight: 500; }
+.tv1-preview-exists-badge {
+  font-size: .65rem; color: var(--text2);
+  background: var(--surface2); border-radius: 3px; padding: 0 .3rem;
+  font-style: italic;
+}
+.tv1-preview-actions {
+  display: flex; gap: .5rem; flex-wrap: wrap;
+}
+
+/* TV1 badge on watchlist items */
+.wl-tv1-badge {
+  font-size: .62rem; font-weight: 700;
+  color: #60a5fa; background: rgba(96,165,250,.12);
+  border: 1px solid rgba(96,165,250,.25);
+  border-radius: 3px; padding: 0 .3rem;
+  letter-spacing: .04em; flex-shrink: 0;
+}
+
+/* TV1 sync button in watchlist modal footer */
+.btn-tv1-wl {
+  color: #60a5fa;
+  border-color: rgba(96,165,250,.3);
+  font-size: .78rem;
+}
+.btn-tv1-wl:hover {
+  background: rgba(96,165,250,.1);
+  border-color: rgba(96,165,250,.6);
+  color: #93c5fd;
+}
+
 /* ── AI Brief — Sprint IA v1 ─────────────────────────────────────────────── */
 
 /* Bouton "✦ AI Brief" dans les quick-actions dropdowns */

@@ -60,10 +60,15 @@ const WatchlistModal = (() => {
     const idEsc  = item.id.replace(/'/g, "\\'");
     const lblEsc = (item.label || item.value || '').replace(/</g, '&lt;');
     const cls    = item.enabled ? 'wl-item' : 'wl-item wl-item-disabled';
+    // TV1 badge — shown for items synced from Trend Vision One
+    const tv1Badge = item.source === 'tv1'
+      ? '<span class="wl-tv1-badge" title="Synced from Trend Vision One">TV1</span>'
+      : '';
     return `
       <div class="${cls}" data-id="${item.id}">
         <span class="wl-prio-dot" title="Priority: ${pMeta.label}">${pMeta.dot}</span>
         <span class="wl-item-label" title="${item.value}">${lblEsc}</span>
+        ${tv1Badge}
         <span class="wl-item-type ${tMeta.css}">${tMeta.label}</span>
         <button class="wl-toggle-btn" onclick="WatchlistModal.toggle('${idEsc}')"
                 title="${item.enabled ? 'Temporarily disable' : 'Re-enable'}">
@@ -129,6 +134,44 @@ const WatchlistModal = (() => {
 
   // ── Init ───────────────────────────────────────────────────────────────────
 
+  // ── Sync depuis TV1 (appelé depuis le footer du modal watchlist) ─────────────
+
+  async function syncFromTV1() {
+    if (typeof TV1Sync === 'undefined') {
+      UI.showToast('TV1 module not loaded', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-tv1-sync-wl');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+
+    try {
+      const result = await TV1Sync.fetchPreview();
+      if (!result.items?.length) {
+        UI.showToast('⚠ No items returned from TV1', 'warning');
+        return;
+      }
+      const stats = TV1Sync.importItems(result.items);
+      _render(); // refresh modal list
+      const isDemo = result.source === 'tv1_demo';
+      const msg = stats.added > 0
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} added from TV1${isDemo ? ' (demo)' : ''}` +
+          (stats.skipped ? ` · ${stats.skipped} already present` : '')
+        : `ℹ All TV1 items already in watchlist`;
+      UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
+    } catch (err) {
+      UI.showToast(`⚠ TV1 sync failed: ${err.message}`, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔵 Sync from TV1'; }
+    }
+  }
+
+  // ── Refresh public (appelé par TV1Sync.importItems après import) ────────────
+
+  function refresh() {
+    _render();
+  }
+
   function init() {
     document.getElementById("btn-watchlist")?.addEventListener("click", open);
     document.getElementById("watchlist-input")?.addEventListener("keydown", e => {
@@ -140,5 +183,5 @@ const WatchlistModal = (() => {
     _updateBtn();
   }
 
-  return { open, close, add, remove, toggle, init };
+  return { open, close, add, remove, toggle, refresh, syncFromTV1, init };
 })();
