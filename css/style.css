@@ -3800,6 +3800,7 @@ body.modal-open { overflow: hidden; }
 .tv1-live-badge  { color: #34d399; background: rgba(52,211,153,.1);  border: 1px solid rgba(52,211,153,.25); }
 .tv1-preview-count { font-size: .75rem; color: var(--text2); }
 .tv1-preview-note  { margin: .2rem 0 .5rem; font-size: .75rem; }
+.tv1-auth-warning  { margin: .2rem 0 .5rem; font-size: .75rem; color: #f59e0b; font-weight: 500; }
 
 .tv1-preview-list {
   display: flex; flex-wrap: wrap; gap: .35rem;

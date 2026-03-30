@@ -1,4 +1,4 @@
-// settings-modal.js v19 — Modal Paramètres : Alertes · Flux RSS · Integrations
+// settings-modal.js v20 — Modal Paramètres : Alertes · Flux RSS · Integrations
 
 const SettingsModal = (() => {
 
@@ -59,6 +59,24 @@ const SettingsModal = (() => {
       const tv1 = TV1Sync.loadConfig();
       const sel = document.getElementById('tv1-region');
       if (sel && tv1.region) sel.value = tv1.region;
+
+      // Afficher le statut de la dernière sync
+      const lastSyncEl = document.getElementById('tv1-last-sync');
+      if (lastSyncEl) {
+        if (tv1.lastSyncAt) {
+          const d = new Date(tv1.lastSyncAt);
+          const dateStr = d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'démo';
+          const addedPart = tv1.lastSyncAdded > 0 ? ` · ${tv1.lastSyncAdded} ajouté(s)` : '';
+          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} désactivé(s)` : '';
+          const resultIcon  = tv1.lastSyncResult === 'success' ? '✅'
+            : tv1.lastSyncResult === 'demo' ? '🔵'
+            : '⚠';
+          lastSyncEl.textContent = `${resultIcon} Dernière sync : ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
+        } else {
+          lastSyncEl.textContent = '';
+        }
+      }
     }
 
     _val("alert-enabled",     s.enabled,       "checked");
@@ -817,7 +835,8 @@ const SettingsModal = (() => {
             : '<span class="tv1-source-badge tv1-live-badge">● Live · Trend Vision One</span>'}
           <span class="tv1-preview-count">${result.items.length} items detected</span>
         </div>
-        ${result.note ? `<p class="settings-hint tv1-preview-note">${_e(result.note)}</p>` : ''}
+        ${result._authWarning ? `<p class="settings-hint tv1-auth-warning">⚠ ${_e(result._authWarning)}</p>` : ''}
+      ${result.note && !result._authWarning ? `<p class="settings-hint tv1-preview-note">${_e(result.note)}</p>` : ''}
         <div class="tv1-preview-list">${itemsHTML}</div>
         <div class="tv1-preview-actions">
           <button class="btn btn-primary" id="btn-tv1-confirm"
@@ -831,13 +850,28 @@ const SettingsModal = (() => {
     container.style.display = 'block';
 
     document.getElementById('btn-tv1-confirm')?.addEventListener('click', () => {
-      const stats = TV1Sync.importItems(result.items);
+      const stats = TV1Sync.syncFull(result);
       container.style.display = 'none';
       if (triggerBtn) triggerBtn.disabled = false;
-      const msg = stats.added > 0
-        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} added from TV1` +
-          (stats.skipped ? ` · ${stats.skipped} already present` : '')
-        : `ℹ All items already in watchlist`;
+      // Refresh last sync display
+      const lastSyncEl = document.getElementById('tv1-last-sync');
+      if (lastSyncEl && typeof TV1Sync !== 'undefined') {
+        const tv1 = TV1Sync.loadConfig();
+        if (tv1.lastSyncAt) {
+          const d = new Date(tv1.lastSyncAt);
+          const dateStr = d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'démo';
+          const addedPart    = tv1.lastSyncAdded    > 0 ? ` · ${tv1.lastSyncAdded} ajouté(s)` : '';
+          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} désactivé(s)` : '';
+          const resultIcon   = tv1.lastSyncResult === 'success' ? '✅' : tv1.lastSyncResult === 'demo' ? '🔵' : '⚠';
+          lastSyncEl.textContent = `${resultIcon} Dernière sync : ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
+        }
+      }
+      let msg = stats.added > 0
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} ajouté(s) depuis TV1`
+        : `ℹ Tous les items TV1 déjà présents`;
+      if (stats.skipped)   msg += ` · ${stats.skipped} déjà présent(s)`;
+      if (stats.disabled)  msg += ` · ${stats.disabled} désactivé(s) (obsolètes)`;
       UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
     });
 

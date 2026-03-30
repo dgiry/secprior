@@ -1,24 +1,32 @@
-// api/tv1-sync.js — Trend Vision One Watchlist Sync endpoint
+// api/tv1-sync.js — Trend Vision One Watchlist Sync endpoint (v2 — hardened)
 //
 // GET /api/tv1-sync?region=us|eu|au|in|sg|jp[&demo=1]
 //
 // Behaviour:
-//   • demo=1 OR TV1_API_KEY not set → returns curated demo dataset (always works)
-//   • TV1_API_KEY + TV1_REGION configured → calls TV1 V3.0 endpoint inventory API
+//   • demo=1 OR TV1_API_KEY not set → curated demo dataset (always works)
+//   • TV1_API_KEY configured          → calls TV1 V3.0 endpoint inventory API
 //
-// Returns: { items, source, count, fetchedAt, note? }
+// Returns (success): { items, source, count, fetchedAt, note?, errorCode? }
 //   item: { type: 'vendor'|'product'|'technology', label: string, value: string }
+//   errorCode (on demo fallback after auth failure):
+//     AUTH_INVALID  — 401, bad API key
+//     AUTH_SCOPE    — 403, insufficient scope (need endpoint-security:read)
 //
-// Real integration:
-//   Requires env vars: TV1_API_KEY, TV1_REGION (optional, default: 'us')
-//   TV1 API: GET https://api[.{region}].xdr.trendmicro.com/v3.0/endpointSecurity/endpoints
-//   Authorization: Bearer {TV1_API_KEY}
-//   The response items[] are normalized into watchlist-ready vendor/product/technology entries.
+// Returns (error): HTTP 4xx/5xx — { error, errorCode, ... }
+//   errorCode:
+//     RATE_LIMITED  — HTTP 429 from TV1; retryAfterSeconds included
+//     TIMEOUT       — TV1 did not respond within 14s
+//     NETWORK_ERROR — could not reach TV1 API
+//     TV1_ERROR     — other non-2xx from TV1
+//
+// Security:
+//   • TV1 response body is NEVER forwarded to the client (could leak internal details)
+//   • TV1_API_KEY is never logged
+//   • Region is validated via allowlist (TV1_BASE), not used in string interpolation
 //
 // Architecture note:
-//   This function is intentionally thin. All normalization logic lives in _normalizeEndpoints().
-//   When TV1 exposes additional API surfaces (software inventory, asset tags), extend
-//   _normalizeEndpoints() without touching the response contract.
+//   All normalization logic lives in _normalizeEndpoints().
+//   Extend it when TV1 exposes software inventory or asset-tag APIs.
 
 "use strict";
 
@@ -82,36 +90,74 @@ module.exports = async (req, res) => {
     tv1Res = await fetch(endpoint, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type":  "application/json",
-        "TMV1-Filter":   "",   // no extra filter — we want all managed endpoints
+        "Content-Type":  "application/json"
+        // Note: TV1-Filter header omitted — sending an empty value breaks some API versions
       },
       signal: controller.signal
     });
     clearTimeout(timer);
   } catch (e) {
     if (e.name === "AbortError") {
-      return res.status(504).json({ error: "TV1 API timeout" });
+      // Do NOT log the full error — it could expose the constructed URL with region
+      console.warn("[tv1-sync] timeout reaching TV1 API (region:", region, ")");
+      return res.status(504).json({
+        error:     "Délai TV1 dépassé",
+        errorCode: "TIMEOUT"
+      });
     }
-    console.error("[tv1-sync] fetch error:", e.message);
-    return res.status(502).json({ error: "TV1 API unreachable", detail: e.message });
+    // Network-level error: log message only (never the full error object)
+    console.warn("[tv1-sync] network error:", e.message);
+    return res.status(502).json({
+      error:     "Impossible de joindre TV1 API",
+      errorCode: "NETWORK_ERROR"
+    });
   }
 
   if (!tv1Res.ok) {
-    const body = await tv1Res.text().catch(() => "");
-    console.error("[tv1-sync] TV1 HTTP error:", tv1Res.status, body.slice(0, 200));
-    // Graceful fallback to demo on auth error (avoids breaking the UX)
-    if (tv1Res.status === 401 || tv1Res.status === 403) {
+    // SECURITY: consume body but do NOT forward it — TV1 error bodies can contain
+    // internal details (tenant IDs, stack traces, internal URLs).
+    await tv1Res.text().catch(() => ""); // drain to avoid keep-alive issues
+    console.warn("[tv1-sync] TV1 HTTP error:", tv1Res.status, "— region:", region);
+
+    // 401 — invalid API key: graceful demo fallback + explicit errorCode
+    if (tv1Res.status === 401) {
       return res.status(200).json({
         items:     TV1_DEMO_ITEMS,
         source:    "tv1_demo",
         count:     TV1_DEMO_ITEMS.length,
         fetchedAt: new Date().toISOString(),
-        note:      `TV1 authentication failed (HTTP ${tv1Res.status}) — verify TV1_API_KEY. Returning demo data.`
+        errorCode: "AUTH_INVALID",
+        note:      "Clé API TV1 invalide (HTTP 401). Vérifiez TV1_API_KEY dans les variables d'environnement Vercel."
       });
     }
+
+    // 403 — insufficient scope: graceful demo fallback + explicit errorCode
+    if (tv1Res.status === 403) {
+      return res.status(200).json({
+        items:     TV1_DEMO_ITEMS,
+        source:    "tv1_demo",
+        count:     TV1_DEMO_ITEMS.length,
+        fetchedAt: new Date().toISOString(),
+        errorCode: "AUTH_SCOPE",
+        note:      "Scope insuffisant (HTTP 403). Le token TV1 doit avoir le scope endpoint-security:read."
+      });
+    }
+
+    // 429 — rate limit: do NOT fall back to demo, signal client to retry later
+    if (tv1Res.status === 429) {
+      const retryAfter = parseInt(tv1Res.headers.get("Retry-After") || "60", 10);
+      return res.status(429).json({
+        error:              "TV1 rate limit atteint",
+        errorCode:          "RATE_LIMITED",
+        retryAfterSeconds:  isNaN(retryAfter) ? 60 : retryAfter
+      });
+    }
+
+    // Other TV1 errors — generic, no body leak
     return res.status(502).json({
-      error:  "TV1 API error",
-      detail: `HTTP ${tv1Res.status} — ${body.slice(0, 100)}`
+      error:     "Erreur TV1 API",
+      errorCode: "TV1_ERROR",
+      httpStatus: tv1Res.status
     });
   }
 

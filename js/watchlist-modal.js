@@ -148,19 +148,27 @@ const WatchlistModal = (() => {
     try {
       const result = await TV1Sync.fetchPreview();
       if (!result.items?.length) {
-        UI.showToast('⚠ No items returned from TV1', 'warning');
+        UI.showToast('⚠ Aucun item retourné par TV1', 'warning');
         return;
       }
-      const stats = TV1Sync.importItems(result.items);
-      _render(); // refresh modal list
-      const isDemo = result.source === 'tv1_demo';
-      const msg = stats.added > 0
-        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} added from TV1${isDemo ? ' (demo)' : ''}` +
-          (stats.skipped ? ` · ${stats.skipped} already present` : '')
-        : `ℹ All TV1 items already in watchlist`;
+
+      // Avertissement si fallback démo suite à erreur d'auth
+      if (result._authWarning) {
+        UI.showToast(`⚠ ${result._authWarning}`, 'warning');
+      }
+
+      const stats  = TV1Sync.syncFull(result);
+      _render(); // rafraîchir la liste après sync
+
+      let msg = stats.added > 0
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} ajouté(s) depuis TV1`
+        : `ℹ Tous les items TV1 déjà présents`;
+      if (stats.skipped)  msg += ` · ${stats.skipped} déjà présent(s)`;
+      if (stats.disabled) msg += ` · ${stats.disabled} désactivé(s) (obsolètes)`;
       UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
+
     } catch (err) {
-      UI.showToast(`⚠ TV1 sync failed: ${err.message}`, 'error');
+      UI.showToast(`⚠ Sync TV1 échouée : ${err.message}`, 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🔵 Sync from TV1'; }
     }
