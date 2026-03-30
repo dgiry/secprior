@@ -14,7 +14,8 @@ const App = (() => {
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
     timerId: null,
-    _cveLinkId: null      // CVE actuellement liée au feed (null = pas de lien actif)
+    _cveLinkId:  null,    // CVE unique (clic sur une ligne) — priorité haute
+    _cveLinkIds: null     // Tableau de CVEs (filtre panneau) — priorité basse
   };
 
   // ─── Refresh principal via Pipeline ────────────────────────────────────────
@@ -98,12 +99,19 @@ const App = (() => {
 
   // ─── Rendu avec filtres ────────────────────────────────────────────────────
   function render() {
-    // Pré-filtre CVE : si un lien est actif, restreindre aux articles de cette CVE
+    // Pré-filtre CVE (deux niveaux : ligne > panneau)
     let articlesToFilter = state.articles;
     if (state._cveLinkId) {
+      // Niveau ligne — CVE unique
       const cve = state._cveLinkId.toUpperCase();
       articlesToFilter = state.articles.filter(a =>
         (a.cveIds || a.cves || []).some(c => c.toUpperCase() === cve)
+      );
+    } else if (state._cveLinkIds && state._cveLinkIds.length > 0) {
+      // Niveau panneau — ensemble de CVEs filtrées
+      const cveSet = new Set(state._cveLinkIds);
+      articlesToFilter = state.articles.filter(a =>
+        (a.cveIds || a.cves || []).some(c => cveSet.has(c.toUpperCase()))
       );
     }
 
@@ -126,23 +134,52 @@ const App = (() => {
   function _updateCVELinkBadge() {
     const badge = document.getElementById("cve-link-badge");
     if (!badge) return;
+    const labelEl = badge.querySelector(".cve-link-badge-id");
     if (state._cveLinkId) {
+      // Niveau ligne — CVE unique
       badge.style.display = "inline-flex";
-      const labelEl = badge.querySelector(".cve-link-badge-id");
       if (labelEl) labelEl.textContent = state._cveLinkId;
+    } else if (state._cveLinkIds && state._cveLinkIds.length > 0) {
+      // Niveau panneau — N CVEs
+      badge.style.display = "inline-flex";
+      if (labelEl) labelEl.textContent = state._cveLinkIds.length === 1
+        ? state._cveLinkIds[0]
+        : `${state._cveLinkIds.length} CVEs`;
     } else {
       badge.style.display = "none";
     }
   }
 
+  /** Niveau ligne : clic sur une CVE spécifique */
   function filterByCVE(cveId) {
     state._cveLinkId = cveId ? cveId.toUpperCase() : null;
     _updateCVELinkBadge();
     render();
   }
 
-  function clearCVEFilter() {
+  /** Niveau ligne : collapse → revient au filtre panneau s'il est actif */
+  function clearRowCVEFilter() {
     state._cveLinkId = null;
+    _updateCVELinkBadge();
+    render();
+  }
+
+  /** Niveau panneau : filtre texte/type/date → liste de CVEs visibles */
+  function filterByCVEs(cveIds) {
+    state._cveLinkIds = (cveIds && cveIds.length > 0)
+      ? cveIds.map(c => c.toUpperCase())
+      : null;
+    // Ne pas écraser un filtre ligne actif dans le rendu
+    if (!state._cveLinkId) {
+      _updateCVELinkBadge();
+      render();
+    }
+  }
+
+  /** Tout effacer (fermeture panneau, clic ✕ badge) */
+  function clearCVEFilter() {
+    state._cveLinkId  = null;
+    state._cveLinkIds = null;
     _updateCVELinkBadge();
     render();
   }
@@ -477,7 +514,7 @@ const App = (() => {
   }
 
   return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
-           filterByCVE, clearCVEFilter };
+           filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter };
 })();
 
 // Démarrer quand le DOM est prêt
