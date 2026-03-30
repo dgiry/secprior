@@ -51,24 +51,24 @@ function selectTopArticles(queue, max = 5) {
 function _whyImportant(a) {
   const r = [];
   if (a.isKEV)
-    r.push("activement exploitée dans la nature (CISA KEV)");
+    r.push("actively exploited in the wild (CISA KEV)");
   if (a.epssScore != null && a.epssScore >= 0.70)
-    r.push(`à très haute probabilité d'exploitation (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    r.push(`with very high exploitation probability (EPSS ${Math.round(a.epssScore * 100)} %)`);
   else if (a.epssScore != null && a.epssScore >= 0.40)
-    r.push(`à risque d'exploitation modéré (EPSS ${Math.round(a.epssScore * 100)} %)`);
+    r.push(`with moderate exploitation risk (EPSS ${Math.round(a.epssScore * 100)} %)`);
   if (a.cvssScore != null && a.cvssScore >= 9.0)
-    r.push(`de score CVSS ${a.cvssScore} (critique)`);
+    r.push(`with CVSS score ${a.cvssScore} (critical)`);
   else if (a.cvssScore != null && a.cvssScore >= 7.0)
-    r.push(`de score CVSS ${a.cvssScore}`);
-  else if (a.score != null && a.score >= 90) r.push("de criticité maximale");
-  else if (a.score != null && a.score >= 80) r.push("de très haute criticité");
-  if (a.isTrending)     r.push("en forte circulation sur les plateformes de threat intel");
-  if (a.cveIds?.length) r.push(`référencée sous ${a.cveIds.slice(0, 2).join(", ")}`);
+    r.push(`with CVSS score ${a.cvssScore}`);
+  else if (a.score != null && a.score >= 90) r.push("of maximum criticality");
+  else if (a.score != null && a.score >= 80) r.push("of very high criticality");
+  if (a.isTrending)     r.push("trending across threat intel platforms");
+  if (a.cveIds?.length) r.push(`referenced as ${a.cveIds.slice(0, 2).join(", ")}`);
   if (r.length === 0)
     return a.criticality === "high"
-      ? "Classée haute criticité par l'analyse automatique."
-      : "Identifiée comme menace potentielle.";
-  return "Cette vulnérabilité est " + r.join(", ") + ".";
+      ? "Classified as high criticality by automated analysis."
+      : "Identified as a potential threat.";
+  return "This vulnerability is " + r.join(", ") + ".";
 }
 
 function _affectedProducts(a) {
@@ -78,19 +78,19 @@ function _affectedProducts(a) {
 function _watchpoints(a) {
   const pts = [];
   if (a.isKEV)
-    pts.push("Appliquer les correctifs en urgence (délai CISA : 3 semaines)");
+    pts.push("Apply patches immediately (CISA deadline: 3 weeks)");
   if (a.epssScore != null && a.epssScore >= 0.70)
-    pts.push("Surveiller les logs d'exploitation sur les systèmes exposés");
+    pts.push("Monitor exploitation logs on exposed systems");
   if (a.cvssScore != null && a.cvssScore >= 9.0 && !a.isKEV)
-    pts.push(`Score CVSS ${a.cvssScore} — évaluer et réduire la fenêtre d'exposition immédiatement`);
+    pts.push(`CVSS ${a.cvssScore} — assess and reduce exposure window immediately`);
   if (pts.length === 0 && a.criticality === "high")
-    pts.push("Vérifier l'exposition de vos actifs concernés");
+    pts.push("Check exposure of affected assets");
   if (a.isTrending)
-    pts.push("Consulter les IoCs publiés par la communauté threat intel");
+    pts.push("Review IoCs published by the threat intel community");
   if (a.cveIds?.length)
-    pts.push(`Vérifier le statut de patch pour ${a.cveIds[0]}`);
+    pts.push(`Check patch status for ${a.cveIds[0]}`);
   if (pts.length === 0)
-    pts.push("Surveiller l'évolution et appliquer les recommandations du fournisseur");
+    pts.push("Monitor developments and apply vendor recommendations");
   return pts;
 }
 
@@ -101,22 +101,22 @@ function _watchpoints(a) {
  * Identique à _formatBriefingHTML() dans email-alerts.js.
  */
 function formatBriefingHTML(top, rest, label) {
-  const now = new Date().toLocaleDateString("fr-FR",
+  const now = new Date().toLocaleDateString("en-CA",
     { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const total     = top.length + rest.length;
   const kevCount  = [...top, ...rest].filter(a => a.isKEV).length;
   const highCount = [...top, ...rest].filter(a => a.criticality === "high").length;
 
-  let exec = `${total} menace(s) détectée(s) durant cette période`;
-  if (kevCount  > 0) exec += `, dont ${kevCount} vulnérabilité(s) KEV activement exploitée(s)`;
-  if (highCount > 0) exec += `. ${highCount} alerte(s) haute criticité nécessitent votre attention`;
+  let exec = `${total} threat(s) detected during this period`;
+  if (kevCount  > 0) exec += `, including ${kevCount} actively exploited KEV vulnerability/vulnerabilities`;
+  if (highCount > 0) exec += `. ${highCount} high-criticality alert(s) require your attention`;
   exec += ".";
 
   const topHTML = top.map(a => {
     const color = a.criticality === "high" ? "#f85149" : "#f0883e";
-    const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
+    const badge = a.criticality === "high" ? "🔴 HIGH" : "🟠 MEDIUM";
     const meta  = [
-      a.isKEV             ? "🚨 KEV ACTIF"                              : "",
+      a.isKEV             ? "🚨 KEV ACTIVE"                             : "",
       a.epssScore != null ? `EPSS ${Math.round(a.epssScore * 100)} %`  : "",
       a.score     != null ? `Score ${a.score}`                          : ""
     ].filter(Boolean).join(" · ");
@@ -135,10 +135,10 @@ function formatBriefingHTML(top, rest, label) {
         <p style="margin:0 0 8px;font-size:12px;color:#8b949e">🏷️ ${_affectedProducts(a)}</p>
         <p style="margin:0 0 12px;font-size:13px;color:#cdd9e5;background:#0d1117;
                   padding:10px;border-radius:4px;border-left:3px solid ${color}">
-          📌 <strong>Pourquoi c'est important :</strong> ${_whyImportant(a)}
+          📌 <strong>Why it matters:</strong> ${_whyImportant(a)}
         </p>
         <div style="font-size:12px">
-          <p style="margin:0 0 6px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:.5px">⚡ Watchpoints immédiats</p>
+          <p style="margin:0 0 6px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:.5px">⚡ Immediate watchpoints</p>
           <ul style="margin:0;padding-left:16px">${pts}</ul>
         </div>
       </div>`;
@@ -146,7 +146,7 @@ function formatBriefingHTML(top, rest, label) {
 
   const restHTML = rest.length === 0 ? "" : `
     <h3 style="color:#8b949e;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:24px 0 12px">
-      📋 Autres alertes (${rest.length})
+      📋 Other alerts (${rest.length})
     </h3>
     <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace">
       <tbody>
@@ -168,21 +168,21 @@ function formatBriefingHTML(top, rest, label) {
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
                 background:#0d1117;color:#e6edf3;padding:24px;border-radius:10px;max-width:680px;margin:0 auto">
       <div style="border-bottom:1px solid #30363d;padding-bottom:16px;margin-bottom:20px">
-        <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Briefing Cybersécurité — ${now}</h1>
+        <h1 style="margin:0 0 4px;font-size:20px;color:#e6edf3">☀️ Security Briefing — ${now}</h1>
         <p style="margin:0;color:#8b949e;font-size:13px">ThreatLens · Digest ${label}</p>
       </div>
       <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:14px;margin-bottom:24px">
-        <p style="margin:0 0 4px;color:#8b949e;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">RÉSUMÉ EXÉCUTIF</p>
+        <p style="margin:0 0 4px;color:#8b949e;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">EXECUTIVE SUMMARY</p>
         <p style="margin:0;font-size:14px;color:#cdd9e5">${exec}</p>
       </div>
       <h2 style="font-size:15px;font-weight:700;color:#e6edf3;margin:0 0 16px;text-transform:uppercase;letter-spacing:.5px">
-        🎯 Top ${top.length} Alertes Prioritaires
+        🎯 Top ${top.length} Priority Alerts
       </h2>
       ${topHTML}
       ${restHTML}
       <div style="border-top:1px solid #30363d;margin-top:24px;padding-top:16px;text-align:center">
         <p style="margin:0;color:#8b949e;font-size:11px">
-          ThreatLens · ${new Date().toLocaleString("fr-FR")} ·
+          ThreatLens · ${new Date().toLocaleString("en-CA")} ·
           <a href="https://cyberveille-pro.vercel.app" style="color:#58a6ff">Ouvrir l'app</a>
         </p>
       </div>
@@ -196,20 +196,20 @@ function formatBriefingHTML(top, rest, label) {
  * Identique à _formatBriefingText() dans email-alerts.js.
  */
 function formatBriefingText(top, rest, label) {
-  const now      = new Date().toLocaleDateString("fr-FR",
+  const now      = new Date().toLocaleDateString("en-CA",
     { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const total    = top.length + rest.length;
   const kevCount = [...top, ...rest].filter(a => a.isKEV).length;
   const sep      = "=".repeat(60);
 
-  let t = `☀️ BRIEFING CYBERSÉCURITÉ — ${now.toUpperCase()}\nThreatLens · Digest ${label}\n${sep}\n\n`;
-  t += `RÉSUMÉ EXÉCUTIF\n${"-".repeat(30)}\n${total} menace(s) détectée(s)`;
-  if (kevCount > 0) t += `, dont ${kevCount} KEV activement exploitée(s)`;
-  t += `.\n\n🎯 TOP ${top.length} ALERTES PRIORITAIRES\n${sep}\n\n`;
+  let t = `☀️ SECURITY BRIEFING — ${now.toUpperCase()}\nThreatLens · Digest ${label}\n${sep}\n\n`;
+  t += `EXECUTIVE SUMMARY\n${"-".repeat(30)}\n${total} threat(s) detected`;
+  if (kevCount > 0) t += `, including ${kevCount} actively exploited KEV vulnerability/vulnerabilities`;
+  t += `.\n\n🎯 TOP ${top.length} PRIORITY ALERTS\n${sep}\n\n`;
 
   top.forEach((a, i) => {
-    const badge = a.criticality === "high" ? "🔴 HAUTE" : "🟠 MOYENNE";
-    const kev   = a.isKEV ? " | 🚨 KEV ACTIF" : "";
+    const badge = a.criticality === "high" ? "🔴 HIGH" : "🟠 MEDIUM";
+    const kev   = a.isKEV ? " | 🚨 KEV ACTIVE" : "";
     const epss  = a.epssScore != null ? ` | EPSS ${Math.round(a.epssScore * 100)} %` : "";
     t += `${i + 1}. ${badge}${kev}${epss}\n`;
     t += `   ${a.title}\n   Source : ${a.sourceName} — ${_affectedProducts(a)}\n`;
@@ -226,7 +226,7 @@ function formatBriefingText(top, rest, label) {
     t += "\n";
   }
 
-  t += `${sep}\nGénéré par ThreatLens le ${new Date().toLocaleString("fr-FR")}\n`;
+  t += `${sep}\nGenerated by ThreatLens on ${new Date().toLocaleString("en-CA")}\n`;
   return t;
 }
 

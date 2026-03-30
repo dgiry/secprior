@@ -333,17 +333,17 @@ function _previewArticle(a, rank) {
 
     // ── Étiquettes courtes de sélection (lecture rapide en un coup d'œil) ──────
     selectionReasons: [
-      a.isKEV                                            && "KEV actif",
+      a.isKEV                                            && "KEV active",
       a.epssScore >= 0.70                                && `EPSS ${Math.round(a.epssScore * 100)} %`,
-      a.epssScore >= 0.40 && a.epssScore < 0.70          && `EPSS modéré ${Math.round(a.epssScore * 100)} %`,
-      a.cvssScore >= 9                                   && `CVSS ${a.cvssScore} critique`,
+      a.epssScore >= 0.40 && a.epssScore < 0.70          && `EPSS moderate ${Math.round(a.epssScore * 100)} %`,
+      a.cvssScore >= 9                                   && `CVSS ${a.cvssScore} critical`,
       a.cvssScore >= 7    && a.cvssScore < 9             && `CVSS ${a.cvssScore}`,
       /zero.?day|0.?day/i.test(a.title || "")           && "zero-day",
       (a.watchlistMatches || []).length > 0              && `watchlist (${a.watchlistMatches.length})`,
       a.isTrending                                       && "trending",
       (a.sourceCount || 1) >= 2                         && `${a.sourceCount} sources`,
-      a.criticality === "high"  && !a.isKEV              && "haute criticité",
-      a.criticality === "medium"&& !a.isKEV              && "criticité moyenne"
+      a.criticality === "high"  && !a.isKEV              && "high criticality",
+      a.criticality === "medium"&& !a.isKEV              && "medium criticality"
     ].filter(Boolean),
 
     // ── Raisons lisibles (identiques au contenu de l'email généré) ───────────
@@ -605,12 +605,12 @@ module.exports = async (req, res) => {
   };
 
   // ── 5. Génération du briefing ─────────────────────────────────────────────
-  const label = new Date().toLocaleDateString("fr-FR",
+  const label = new Date().toLocaleDateString("en-CA",
     { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const date  = new Date().toLocaleDateString("fr-FR",
+  const date  = new Date().toLocaleDateString("en-CA",
     { day: "numeric", month: "long", year: "numeric" });
 
-  const subject = `☀️ Briefing Cybersécurité — ${top.length} alertes prioritaires · ${date}`;
+  const subject = `☀️ Security Briefing — ${top.length} priority alerts · ${date}`;
   const html    = formatBriefingHTML(top, rest, label);
   const text    = formatBriefingText(top, rest, label);
 
