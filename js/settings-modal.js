@@ -1,4 +1,4 @@
-// settings-modal.js — Modal Paramètres : onglet Alertes + onglet Flux RSS
+// settings-modal.js v18 — Modal Paramètres : Alertes · Flux RSS · Integrations
 
 const SettingsModal = (() => {
 
@@ -48,6 +48,12 @@ const SettingsModal = (() => {
 
   function _populate() {
     const s = AlertManager.loadSettings();
+    // ── Onglet Integrations — Jira ───────────────────────────────────────────
+    if (typeof JiraConfig !== 'undefined') {
+      const jira = JiraConfig.load();
+      _val('jira-base-url',    jira.baseUrl    || '');
+      _val('jira-project-key', jira.projectKey || '');
+    }
 
     _val("alert-enabled",     s.enabled,       "checked");
     _val("alert-threshold",   s.threshold);
@@ -723,6 +729,18 @@ const SettingsModal = (() => {
     _updateSettingsBtn(AlertManager.loadSettings());
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION — Onglet Integrations (Jira)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function saveIntegrations() {
+    if (typeof JiraConfig === 'undefined') return;
+    const baseUrl    = (_val('jira-base-url')    || '').trim().replace(/\/+$/, '');
+    const projectKey = (_val('jira-project-key') || '').trim().toUpperCase();
+    JiraConfig.save({ baseUrl, projectKey });
+    UI.showToast('🔗 Integrations saved', 'success');
+  }
+
   // ── API publique ────────────────────────────────────────────────────────────
 
   return {
@@ -735,6 +753,8 @@ const SettingsModal = (() => {
     // Flux RSS
     renderFeeds, testFeedUI, toggleFeedUI,
     deleteFeed, editFeedToggle, saveEditFeed,
-    addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh
+    addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
+    // Integrations
+    saveIntegrations
   };
 })();

@@ -1,4 +1,4 @@
-// quick-actions.js — Actions rapides de sortie opérationnelle ThreatLens
+// quick-actions.js v9 — Actions rapides de sortie opérationnelle ThreatLens
 //
 // Fournit, sans backend ni dépendance externe :
 //   • Résumé analyste (article / incident) — format texte détaillé, orienté action
@@ -10,33 +10,31 @@
 //   • Copie presse-papiers fiable (Clipboard API + fallback execCommand)
 //   • HTML des boutons d'action rapide à injecter dans la modal et le panneau incident
 //
+// v9 — Jira push léger (no API, no OAuth) :
+//   • JiraConfig        — global, partagé avec settings-modal.js
+//   • _buildJiraUrl()   — construit l'URL CreateIssue Jira avec champs pré-remplis
+//   • Bouton "🔗 Open in Jira" dans la modal ticket (Settings → Integrations requis)
+//
 // Intégration :
 //   • article-modal.js → QuickActions.articleButtonsHTML() dans le footer
 //                        QuickActions.bindArticle(article, nvd) dans open()
 //   • incident-panel.js → QuickActions.incidentButtonsHTML(id) dans _rowHTML()
 //                         QuickActions.bindIncidentPanel(container, cache) dans _render()
-//
-// Stub ticket (_ticketStub dans le payload JSON) :
-//   Structure prête pour une future intégration ITSM (Jira, ServiceNow, etc.)
-//   Les champs externalId / externalUrl / syncedAt sont réservés pour la sync.
-//
-// Sprint 18 — Ticket-Ready Output :
-//   • _ticketDraftText(entity, sourceType, nvdData) — ticket texte éditable
-//   • ticketDraftJSON(entity, sourceType, nvdData)  — JSON structuré (API publique)
-//   • _showTicketModal(entity, sourceType, nvdData) — modal de prévisualisation
-//   Le format ticket est distinct du résumé analyste (opérationnel complet)
-//   et du résumé exécutif (court, orienté risque). Le ticket est orienté ITSM :
-//   structuré, champs nommés, prêt à coller dans Jira / ServiceNow / email.
-//
-// Sprint 22 — Partage enrichi :
-//   • _shareShortArticle(article)   — format court Slack/Teams (plain text)
-//   • _shareShortIncident(incident) — idem pour incidents
-//   • _emailBriefArticle(article)   — brief email interne avec ligne Objet
-//   • _emailBriefIncident(incident) — idem pour incidents
-//   • _shareMarkdown*(entity)       — markdown enrichi pour webhooks Slack-compat
-//   • _showShareModal(entity, type) — modal compact avec onglets Slack / Email
-//   Les payloads JSON (ticket + incident) sont enrichis d'un bloc _share :
-//     { shortText, markdownText, emailSubject, emailText }
+
+// ── JiraConfig — config légère de l'intégration Jira (global, partagé) ────
+// Stocke baseUrl + projectKey dans localStorage (cv_jira_config).
+// Accessible par quick-actions.js ET settings-modal.js.
+const JiraConfig = (() => {
+  const KEY = 'cv_jira_config';
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; }
+  }
+  function save(cfg) {
+    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  }
+  function isConfigured() { return !!(load().baseUrl); }
+  return { load, save, isConfigured };
+})();
 
 const QuickActions = (() => {
 
@@ -377,6 +375,79 @@ const QuickActions = (() => {
     };
   }
 
+  // ── Jira URL builder ──────────────────────────────────────────────────────
+  //
+  // Construit une URL Jira "Create Issue" avec champs pré-remplis via query params.
+  // Technique : /secure/CreateIssue.jspa (sans projet) ou
+  //             /secure/CreateIssueDetails!init.jspa?pid=KEY (avec projet).
+  // Aucune API, aucun OAuth — ouvre Jira dans un nouvel onglet.
+  // Jira Cloud + Server. Description limitée à 1800 chars (limite URL safe).
+
+  function _buildJiraUrl(entity, sourceType, nvdData) {
+    const cfg = JiraConfig.load();
+    if (!cfg.baseUrl) return null;
+    const base = cfg.baseUrl.replace(/\/+$/, '');
+
+    const isInc  = sourceType === 'incident';
+    const level  = isInc ? entity.incidentPriorityLevel : entity.priorityLevel;
+    const cves   = entity.cves || entity.cveIds || [];
+    const isKEV  = isInc ? entity.kev  : entity.isKEV;
+    const epss   = isInc ? entity.maxEpss : entity.epssScore;
+    const nvd    = nvdData || null;
+
+    // ── Summary (titre Jira, max 200 chars) ─────────────────────────────────
+    const summary = `[SEC] ${_truncate(entity.title || 'Security incident', 190)}`;
+
+    // ── Description (texte Jira, max 1800 chars) ─────────────────────────────
+    const d = [];
+    d.push(`Priority: ${_prioLabel(level)}`);
+    d.push(`Type: ${isInc ? 'Incident' : 'Vulnerability'}`);
+    d.push('');
+    const sumText = _truncate(entity.summary || entity.description || '', 320);
+    if (sumText) { d.push('Summary:'); d.push(sumText); d.push(''); }
+
+    d.push('Triggering signals:');
+    if (isKEV)          d.push('* CISA KEV — active exploitation confirmed');
+    if (epss != null)   d.push(`* EPSS: ${_pct(epss)} exploitation probability (30d)`);
+    if (nvd?.score)     d.push(`* CVSS: ${nvd.score.toFixed(1)} (${nvd.severity || '?'})`);
+    if (cves.length)    d.push(`* CVEs: ${cves.join(', ')}`);
+    const wl = entity.watchlistMatches || [];
+    if (wl.length)      d.push(`* Watchlist: ${wl.join(', ')}`);
+    const atkTags = (entity.attackTags || [])
+      .map(t => typeof t === 'string' ? t : t.label).slice(0, 3);
+    if (atkTags.length) d.push(`* ATT&CK: ${atkTags.join(', ')}`);
+    d.push('');
+
+    const actions = _ticketActions(entity, sourceType);
+    if (actions.length) {
+      d.push('Recommended actions:');
+      actions.forEach((a, i) => d.push(`${i + 1}. ${a}`));
+      d.push('');
+    }
+
+    if (isInc && entity.incidentId) d.push(`Incident ID: ${entity.incidentId}`);
+    if (!isInc && entity.link)      d.push(`Source: ${entity.link}`);
+    d.push(`Generated by ThreatLens — ${_now()}`);
+
+    const desc = _truncate(d.join('\n'), 1800);
+
+    // ── Priority mapping (Jira: 1=Highest … 4=Low) ───────────────────────────
+    const jPrio = { critical_now: '1', investigate: '2', watch: '3', low: '4' };
+    const priority = jPrio[level] || '3';
+
+    const qs = `summary=${encodeURIComponent(summary)}`
+             + `&description=${encodeURIComponent(desc)}`
+             + `&priority=${priority}`;
+
+    // Avec project key → CreateIssueDetails (pré-remplit le projet + issuetype Bug)
+    // Sans project key → CreateIssue generic (Jira demande le projet à l'utilisateur)
+    if (cfg.projectKey) {
+      return `${base}/secure/CreateIssueDetails!init.jspa`
+           + `?pid=${encodeURIComponent(cfg.projectKey)}&issuetype=1&${qs}`;
+    }
+    return `${base}/secure/CreateIssue.jspa?${qs}`;
+  }
+
   // ── Modal ticket-ready ────────────────────────────────────────────────────
 
   function _injectTicketModalDOM() {
@@ -396,6 +467,10 @@ const QuickActions = (() => {
         </div>
         <textarea id="qa-ticket-text" class="qa-ticket-textarea" spellcheck="false"></textarea>
         <div class="qa-ticket-footer">
+          <button id="qa-ticket-open-jira" class="btn btn-jira"
+                  title="Open Jira with pre-filled fields (configure in Settings → Integrations)">
+            🔗 Open in Jira
+          </button>
           <button id="qa-ticket-copy-text" class="btn btn-primary">📋 Copy ticket</button>
           <button id="qa-ticket-copy-json" class="btn">📤 Copy JSON</button>
           <button id="qa-ticket-close-btn" class="btn">Close</button>
@@ -456,6 +531,27 @@ const QuickActions = (() => {
       newBtnJson.addEventListener('click', () => {
         _copy(JSON.stringify(json, null, 2), 'Ticket JSON');
       });
+    }
+
+    // ── Bouton "Open in Jira" ─────────────────────────────────────────────
+    const jiraUrl = _buildJiraUrl(entity, sourceType, nvdData || null);
+    const btnJira = document.getElementById('qa-ticket-open-jira');
+    if (btnJira) {
+      const newBtnJira = btnJira.cloneNode(true);
+      btnJira.replaceWith(newBtnJira);
+      if (jiraUrl) {
+        newBtnJira.disabled      = false;
+        newBtnJira.title         = 'Open Jira create issue with pre-filled fields';
+        newBtnJira.style.opacity = '';
+        newBtnJira.style.cursor  = '';
+        newBtnJira.addEventListener('click', () =>
+          window.open(jiraUrl, '_blank', 'noopener,noreferrer'));
+      } else {
+        newBtnJira.disabled      = true;
+        newBtnJira.title         = 'Configure Jira URL in ⚙️ Settings → Integrations';
+        newBtnJira.style.opacity = '0.4';
+        newBtnJira.style.cursor  = 'not-allowed';
+      }
     }
 
     modal.style.display = 'flex';

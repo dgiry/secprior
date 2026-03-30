@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=30">
+  <link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body>
 
@@ -451,6 +451,8 @@
                 onclick="SettingsModal.switchTab('feeds')">
           📡 RSS Feeds <span id="fm-active-badge"></span>
         </button>
+        <button class="settings-tab" data-tab="integrations"
+                onclick="SettingsModal.switchTab('integrations')">🔗 Integrations</button>
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════════ -->
@@ -740,6 +742,61 @@
 
       </div><!-- /settings-tab-feeds -->
 
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ONGLET 3 — Integrations                                           -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="settings-tab-integrations" class="settings-tab-pane" style="display:none">
+
+        <!-- Jira integration -->
+        <div class="settings-group">
+          <label class="settings-label">🔗 Jira — lightweight push (no API, no OAuth)</label>
+          <p class="settings-hint">
+            Opens a pre-filled Jira create-issue page in a new tab directly from the ticket modal.
+            No authentication required — your browser handles the rest.
+          </p>
+
+          <label class="settings-label" for="jira-base-url">Jira base URL</label>
+          <input type="url" id="jira-base-url" class="settings-input"
+                 placeholder="https://company.atlassian.net" autocomplete="off">
+          <p class="settings-hint">Your Jira workspace root URL, without trailing slash.</p>
+
+          <label class="settings-label" for="jira-project-key">
+            Project key
+            <span class="settings-hint-inline">— optional</span>
+          </label>
+          <input type="text" id="jira-project-key" class="settings-input"
+                 placeholder="SEC" maxlength="20" style="text-transform:uppercase"
+                 autocomplete="off">
+          <p class="settings-hint">
+            If set, tickets open directly in this project.
+            Leave empty to select the project manually in Jira.
+          </p>
+
+          <div class="settings-row" style="border:none;padding:.5rem 1.25rem 0">
+            <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
+              💾 Save integrations
+            </button>
+          </div>
+        </div>
+
+        <!-- How it works -->
+        <div class="settings-group settings-info-box">
+          <label class="settings-label">How to use</label>
+          <ol class="settings-howto-list">
+            <li>Open any article or incident in ThreatLens</li>
+            <li>Click <strong>⚡ Actions → 🎫 Prepare ticket</strong></li>
+            <li>In the ticket preview, click <strong>🔗 Open in Jira</strong></li>
+            <li>Jira opens in a new tab with Summary, Description and Priority pre-filled</li>
+            <li>Review, adjust if needed, then submit in Jira</li>
+          </ol>
+          <p class="settings-hint" style="margin-top:.6rem">
+            Fields pre-filled: Summary · Description · Priority ·
+            CVEs · EPSS · KEV · ATT&CK tactics · recommended actions.
+          </p>
+        </div>
+
+      </div><!-- /settings-tab-integrations -->
+
     </div><!-- /modal-box -->
   </div><!-- /modal-settings -->
 
@@ -770,7 +827,7 @@
   <script src="js/pwa.js?v=15"></script>
   <script src="js/recommender.js?v=3"></script>
   <script src="js/ai-brief.js?v=3"></script>
-  <script src="js/quick-actions.js?v=8"></script>
+  <script src="js/quick-actions.js?v=9"></script>
   <script src="js/article-modal.js?v=19"></script>
   <script src="js/config.js?v=14"></script>
   <script src="js/feed-manager.js?v=14"></script>
@@ -790,7 +847,7 @@
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
   <script src="js/email-alerts.js?v=20"></script>
-  <script src="js/settings-modal.js?v=17"></script>
+  <script src="js/settings-modal.js?v=18"></script>
   <script src="js/watchlist-modal.js?v=15"></script>
   <script src="js/ui.js?v=16"></script>
   <script src="js/pdf-report.js?v=18"></script>
