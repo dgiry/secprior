@@ -2917,6 +2917,16 @@ body.modal-open { overflow: hidden; }
 .cp-filter-btn:hover { border-color:var(--accent); color:var(--text); }
 .cp-filter-btn.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
 
+/* ── Filtre de période (date) dans le panneau CVE ──────────────────────────── */
+.cp-date-bar  { display:flex; align-items:center; gap:.35rem; padding:0 0 .5rem; flex-wrap:wrap; }
+.cp-date-lbl  { font-size:.7rem; color:var(--text2); margin-right:.1rem; white-space:nowrap; }
+.cp-date-btn  { background:transparent; border:1px solid var(--border); color:var(--text2);
+                border-radius:4px; padding:.2rem .55rem; font-size:.72rem; cursor:pointer;
+                transition:border-color .15s, color .15s; }
+.cp-date-btn:hover  { border-color:var(--accent); color:var(--text); }
+.cp-date-btn.active { border-color:#a371f7; color:#a371f7; font-weight:600;
+                      background:rgba(163,113,247,.07); }
+
 /* Table principale */
 .cp-table         { width:100%; border-collapse:collapse; font-size:.78rem; }
 .cp-thead th      { text-align:left; padding:.4rem .6rem; color:var(--text2);
