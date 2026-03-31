@@ -67,6 +67,19 @@ const App = (() => {
         enrichWithNVD(articles);
       }
 
+      // ── NVD keyword search : trouver les CVE manquants (non-bloquant) ─────
+      // Pour les articles avec vendor connu mais 0 CVE dans le texte RSS.
+      if (!isDemo && CONFIG.USE_API) {
+        Enricher.enrichMissingCVEs(articles, (articleId, newCveIds) => {
+          const target = state.articles.find(a => a.id === articleId);
+          if (!target) return;
+          target.cves = [...new Set([...(target.cves || []), ...newCveIds])];
+          // Mettre à jour tous les panneaux avec les nouveaux CVE IDs
+          CVEPanel.update(state.articles);
+          Storage.setArticles(state.articles);
+        });
+      }
+
       // ── Étape 6 : Alertes email/webhook intelligentes (non-bloquant) ─────
       if (!isDemo) {
         AlertManager.processNewArticles(articles);

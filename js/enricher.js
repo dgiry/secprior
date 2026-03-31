@@ -65,7 +65,8 @@ const Enricher = (() => {
 
   async function _fetchKEV() {
     const cached = _loadCache(KEV_CACHE_KEY, KEV_TTL);
-    if (cached) return cached;
+    // Ne pas réutiliser un cache vide — forcer un nouveau fetch
+    if (cached && Object.keys(cached).length > 0) return cached;
 
     // Sur Vercel : /api/kev (JSON direct, cache CDN 24h côté serveur)
     // En local   : allorigins.win (JSON wrappé dans .contents)
@@ -84,14 +85,16 @@ const Enricher = (() => {
       const kevMap = {};
       (data.vulnerabilities || []).forEach(v => {
         kevMap[v.cveID] = {
-          dateAdded:     v.dateAdded,
-          vendorProject: v.vendorProject,
-          product:       v.product,
-          requiredAction:v.requiredAction,
-          dueDate:       v.dueDate
+          dateAdded:        v.dateAdded,
+          vendorProject:    v.vendorProject,
+          product:          v.product,
+          vulnerabilityName:v.vulnerabilityName || "",
+          requiredAction:   v.requiredAction,
+          dueDate:          v.dueDate
         };
       });
-      _saveCache(KEV_CACHE_KEY, kevMap);
+      // Ne cacher que si on a récupéré des données réelles
+      if (Object.keys(kevMap).length > 0) _saveCache(KEV_CACHE_KEY, kevMap);
       console.log(`[Enricher] KEV chargé — ${Object.keys(kevMap).length} CVE`);
       return kevMap;
     } catch (e) {
@@ -138,6 +141,93 @@ const Enricher = (() => {
 
     _saveCache(EPSS_CACHE_KEY, epssCache);
     return epssCache;
+  }
+
+  // ── KEV reverse lookup ────────────────────────────────────────────────────
+  // Quand un article a un vendor connu mais 0 CVE extrait du texte RSS,
+  // cherche dans le KEV si un produit matche le titre de l'article.
+  // Ex : "FortiClientEMS" (KEV product) ⊆ "forticlientems" (titre normalisé)
+  function _kevReverseLookup(text, vendors, kevMap) {
+    if (!kevMap || Object.keys(kevMap).length === 0) return [];
+
+    // Normalise : minuscule, supprime espaces/tirets/points
+    const norm    = s => s.toLowerCase().replace(/[\s\-_.\/]/g, "");
+    const textN   = norm(text);
+    const vendorSet = new Set(vendors.map(v => v.toLowerCase()));
+
+    const matches = [];
+    for (const [cveId, entry] of Object.entries(kevMap)) {
+      // Le vendor doit correspondre
+      if (!vendorSet.has((entry.vendorProject || "").toLowerCase())) continue;
+
+      // Le nom du produit doit apparaître dans le texte (normalisé)
+      const productN = norm(entry.product || "");
+      if (productN.length >= 5 && textN.includes(productN)) {
+        matches.push(cveId);
+        continue;
+      }
+
+      // Fallback : mots-clés du vulnerabilityName (sans le prefix vendor)
+      if (entry.vulnerabilityName) {
+        const vulnN = norm(entry.vulnerabilityName)
+          .replace(norm(entry.vendorProject || ""), "")
+          .slice(0, 25);
+        if (vulnN.length >= 5 && textN.includes(vulnN)) {
+          matches.push(cveId);
+        }
+      }
+    }
+
+    return [...new Set(matches)].slice(0, 3);
+  }
+
+  // ── NVD keyword search (async, background) ────────────────────────────────
+  // Appelé après le pipeline principal pour enrichir les articles sans CVE.
+  // Utilise /api/nvd-search (Vercel) ou NVD direct si USE_API est false.
+  async function _nvdKeywordSearch(query) {
+    try {
+      const url = CONFIG.USE_API
+        ? `/api/nvd-search?q=${encodeURIComponent(query)}`
+        : `https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(query)}&resultsPerPage=5`;
+
+      const res  = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) return [];
+      const json = await res.json();
+
+      // /api/nvd-search renvoie { cves: [{id, ...}] }
+      // NVD direct renvoie { vulnerabilities: [{cve: {id, ...}}] }
+      if (json.cves) return json.cves.map(c => c.id);
+      return (json.vulnerabilities || []).map(v => v.cve.id);
+    } catch { return []; }
+  }
+
+  // Enrichit en arrière-plan les articles sans CVE ID via NVD keyword search.
+  // Non-bloquant : appelle onUpdate(article, newCves) pour chaque match.
+  async function enrichMissingCVEs(articles, onUpdate) {
+    if (!CONFIG.USE_API) return; // NVD direct hors Vercel → trop lent
+
+    const candidates = articles.filter(a =>
+      (a.cves || []).length === 0 &&
+      (a.vendors || []).length > 0 &&
+      a.title
+    ).slice(0, 8); // max 8 requêtes par refresh
+
+    for (const article of candidates) {
+      // Construire la requête : vendor + mots clés du titre (sans stop words)
+      const titleWords = article.title
+        .replace(/critical|vulnerability|exploit|attack|flaw|patch|update|zero.?day|actively|now|multiple|new|CVE/gi, "")
+        .trim().slice(0, 80);
+      const query = `${(article.vendors || [])[0] || ""} ${titleWords}`.trim();
+
+      const cveIds = await _nvdKeywordSearch(query);
+      if (cveIds.length > 0) {
+        onUpdate(article.id, cveIds.slice(0, 3));
+        console.log(`[Enricher] NVD trouvé ${cveIds[0]} pour "${article.title.slice(0, 50)}"`);
+      }
+
+      // Respecter le rate-limit NVD (5 req/30s sans clé API)
+      await new Promise(r => setTimeout(r, 700));
+    }
   }
 
   // ── Extraction entités ────────────────────────────────────────────────────
@@ -199,7 +289,17 @@ const Enricher = (() => {
       const kevInfo       = kevMatches.length > 0 ? kevMap[kevMatches[0]] : null;
 
       // Fallback cves : garder les CVE pré-renseignés si l'extraction texte n'en trouve pas
-      const resolvedCves  = entities.cves.length > 0 ? entities.cves : (a.cves || []);
+      let resolvedCves = entities.cves.length > 0 ? entities.cves : (a.cves || []);
+
+      // KEV reverse lookup : si toujours 0 CVE mais vendor connu,
+      // chercher un match produit dans le catalogue KEV exploité
+      if (resolvedCves.length === 0 && entities.vendors.length > 0) {
+        const kevHits = _kevReverseLookup(text, entities.vendors, kevMap);
+        if (kevHits.length > 0) {
+          resolvedCves = kevHits;
+          console.log(`[Enricher] KEV reverse match ${kevHits[0]} ← "${a.title?.slice(0, 50)}"`);
+        }
+      }
 
       // Fallback EPSS : conserver le score pré-renseigné si l'API n'a rien retourné
       const resolvedEpss        = epssScore      !== null ? epssScore      : (a.epssScore      ?? null);
@@ -242,5 +342,5 @@ const Enricher = (() => {
   }
 
   // ── API publique ──────────────────────────────────────────────────────────
-  return { enrich };
+  return { enrich, enrichMissingCVEs };
 })();
