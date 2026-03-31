@@ -157,8 +157,15 @@ const Enricher = (() => {
 
     const matches = [];
     for (const [cveId, entry] of Object.entries(kevMap)) {
-      // Le vendor doit correspondre
-      if (!vendorSet.has((entry.vendorProject || "").toLowerCase())) continue;
+      // Le vendor doit correspondre — matching souple pour gérer les variantes
+      // ex. KEV dit "Palo Alto Networks", notre enricher extrait "Palo Alto"
+      const entryVendor = (entry.vendorProject || "").toLowerCase();
+      const vendorMatch = [...vendorSet].some(v =>
+        entryVendor === v ||           // exact
+        entryVendor.startsWith(v) ||   // "palo alto networks".startsWith("palo alto") ✓
+        v.startsWith(entryVendor)      // cas inverse
+      );
+      if (!vendorMatch) continue;
 
       // Le nom du produit doit apparaître dans le texte (normalisé)
       const productN = norm(entry.product || "");
