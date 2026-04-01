@@ -68,7 +68,7 @@ const CONFIG = {
     "unit42":            "cti_campaigns",
     "securelist":        "cti_campaigns",
     "welivesecurity":    "cti_campaigns",
-    "zataz":             "cti_campaigns"
+    "zataz":             "strategic"
   },
 
   // ── Feeds — FALLBACK STATIQUE ─────────────────────────────────────────────
