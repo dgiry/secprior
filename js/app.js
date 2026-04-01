@@ -20,20 +20,31 @@ const App = (() => {
 
   // ─── Refresh principal via Pipeline ────────────────────────────────────────
   async function refresh(force = false) {
+    console.log(`[App] refresh() begin · force=${force}`);
     UI.showSpinner(true);
     try {
       // ── Pipeline 6 étapes : Collecter → Enrichir → Dédupliquer → Scorer → Contextualiser
       const articles = await Pipeline.run(force);
+      console.log(`[App] refresh() pipeline returned ${articles.length} articles`);
+      if (articles.length === 0) console.warn("[App] refresh(): pipeline returned 0 articles");
       state.articles = articles;
+      console.log(`[App] state.articles set (${state.articles.length})`);
 
       // Persister les articles enrichis pour restauration au rechargement (TTL 6 h)
       Storage.setArticles(articles);
+      console.log(`[App] Storage.setArticles persisted (${articles.length})`);
+
+      // En ligne + refresh OK → état live (retire la bannière dégradée si présente)
+      if (typeof PWA !== 'undefined' && navigator.onLine) {
+        try { PWA.setAppConnectivityState('live'); } catch {}
+      }
 
       // Notifier les nouvelles alertes critiques (browser)
       UI.notifyCritical(articles);
 
       // Afficher avec filtres actuels
       render();
+      if (!state.articles?.length) console.warn("[App] render() called with empty state.articles");
       UI.updateTimestamp();
 
       // Mettre à jour le dashboard stats
@@ -90,11 +101,18 @@ const App = (() => {
       const cache = Storage.getCache();
       if (cache && cache.items) {
         state.articles = cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
+        console.warn(`[App] Using fallback cache with ${state.articles.length} items after refresh error`);
         render();
+        if (!state.articles?.length) console.warn("[App] render() called with empty cache items");
         UI.showToast("Affichage depuis le cache local.", "warning");
+        // En ligne mais refresh en échec → état dégradé (distingué du vrai hors-ligne)
+        if (typeof PWA !== 'undefined' && navigator.onLine) {
+          try { PWA.setAppConnectivityState('degraded'); } catch {}
+        }
       }
     } finally {
       UI.showSpinner(false);
+      console.log("[App] refresh() end");
     }
   }
 
@@ -433,6 +451,7 @@ const App = (() => {
     // refresh() revalide en arrière-plan. Aucun rendu visible si cache absent.
     const _restoredArticles = Storage.getArticles();
     if (_restoredArticles && _restoredArticles.length > 0) {
+      console.log(`[App] Restored ${_restoredArticles.length} articles from long-lived cache`);
       state.articles = _restoredArticles;
       render();
       StatsPanel.update(_restoredArticles);
@@ -442,10 +461,17 @@ const App = (() => {
       VisibilityPanel.update(_restoredArticles);
       if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
+      // En ligne mais en attente de revalidation → marquer dégradé jusqu'au succès du refresh
+      if (typeof PWA !== 'undefined' && navigator.onLine) {
+        try { PWA.setAppConnectivityState('degraded'); } catch {}
+      }
+    } else {
+      console.log("[App] No articles restored from long-lived cache");
     }
 
     // ── Lancer le premier fetch (met à jour / remplace le cache restauré) ─────
     await refresh(false);
+    console.log(`[App] Initial refresh completed · state.articles=${state.articles?.length || 0}`);
 
     // ── Ouvrir le panneau du persona restauré (données maintenant disponibles) ─
     if (typeof PersonaPresets !== 'undefined') PersonaPresets.silentRestorePanel();
