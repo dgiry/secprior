@@ -126,6 +126,14 @@ const FeedManager = (() => {
     return feeds;
   }
 
+  /**
+   * Retourne les flux activés côté configuration, sans masque de vue.
+   * À utiliser pour la collecte/fetch afin de ne pas être influencé par les personas.
+   */
+  function getEnabledFeeds() {
+    return getAllFeeds().filter(f => f.enabled);
+  }
+
   /** Nombre de flux actifs (pour la barre de statut). */
   function getActiveCount() { return getActiveFeeds().length; }
 
@@ -417,6 +425,7 @@ const FeedManager = (() => {
     saveCustomFeeds,
     getAllFeeds,
     getActiveFeeds,
+    getEnabledFeeds,
     getActiveCount,
     addFeed,
     updateFeed,
