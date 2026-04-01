@@ -19,6 +19,7 @@ const IncidentPanel = (() => {
   let _lastIncidents = [];       // cache pour export IOC au clic
   let _remediationFilter = "all"; // "all"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_patch"|"unknown"
   let _exploitationFilter = "all"; // "all"|"active_exploitation"|"kev"|"public_poc"|"campaign_activity"|"none"
+  let _actionabilityFilter = "all"; // "all"|"with_ioc"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_clear_action"
 
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
@@ -81,6 +82,36 @@ const IncidentPanel = (() => {
 
     // 5. none — aucun signal d'exploitation
     return "none";
+  }
+
+  // ── Détermination du statut d'actionabilité (exclusive) ──────────────────
+  // Priorité : with_ioc > patch_available > virtual_patch > mitigation_only > no_clear_action
+  // Retourne un seul état par incident basé sur les signaux d'action disponibles.
+
+  function _actionabilityStatus(incident) {
+    // 1. with_ioc — incident a des IOCs extraits (action immédiate possible)
+    if (incident.rawIocCount > 0) {
+      return "with_ioc";
+    }
+
+    // 2. patch_available — correctif officiel disponible (action claire)
+    const remStatus = _remediationStatus(incident);
+    if (remStatus === "patch_available") {
+      return "patch_available";
+    }
+
+    // 3. virtual_patch — mitigation technique disponible (action technique possible)
+    if (remStatus === "virtual_patch") {
+      return "virtual_patch";
+    }
+
+    // 4. mitigation_only — seulement des mesures de mitigation (action limitée)
+    if (remStatus === "mitigation_only") {
+      return "mitigation_only";
+    }
+
+    // 5. no_clear_action — aucune action claire identifiée
+    return "no_clear_action";
   }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
@@ -400,6 +431,11 @@ const IncidentPanel = (() => {
       incidents = incidents.filter(i => _exploitationStatus(i) === _exploitationFilter);
     }
 
+    // Filtre actionabilité (appliqué en AND avec les autres filtres)
+    if (_actionabilityFilter !== "all") {
+      incidents = incidents.filter(i => _actionabilityStatus(i) === _actionabilityFilter);
+    }
+
     // Tri priorité
     if (_sortBy === "priority") {
       incidents = incidents.slice().sort((a, b) =>
@@ -473,6 +509,11 @@ const IncidentPanel = (() => {
     // Filtre Exploitation — select
     list.querySelectorAll(".ip-exploitation-select").forEach(sel => {
       sel.addEventListener("change", e => { _exploitationFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Actionability — select
+    list.querySelectorAll(".ip-actionability-select").forEach(sel => {
+      sel.addEventListener("change", e => { _actionabilityFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -578,6 +619,7 @@ const IncidentPanel = (() => {
     const sf = _statusFilter;
     const rf = _remediationFilter;
     const ef = _exploitationFilter;
+    const af = _actionabilityFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -612,6 +654,16 @@ const IncidentPanel = (() => {
       { value: "none", label: "⚪ No exploitation signal" }
     ].map(o => `<option value="${o.value}"${ef === o.value ? " selected" : ""}>${o.label}</option>`).join("");
 
+    // Options du select Actionability
+    const actionabilityOptions = [
+      { value: "all", label: "Actionability" },
+      { value: "with_ioc", label: "With IOC" },
+      { value: "patch_available", label: "Patch available" },
+      { value: "virtual_patch", label: "Virtual patch" },
+      { value: "mitigation_only", label: "Mitigation only" },
+      { value: "no_clear_action", label: "No clear action" }
+    ].map(o => `<option value="${o.value}"${af === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
@@ -630,6 +682,7 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 With IOC${iocCount ? ` (${iocCount})` : ""}</button>
           <select class="ip-remediation-select">${remediationOptions}</select>
           <select class="ip-exploitation-select">${exploitationOptions}</select>
+          <select class="ip-actionability-select">${actionabilityOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>
