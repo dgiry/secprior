@@ -617,7 +617,7 @@ const IncidentPanel = (() => {
         <div class="ip-search-bar">
           <input type="search" class="ip-search-input"
                  placeholder="🔎 Search incident, CVE, vendor, product..."
-                 value="${_searchQuery.replace(/"/g, """)}">
+                 value='${(_searchQuery || "").replace(/'/g, "")}'>
         </div>
         <div class="ip-filter-bar">
           <button class="ip-filter-btn${f==="all"       ?" active":""}" data-filter="all">All</button>
