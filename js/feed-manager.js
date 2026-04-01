@@ -12,6 +12,9 @@ const FeedManager = (() => {
   const STORAGE_KEY  = "cv_custom_feeds";   // flux créés par l'utilisateur
   const OVERRIDE_KEY = "cv_feed_overrides"; // enabled/disabled des flux par défaut
   const HEALTH_KEY   = "cv_feed_health";    // santé des flux par défaut (séparé du config)
+  // Masque de vue non persistant (filtrage par catégories pour les personas)
+  // include: Set("operational"|"cti_campaigns"|"strategic") — si défini, on restreint les flux actifs à ces catégories
+  let _viewIncludeCats = null;
 
   // ── Persistence helpers ─────────────────────────────────────────────────────
 
@@ -115,7 +118,12 @@ const FeedManager = (() => {
    * Utilisé par fetchAllFeeds() dans feeds.js.
    */
   function getActiveFeeds() {
-    return getAllFeeds().filter(f => f.enabled);
+    let feeds = getAllFeeds().filter(f => f.enabled);
+    // Appliquer le masque de vue (non persistant) si présent
+    if (_viewIncludeCats && _viewIncludeCats.size > 0) {
+      feeds = feeds.filter(f => _viewIncludeCats.has(getCategoryForFeed(f)));
+    }
+    return feeds;
   }
 
   /** Nombre de flux actifs (pour la barre de statut). */
@@ -420,7 +428,17 @@ const FeedManager = (() => {
     restoreDefaultFeeds,
     recordFetchResult,
     initializeDefaultFeedsIfEmpty,
-    getCategoryForFeed
+    getCategoryForFeed,
+    // Persona view masks (non persistent)
+    setViewCategoryInclude(categories) {
+      if (!categories) { _viewIncludeCats = null; return; }
+      const arr = Array.isArray(categories) ? categories : [categories];
+      _viewIncludeCats = new Set(arr);
+    },
+    clearViewCategoryMask() { _viewIncludeCats = null; },
+    getViewCategoryMask() {
+      return _viewIncludeCats ? { include: Array.from(_viewIncludeCats) } : null;
+    }
   };
 
 })();

@@ -58,12 +58,11 @@ const PersonaPresets = (() => {
       name: 'SOC Analyst',
       desc: 'All incidents sorted by priority · wide analyst view',
       apply() {
-        // Suppression des filtres statusFilter et filterBy imposés :
-        // sur données réelles, forcer "investigating" + "critical_now" vide trop souvent la vue.
-        // L'analyste retrouve tous les incidents triés par priorité et applique ses filtres manuellement.
+        // Vue SOC Analyst : tri par priorité, sans muter la configuration des flux.
+        // Applique un masque de vue non persistant côté FeedManager (categories include)
         _setAppFilters({ priorityLevel: 'all', sortBy: 'priority' });
-        // Filtrer les flux : priorité operational + cti_campaigns, strategic disponible mais désactivé
-        _applyFeedCategoryFilter(['operational', 'cti_campaigns'], true);
+        if (typeof FeedManager !== 'undefined')
+          FeedManager.setViewCategoryInclude(['operational', 'cti_campaigns']);
         _openPanel('incidents');
         if (typeof IncidentPanel !== 'undefined')
           IncidentPanel.setFilters({ filterBy: 'all', sortBy: 'priority', statusFilter: 'all' });
@@ -110,6 +109,7 @@ const PersonaPresets = (() => {
       desc: 'Critical Now of the last 24h · immediate action',
       apply() {
         _setAppFilters({ priorityLevel: 'critical_now', sortBy: 'priority', date: '24h' });
+        // Masque de vue: conserver s'il existe (ne pas écraser), mais n'en impose pas un nouveau ici
         _openPanel('main');
       }
     }
@@ -259,6 +259,8 @@ const PersonaPresets = (() => {
     _activeId = null;
     try { localStorage.removeItem(PERSONA_KEY); } catch {}
     _setAppFilters({});     // → tous les filtres à their defaults
+    // Retirer tout masque de vue appliqué par une persona
+    if (typeof FeedManager !== 'undefined') FeedManager.clearViewCategoryMask();
     _closeAllPanels();
     _render();
     // Sync ligne persona dans la barre profil (Sprint 24)
@@ -301,6 +303,9 @@ const PersonaPresets = (() => {
     if (!persona) return;
     _activeId = id;
     _setAppFilters(PERSONA_FILTERS[id] || {});
+    // Réappliquer le masque de vue pour SOC uniquement (non destructif)
+    if (id === 'soc' && typeof FeedManager !== 'undefined')
+      FeedManager.setViewCategoryInclude(['operational', 'cti_campaigns']);
     _render(); // highlight pill dans la barre
     // Sync barre profil
     if (typeof ProfileSwitcher !== 'undefined') ProfileSwitcher.render();
