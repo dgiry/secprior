@@ -25,6 +25,73 @@
 
 const AIBrief = (() => {
 
+  const HISTORY_KEY = "cv_ai_brief_history";
+  const MAX_HISTORY = 15;  // Garder les 15 derniers briefs
+
+  // ── Gestion de l'historique localStorage ──────────────────────────────────
+
+  /**
+   * Sauvegarde un brief généré dans l'historique local.
+   * Conserve les MAX_HISTORY derniers briefs, supprime les plus anciens.
+   * @param {object} result - Résultat de generate() avec analystBrief, executiveBrief, etc.
+   * @param {object} entity - Article ou incident original
+   * @param {string} type - "article" ou "incident"
+   */
+  function _saveBriefToHistory(result, entity, type) {
+    if (result.error) return; // Ne pas sauvegarder les erreurs
+
+    try {
+      const history = _loadHistory();
+      const entry = {
+        id:           `brief_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        timestamp:    new Date().toISOString(),
+        entityId:     entity.id || entity.incidentId || null,
+        entityType:   type,
+        title:        type === "incident" ? (entity.title || "Incident") : (entity.title || "Article"),
+        analystBrief: result.analystBrief || "",
+        executiveBrief: result.executiveBrief || "",
+        nextStep:     result.nextStep || "",
+        ticketDraft:  result.ticketDraft || "",
+        escalationNote: result.escalationNote || "",
+        shareRewrite: result.shareRewrite || "",
+        model:        result.model || "AI"
+      };
+
+      history.unshift(entry);
+      if (history.length > MAX_HISTORY) {
+        history.splice(MAX_HISTORY);
+      }
+
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn("[AIBrief] History save failed:", e.message);
+    }
+  }
+
+  /**
+   * Charge l'historique des briefs depuis localStorage.
+   * @returns {array} Tableau des briefs sauvegardés (plus récents d'abord)
+   */
+  function _loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn("[AIBrief] History load failed:", e.message);
+      return [];
+    }
+  }
+
+  /**
+   * Récupère un brief spécifique de l'historique par ID.
+   * @param {string} briefId - ID du brief à récupérer
+   * @returns {object|null} Le brief ou null si non trouvé
+   */
+  function _getBriefFromHistory(briefId) {
+    const history = _loadHistory();
+    return history.find(b => b.id === briefId) || null;
+  }
+
   // ── Construction du contexte ──────────────────────────────────────────────
   //
   // UNIQUEMENT les champs signaux connus et vérifiés.
@@ -356,6 +423,8 @@ const AIBrief = (() => {
       if (!body) return;
       body.innerHTML = _renderResult(result);
       if (!result.error) {
+        // Sauvegarder le brief généré dans l'historique
+        _saveBriefToHistory(result, entity, type);
         _bindTabs(body);
         _bindCopyButtons(body, result);
       }
