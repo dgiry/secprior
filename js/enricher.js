@@ -17,7 +17,8 @@ const Enricher = (() => {
   // ── Vendeurs & produits connus (extraction NER légère) ────────────────────
   const KNOWN_VENDORS = [
     "Microsoft","Cisco","Fortinet","Palo Alto","VMware","Apache","Linux","Windows",
-    "iOS","Android","Chrome","Firefox","Safari","Edge","OpenSSL","Log4j","Spring",
+    "Apple","macOS","iOS","iPadOS","tvOS","watchOS","visionOS","Xcode","iCloud",
+    "Android","Chrome","Firefox","Safari","Edge","OpenSSL","Log4j","Spring",
     "nginx","Apache Tomcat","GitLab","GitHub","Atlassian","Confluence","Jira",
     "Exchange","SharePoint","Active Directory","Azure","AWS","GCP","Docker",
     "Kubernetes","Jenkins","Terraform","Okta","Citrix","Ivanti","Juniper",
@@ -42,6 +43,12 @@ const Enricher = (() => {
     "FortiSIEM":    "Fortinet", "FortiEDR":      "Fortinet",
     "FortiNAC":     "Fortinet", "FortiSOAR":     "Fortinet",
     "FortiMail":    "Fortinet",
+    // Apple
+    "macOS":        "Apple",    "iOS":           "Apple",
+    "iPadOS":       "Apple",    "tvOS":          "Apple",
+    "watchOS":      "Apple",    "visionOS":      "Apple",
+    "Xcode":        "Apple",    "iCloud":        "Apple",
+    "Safari":       "Apple",
     // Palo Alto Networks
     "PAN-OS":       "Palo Alto",
     // VMware / Broadcom

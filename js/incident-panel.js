@@ -17,6 +17,41 @@ const IncidentPanel = (() => {
   let _statusFilter  = "all";    // "all" | EntityStatus.VALID_STATUSES
   let _sortBy        = "default"; // "default" | "priority"
   let _lastIncidents = [];       // cache pour export IOC au clic
+  let _remediationFilter = "all"; // "all"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_patch"|"unknown"
+
+  // ── Détermination du statut de remédiation (exclusive) ────────────────────
+  // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
+
+  function _remediationStatus(incident) {
+    const textAll = incident.articles.map(a => 
+      ((a.title || "") + " " + (a.description || "")).toLowerCase()
+    ).join(" ");
+
+    // 1. no_patch — pas de correctif disponible
+    if (/\b(no patch|no fix|not patched|unpatched|will not fix|won't fix|no solution|unavailable)\b/.test(textAll) ||
+        /\b(no|not|un)\b.*\b(patch|fix|correctif)\b/.test(textAll) && !/\bfix(ed)?\b/.test(textAll)) {
+      return "no_patch";
+    }
+
+    // 2. patch_available — correctif officiel disponible
+    if (/\b(patch|hotfix|update|upgrade|fix|released|available|correctif)\b/.test(textAll) &&
+        !/\b(no|not|un)\b.*\b(patch|fix|available)\b/.test(textAll)) {
+      return "patch_available";
+    }
+
+    // 3. virtual_patch — mitigation technique (WAF, règles, etc.)
+    if (/\b(virtual.?patch|mitigation|workaround|temporary fix|compensat|rule.?base|WAF|IPS.?(rule|signature))\b/.test(textAll)) {
+      return "virtual_patch";
+    }
+
+    // 4. mitigation_only — seulement des mesures de mitigation
+    if (/\b(mitigation|mitigate|mitigat(e|ion|ing)|workaround|compensat|reduce risk|limit exposure)\b/.test(textAll)) {
+      return "mitigation_only";
+    }
+
+    // 5. unknown — impossible de déterminer
+    return "unknown";
+  }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
   //
@@ -321,10 +356,14 @@ const IncidentPanel = (() => {
     if (_filterBy === "kev")       incidents = incidents.filter(i => i.kev);
     if (_filterBy === "watchlist") incidents = incidents.filter(i => i.watchlistHit);
     if (_filterBy === "exploit")   incidents = incidents.filter(i => i.angles.includes("exploitation"));
-    if (_filterBy === "patch")     incidents = incidents.filter(i => i.angles.includes("patch"));
     if (_filterBy === "high")      incidents = incidents.filter(i => i.maxScore >= 70);
     if (_filterBy === "ioc")       incidents = incidents.filter(i => i.rawIocCount > 0);
     if (_filterBy === "prio")      incidents = incidents.filter(i => i.incidentPriorityLevel === "critical_now");
+
+    // Filtre remédiation (appliqué en AND avec les autres filtres)
+    if (_remediationFilter !== "all") {
+      incidents = incidents.filter(i => _remediationStatus(i) === _remediationFilter);
+    }
 
     // Tri priorité
     if (_sortBy === "priority") {
@@ -389,6 +428,11 @@ const IncidentPanel = (() => {
     // Filtres statut analyste
     list.querySelectorAll(".ip-status-btn").forEach(btn => {
       btn.addEventListener("click", () => { _statusFilter = btn.dataset.status; _render(); });
+    });
+
+    // Filtre Remediation — select
+    list.querySelectorAll(".ip-remediation-select").forEach(sel => {
+      sel.addEventListener("change", e => { _remediationFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -492,6 +536,7 @@ const IncidentPanel = (() => {
   function _controlsHTML() {
     const f  = _filterBy;
     const sf = _statusFilter;
+    const rf = _remediationFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -506,12 +551,22 @@ const IncidentPanel = (() => {
     const critCount = _lastIncidents.filter(i => i.incidentPriorityLevel === "critical_now").length;
     const iocCount  = _lastIncidents.filter(i => i.rawIocCount > 0).length;
 
+    // Options du select Remediation
+    const remediationOptions = [
+      { value: "all", label: "Remediation" },
+      { value: "no_patch", label: "No patch" },
+      { value: "patch_available", label: "Patch available" },
+      { value: "virtual_patch", label: "Virtual patch" },
+      { value: "mitigation_only", label: "Mitigation only" },
+      { value: "unknown", label: "Unknown" }
+    ].map(o => `<option value="${o.value}"${rf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
           <input type="search" class="ip-search-input"
                  placeholder="🔎 Search incident, CVE, vendor, product..."
-                 value="${_searchQuery.replace(/"/g, "&quot;")}">
+                 value="${_searchQuery.replace(/"/g, """)}">
         </div>
         <div class="ip-filter-bar">
           <button class="ip-filter-btn${f==="all"       ?" active":""}" data-filter="all">All</button>
@@ -520,9 +575,9 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="kev"       ?" active":""}" data-filter="kev">🚨 KEV</button>
           <button class="ip-filter-btn${f==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist</button>
           <button class="ip-filter-btn${f==="exploit"   ?" active":""}" data-filter="exploit">💀 Exploit</button>
-          <button class="ip-filter-btn${f==="patch"     ?" active":""}" data-filter="patch">🩹 Patch</button>
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">📊 Score ≥ 70</button>
           <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 With IOC${iocCount ? ` (${iocCount})` : ""}</button>
+          <select class="ip-remediation-select">${remediationOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>
