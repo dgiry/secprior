@@ -461,10 +461,6 @@ const App = (() => {
       VisibilityPanel.update(_restoredArticles);
       if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
-      // En ligne mais en attente de revalidation → marquer dégradé jusqu'au succès du refresh
-      if (typeof PWA !== 'undefined' && navigator.onLine) {
-        try { PWA.setAppConnectivityState('degraded'); } catch {}
-      }
     } else {
       console.log("[App] No articles restored from long-lived cache");
     }
