@@ -158,11 +158,26 @@ const IncidentPanel = (() => {
       return "watchlist";
     }
 
-    // 2. matches_you — incident est pertinent au profil/contexte courant
-    // Signal : priorityLevel élevé (critical_now, investigate) indique pertinence au contexte
-    if (incident.incidentPriorityLevel === "critical_now" || incident.incidentPriorityLevel === "investigate") {
-      return "matches_you";
-    }
+    // 2. matches_you — incident pertinent au profil actif (sans dupliquer Watchlist)
+    // Signal précis : correspondance vendor/product/technology du profil actif
+    // via la watchlist du profil (items activés uniquement), comparée aux vendors agrégés de l'incident.
+    try {
+      if (typeof ProfileManager !== "undefined") {
+        const prof   = ProfileManager.getActiveProfile();
+        const items  = prof?.watchlist || [];
+        const tracked = new Set(
+          items
+            .filter(it => it && it.enabled !== false && ["vendor", "product", "technology"].includes((it.type || "").toLowerCase()))
+            .map(it => String(it.value || "").toLowerCase())
+        );
+        if (tracked.size > 0) {
+          const incVendors = (incident.vendors || []).map(v => String(v).toLowerCase());
+          if (incVendors.some(v => tracked.has(v))) {
+            return "matches_you";
+          }
+        }
+      }
+    } catch { /* robuste si ProfileManager absent */ }
 
     // 3. exposed_vendor — incident implique un vendor/produit identifié comme exposé
     // Signal : présence de vendors + score élevé ou EPSS élevé indique exposition
