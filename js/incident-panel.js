@@ -21,6 +21,7 @@ const IncidentPanel = (() => {
   let _exploitationFilter = "all"; // "all"|"active_exploitation"|"kev"|"public_poc"|"campaign_activity"|"none"
   let _actionabilityFilter = "all"; // "all"|"with_ioc"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_clear_action"
   let _recencyFilter = "all"; // "all"|"24h"|"72h"|"week"|"older"
+  let _environmentFilter = "all"; // "all"|"watchlist"|"matches_you"|"exposed_vendor"|"no_environment_match"
 
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
@@ -145,6 +146,33 @@ const IncidentPanel = (() => {
 
     // 4. older — incident plus ancien que 7 jours
     return "older";
+  }
+
+  // ── Détermination du statut de contexte environnement (exclusive) ─────────
+  // Priorité : watchlist > matches_you > exposed_vendor > no_environment_match
+  // Réutilise les signaux existants pour déterminer la pertinence environnementale.
+
+  function _environmentContextStatus(incident) {
+    // 1. watchlist — incident a des correspondances explicites watchlist
+    if (incident.watchlistHit && (incident.articles || []).some(a => a.watchlistMatches?.length > 0)) {
+      return "watchlist";
+    }
+
+    // 2. matches_you — incident est pertinent au profil/contexte courant
+    // Signal : priorityLevel élevé (critical_now, investigate) indique pertinence au contexte
+    if (incident.incidentPriorityLevel === "critical_now" || incident.incidentPriorityLevel === "investigate") {
+      return "matches_you";
+    }
+
+    // 3. exposed_vendor — incident implique un vendor/produit identifié comme exposé
+    // Signal : présence de vendors + score élevé ou EPSS élevé indique exposition
+    if ((incident.vendors || []).length > 0 && 
+        ((incident.maxScore ?? 0) >= 70 || (incident.maxEpss ?? 0) >= 0.6)) {
+      return "exposed_vendor";
+    }
+
+    // 4. no_environment_match — aucune correspondance environnementale identifiée
+    return "no_environment_match";
   }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
@@ -474,6 +502,11 @@ const IncidentPanel = (() => {
       incidents = incidents.filter(i => _recencyStatus(i) === _recencyFilter);
     }
 
+    // Filtre contexte environnement (appliqué en AND avec les autres filtres)
+    if (_environmentFilter !== "all") {
+      incidents = incidents.filter(i => _environmentContextStatus(i) === _environmentFilter);
+    }
+
     // Tri priorité
     if (_sortBy === "priority") {
       incidents = incidents.slice().sort((a, b) =>
@@ -557,6 +590,11 @@ const IncidentPanel = (() => {
     // Filtre Recency — select
     list.querySelectorAll(".ip-recency-select").forEach(sel => {
       sel.addEventListener("change", e => { _recencyFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Environment — select
+    list.querySelectorAll(".ip-environment-select").forEach(sel => {
+      sel.addEventListener("change", e => { _environmentFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -664,6 +702,7 @@ const IncidentPanel = (() => {
     const ef = _exploitationFilter;
     const af = _actionabilityFilter;
     const recf = _recencyFilter;
+    const envf = _environmentFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -717,6 +756,15 @@ const IncidentPanel = (() => {
       { value: "older", label: "Older" }
     ].map(o => `<option value="${o.value}"${recf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
 
+    // Options du select Environment
+    const environmentOptions = [
+      { value: "all", label: "Environment" },
+      { value: "watchlist", label: "Watchlist" },
+      { value: "matches_you", label: "Matches you" },
+      { value: "exposed_vendor", label: "Exposed vendor" },
+      { value: "no_environment_match", label: "No environment match" }
+    ].map(o => `<option value="${o.value}"${envf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
@@ -737,6 +785,7 @@ const IncidentPanel = (() => {
           <select class="ip-exploitation-select">${exploitationOptions}</select>
           <select class="ip-actionability-select">${actionabilityOptions}</select>
           <select class="ip-recency-select">${recencyOptions}</select>
+          <select class="ip-environment-select">${environmentOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>
