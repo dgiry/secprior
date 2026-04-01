@@ -12,6 +12,12 @@ const NVD = (() => {
   const REQ_DELAY   = 650;        // ms entre requêtes (conservateur)
   const CVE_REGEX   = /CVE-\d{4}-\d{4,}/gi;
 
+  // Backoff dynamique suite à 429 sur /api/nvd (millisecondes epoch)
+  let backoffUntil = 0;
+
+  // Déduplication des requêtes en cours par CVE (cveId -> Promise)
+  const inflight = new Map();
+
   // ── Cache LocalStorage ───────────────────────────────────────────────────
 
   function getCache() {
@@ -116,32 +122,63 @@ const NVD = (() => {
   // En local   : appel direct NVD (clé optionnelle dans CONFIG.NVD_API_KEY)
 
   async function fetchCVE(cveId) {
-    const cached = getCached(cveId);
+    const key = String(cveId).toUpperCase();
+
+    // 1) Cache long (24h)
+    const cached = getCached(key);
     if (cached !== null) return cached;
 
+    // 2) Dédup requêtes en cours
+    if (inflight.has(key)) return inflight.get(key);
+
+    // 3) Construire la requête
     let url, headers = {};
     if (CONFIG.USE_API) {
-      url = `/api/nvd?cveId=${encodeURIComponent(cveId.toUpperCase())}`;
+      url = `/api/nvd?cveId=${encodeURIComponent(key)}`;
     } else {
-      url = `${CONFIG.NVD_API_URL}?cveId=${encodeURIComponent(cveId.toUpperCase())}`;
+      url = `${CONFIG.NVD_API_URL}?cveId=${encodeURIComponent(key)}`;
       if (CONFIG.NVD_API_KEY) headers["apiKey"] = CONFIG.NVD_API_KEY;
     }
 
-    try {
-      const res = await fetch(url, {
-        headers,
-        signal: AbortSignal.timeout(12_000)
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const data = parseNVDResponse(json, cveId);
-      setCached(cveId, data);
-      return data;
-    } catch (e) {
-      console.warn(`[NVD] Erreur fetch ${cveId}:`, e.message);
-      setCached(cveId, null); // Cache l'échec pour éviter les re-tentatives
-      return null;
-    }
+    const p = (async () => {
+      try {
+        const res = await fetch(url, {
+          headers,
+          signal: AbortSignal.timeout(12_000)
+        });
+
+        // Gestion douce 429 (rate-limit) — activer backoff + ne pas mettre en cache null durable
+        if (res.status === 429) {
+          const ra = parseInt(res.headers.get("Retry-After") || "60", 10);
+          const retryMs = isNaN(ra) ? 60_000 : ra * 1000;
+          backoffUntil = Date.now() + retryMs;
+          console.warn(`[NVD] 429 rate-limited for ${key}. Backing off ~${Math.round(retryMs/1000)}s`);
+          return null;
+        }
+
+        if (!res.ok) {
+          // Autres erreurs : ne pas bloquer le flux — cache null pour éviter le spam
+          console.warn(`[NVD] HTTP ${res.status} for ${key}`);
+          setCached(key, null);
+          return null;
+        }
+
+        const json = await res.json();
+        const data = parseNVDResponse(json, key);
+        setCached(key, data);
+        return data;
+      } catch (e) {
+        console.warn(`[NVD] Erreur fetch ${key}:`, e.message);
+        // Erreur réseau : cache null pour limiter les re-tentatives immédiates
+        setCached(key, null);
+        return null;
+      }
+    })().finally(() => {
+      inflight.delete(key);
+    });
+
+    inflight.set(key, p);
+    return p;
   }
 
   // ── Helper : délai entre requêtes ─────────────────────────────────────────
@@ -183,6 +220,11 @@ const NVD = (() => {
     console.log(`[NVD] Enrichissement de ${tasks.length} CVE(s)...`);
 
     for (const { articleId, cveId } of tasks) {
+      // Respecter un éventuel backoff global dû à 429
+      if (backoffUntil > Date.now()) {
+        await delay(backoffUntil - Date.now());
+      }
+
       const data = await fetchCVE(cveId);
       if (data) {
         onEnrich(articleId, data);
