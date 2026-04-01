@@ -18,6 +18,7 @@ const IncidentPanel = (() => {
   let _sortBy        = "default"; // "default" | "priority"
   let _lastIncidents = [];       // cache pour export IOC au clic
   let _remediationFilter = "all"; // "all"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_patch"|"unknown"
+  let _exploitationFilter = "all"; // "all"|"active_exploitation"|"kev"|"public_poc"|"campaign_activity"|"none"
 
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
@@ -51,6 +52,35 @@ const IncidentPanel = (() => {
 
     // 5. unknown — impossible de déterminer
     return "unknown";
+  }
+
+  // ── Détermination du statut d'exploitation (exclusive) ────────────────────
+  // Priorité : active_exploitation > kev > public_poc > campaign_activity > none
+  // Retourne un seul état par incident basé sur les signaux disponibles.
+
+  function _exploitationStatus(incident) {
+    // 1. active_exploitation — exploitation active confirmée (KEV + angle exploitation)
+    if (incident.kev && incident.angles.includes("exploitation")) {
+      return "active_exploitation";
+    }
+
+    // 2. kev — CISA KEV confirmé (exploitation active mais pas d'angle exploitation dans les articles)
+    if (incident.kev) {
+      return "kev";
+    }
+
+    // 3. public_poc — PoC public disponible (angle PoC détecté)
+    if (incident.angles.includes("poc")) {
+      return "public_poc";
+    }
+
+    // 4. campaign_activity — activité de campagne/menace détectée (angle exploitation sans KEV)
+    if (incident.angles.includes("exploitation")) {
+      return "campaign_activity";
+    }
+
+    // 5. none — aucun signal d'exploitation
+    return "none";
   }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
@@ -365,6 +395,11 @@ const IncidentPanel = (() => {
       incidents = incidents.filter(i => _remediationStatus(i) === _remediationFilter);
     }
 
+    // Filtre exploitation (appliqué en AND avec les autres filtres)
+    if (_exploitationFilter !== "all") {
+      incidents = incidents.filter(i => _exploitationStatus(i) === _exploitationFilter);
+    }
+
     // Tri priorité
     if (_sortBy === "priority") {
       incidents = incidents.slice().sort((a, b) =>
@@ -433,6 +468,11 @@ const IncidentPanel = (() => {
     // Filtre Remediation — select
     list.querySelectorAll(".ip-remediation-select").forEach(sel => {
       sel.addEventListener("change", e => { _remediationFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Exploitation — select
+    list.querySelectorAll(".ip-exploitation-select").forEach(sel => {
+      sel.addEventListener("change", e => { _exploitationFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -537,6 +577,7 @@ const IncidentPanel = (() => {
     const f  = _filterBy;
     const sf = _statusFilter;
     const rf = _remediationFilter;
+    const ef = _exploitationFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -561,6 +602,16 @@ const IncidentPanel = (() => {
       { value: "unknown", label: "Unknown" }
     ].map(o => `<option value="${o.value}"${rf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
 
+    // Options du select Exploitation
+    const exploitationOptions = [
+      { value: "all", label: "Exploitation" },
+      { value: "active_exploitation", label: "🔴 Active exploitation" },
+      { value: "kev", label: "🟠 KEV" },
+      { value: "public_poc", label: "🟡 Public PoC" },
+      { value: "campaign_activity", label: "🔵 Campaign / threat activity" },
+      { value: "none", label: "⚪ No exploitation signal" }
+    ].map(o => `<option value="${o.value}"${ef === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
@@ -578,6 +629,7 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">📊 Score ≥ 70</button>
           <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 With IOC${iocCount ? ` (${iocCount})` : ""}</button>
           <select class="ip-remediation-select">${remediationOptions}</select>
+          <select class="ip-exploitation-select">${exploitationOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>
