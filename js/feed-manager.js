@@ -12,6 +12,9 @@ const FeedManager = (() => {
   const STORAGE_KEY  = "cv_custom_feeds";   // flux créés par l'utilisateur
   const OVERRIDE_KEY = "cv_feed_overrides"; // enabled/disabled des flux par défaut
   const HEALTH_KEY   = "cv_feed_health";    // santé des flux par défaut (séparé du config)
+  // Masque de vue non persistant (filtrage par catégories pour les personas)
+  // include: Set("operational"|"cti_campaigns"|"strategic") — si défini, on restreint les flux actifs à ces catégories
+  let _viewIncludeCats = null;
 
   // ── Persistence helpers ─────────────────────────────────────────────────────
 
@@ -37,6 +40,8 @@ const FeedManager = (() => {
   function _saveHealth(h)           { _save(HEALTH_KEY, h); }
 
   // ── Catégorie déduite pour les flux par défaut ──────────────────────────────
+  // Utilise CONFIG.FEED_CATEGORIES pour la classification SOC/CISO
+  // Fallback : inférence simple par ID si non trouvé dans la config
 
   function _inferCategory(feed) {
     const id = feed.id.toLowerCase();
@@ -44,6 +49,35 @@ const FeedManager = (() => {
     if (["welivesecurity","sans","zdi"].includes(id)) return "exploit";
     if (["talos","unit42","securelist"].includes(id))  return "threat";
     return "news";
+  }
+
+  /**
+   * Retourne la catégorie SOC/CISO d'un flux : "operational" | "cti_campaigns" | "strategic"
+   * Résout par ID d'abord, puis par nom en fallback.
+   * @param {string|object} feedIdOrFeed - ID du flux ou objet flux complet
+   * @returns {string} Catégorie du flux, ou "operational" par défaut
+   */
+  function getCategoryForFeed(feedIdOrFeed) {
+    const feedId = typeof feedIdOrFeed === 'string' ? feedIdOrFeed : feedIdOrFeed?.id;
+    if (!feedId) return "operational";
+
+    // Résolution par ID (priorité haute)
+    const categories = CONFIG.FEED_CATEGORIES || {};
+    if (categories[feedId]) return categories[feedId];
+
+    // Fallback : résolution par nom (si objet fourni)
+    if (typeof feedIdOrFeed === 'object' && feedIdOrFeed.name) {
+      const name = feedIdOrFeed.name.toLowerCase();
+      for (const [id, cat] of Object.entries(categories)) {
+        const configFeed = (CONFIG.FEEDS || []).find(f => f.id === id);
+        if (configFeed && configFeed.name.toLowerCase() === name) {
+          return cat;
+        }
+      }
+    }
+
+    // Défaut : operational
+    return "operational";
   }
 
   // ── Construction de la liste complète ──────────────────────────────────────
@@ -84,6 +118,19 @@ const FeedManager = (() => {
    * Utilisé par fetchAllFeeds() dans feeds.js.
    */
   function getActiveFeeds() {
+    let feeds = getAllFeeds().filter(f => f.enabled);
+    // Appliquer le masque de vue (non persistant) si présent
+    if (_viewIncludeCats && _viewIncludeCats.size > 0) {
+      feeds = feeds.filter(f => _viewIncludeCats.has(getCategoryForFeed(f)));
+    }
+    return feeds;
+  }
+
+  /**
+   * Retourne les flux activés côté configuration, sans masque de vue.
+   * À utiliser pour la collecte/fetch afin de ne pas être influencé par les personas.
+   */
+  function getEnabledFeeds() {
     return getAllFeeds().filter(f => f.enabled);
   }
 
@@ -312,7 +359,53 @@ const FeedManager = (() => {
     console.log("[FeedManager] Flux par défaut restaurés");
   }
 
-  // ── API publique ────────────────────────────────────────────────────────────
+  // ── Initialisation des flux par défaut pour les nouveaux profils ──────────
+
+  /**
+   * Injecte un pack de flux par défaut si le profil actif n'en a aucun configuré.
+   * Appelé une seule fois au démarrage si le profil est vierge.
+   * Ne modifie jamais les flux existants.
+   */
+  function initializeDefaultFeedsIfEmpty() {
+    // Vérifier si des flux custom existent déjà
+    const custom = loadCustomFeeds();
+    if (custom.length > 0) return; // profil a déjà des flux → ne rien faire
+
+    // Vérifier si au moins un flux par défaut est activé
+    const active = getActiveFeeds();
+    if (active.length > 0) return; // au moins un flux actif → ne rien faire
+
+    // Profil vierge : injecter le pack par défaut
+    const defaultPack = [
+      { id: "certfr-alertes",    name: "CERT-FR Alertes",      enabled: true },
+      { id: "certfr-bulletins",  name: "CERT-FR Bulletins",    enabled: true },
+      { id: "cisa",              name: "CISA Advisories",      enabled: true },
+      { id: "zdi",               name: "Zero Day Initiative",  enabled: true },
+      { id: "thehackernews",     name: "The Hacker News",      enabled: true },
+      { id: "krebsonsecurity",   name: "Krebs on Security",    enabled: true },
+      { id: "securityweek",      name: "SecurityWeek",         enabled: true },
+      { id: "bleepingcomputer",  name: "BleepingComputer",     enabled: true },
+      { id: "sans",              name: "SANS ISC",             enabled: true },
+      { id: "talos",             name: "Cisco Talos",          enabled: true },
+      { id: "unit42",            name: "Unit 42",              enabled: true },
+      { id: "ncsc",              name: "NCSC UK",              enabled: true }
+    ];
+
+    // Activer uniquement les flux par défaut qui existent dans CONFIG.FEEDS
+    const ov = _loadOverrides();
+    const configIds = new Set((CONFIG.FEEDS || []).map(f => f.id));
+    defaultPack.forEach(item => {
+      if (configIds.has(item.id)) {
+        ov[item.id] = item.enabled;
+      }
+    });
+    _saveOverrides(ov);
+
+    console.log("[FeedManager] Default feeds initialized for new profile");
+    if (typeof UI !== 'undefined') {
+      UI.showToast("📡 Default feeds enabled", "info");
+    }
+  }
 
   /**
    * Met à jour la santé d'un flux après un fetch automatique (appelé par feeds.js).
@@ -326,11 +419,13 @@ const FeedManager = (() => {
     }, !!feed.isDefault);
   }
 
+  // ── API publique ────────────────────────────────────────────────────────────
   return {
     loadCustomFeeds,
     saveCustomFeeds,
     getAllFeeds,
     getActiveFeeds,
+    getEnabledFeeds,
     getActiveCount,
     addFeed,
     updateFeed,
@@ -340,7 +435,19 @@ const FeedManager = (() => {
     validateFeed,
     resetCustomFeeds,
     restoreDefaultFeeds,
-    recordFetchResult
+    recordFetchResult,
+    initializeDefaultFeedsIfEmpty,
+    getCategoryForFeed,
+    // Persona view masks (non persistent)
+    setViewCategoryInclude(categories) {
+      if (!categories) { _viewIncludeCats = null; return; }
+      const arr = Array.isArray(categories) ? categories : [categories];
+      _viewIncludeCats = new Set(arr);
+    },
+    clearViewCategoryMask() { _viewIncludeCats = null; },
+    getViewCategoryMask() {
+      return _viewIncludeCats ? { include: Array.from(_viewIncludeCats) } : null;
+    }
   };
 
 })();

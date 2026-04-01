@@ -20,7 +20,10 @@ module.exports = async (req, res) => {
     cveId.toUpperCase()
   )}`;
 
-  const headers = { Accept: "application/json" };
+  const headers = {
+    Accept: "application/json",
+    "User-Agent": "CyberVeille-Pro/2.0 (+https://github.com/dgiry/cyberveille-pro)"
+  };
   if (apiKey) headers["apiKey"] = apiKey; // 50 req/30s avec clé vs 5 sans
 
   try {
@@ -30,10 +33,16 @@ module.exports = async (req, res) => {
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: `NVD API : HTTP ${response.status}`,
-        cveId
-      });
+      if (response.status === 429) {
+        res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+        res.setHeader("Retry-After", "60");
+      }
+      const hint = response.status === 403
+        ? "Forbidden: missing/invalid NVD API key or request blocked. Set NVD_API_KEY."
+        : response.status === 429
+          ? "Rate limit reached. Please retry later."
+          : "Upstream error";
+      return res.status(response.status).json({ error: `NVD API: HTTP ${response.status} — ${hint}`, cveId });
     }
 
     const json = await response.json();

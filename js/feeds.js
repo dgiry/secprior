@@ -208,9 +208,9 @@ async function fetchAllFeeds(forceRefresh = false) {
     }
   }
 
-  // Utiliser FeedManager.getActiveFeeds() pour inclure les flux custom
-  // et respecter les flux désactivés par l'utilisateur
-  const activeFeeds = FeedManager.getActiveFeeds();
+  // Utiliser les flux activés côté configuration (sans masque de vue persona)
+  // pour la collecte réseau afin de ne pas réduire le scope par la vue
+  const activeFeeds = FeedManager.getEnabledFeeds();
   console.log("[Feeds] Fetch des %d sources actives (séquentiel)...", activeFeeds.length);
 
   // Fetch séquentiel par lots de 3 avec 800ms entre chaque lot
@@ -250,6 +250,12 @@ async function fetchAllFeeds(forceRefresh = false) {
     }
   });
 
+  // ── Synthèse brute des réponses réseau ───────────────────────────────────
+  const fulfilledCount = results.filter(r => r.status === "fulfilled").length;
+  const rejectedCount  = results.filter(r => r.status === "rejected").length;
+  const totalItems     = results.reduce((n, r) => n + (r.status === "fulfilled" ? (r.value?.length || 0) : 0), 0);
+  console.log(`[Feeds] Summary: responses fulfilled=${fulfilledCount}, rejected=${rejectedCount}, items=${totalItems}`);
+
   if (errors.length > 0) {
     console.warn("[Feeds] Error sources:", errors.join(", "));
   }
@@ -267,6 +273,8 @@ async function fetchAllFeeds(forceRefresh = false) {
     seen.add(a.id);
     return true;
   });
+
+  console.log(`[Feeds] Normalization: rawItems=${allArticles.length}, uniqueById=${unique.length}`);
 
   // Trier par date décroissante
   unique.sort((a, b) => b.pubDate - a.pubDate);

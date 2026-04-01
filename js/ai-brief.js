@@ -25,6 +25,73 @@
 
 const AIBrief = (() => {
 
+  const HISTORY_KEY = "cv_ai_brief_history";
+  const MAX_HISTORY = 15;  // Garder les 15 derniers briefs
+
+  // ── Gestion de l'historique localStorage ──────────────────────────────────
+
+  /**
+   * Sauvegarde un brief généré dans l'historique local.
+   * Conserve les MAX_HISTORY derniers briefs, supprime les plus anciens.
+   * @param {object} result - Résultat de generate() avec analystBrief, executiveBrief, etc.
+   * @param {object} entity - Article ou incident original
+   * @param {string} type - "article" ou "incident"
+   */
+  function _saveBriefToHistory(result, entity, type) {
+    if (result.error) return; // Ne pas sauvegarder les erreurs
+
+    try {
+      const history = _loadHistory();
+      const entry = {
+        id:           `brief_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        timestamp:    new Date().toISOString(),
+        entityId:     entity.id || entity.incidentId || null,
+        entityType:   type,
+        title:        type === "incident" ? (entity.title || "Incident") : (entity.title || "Article"),
+        analystBrief: result.analystBrief || "",
+        executiveBrief: result.executiveBrief || "",
+        nextStep:     result.nextStep || "",
+        ticketDraft:  result.ticketDraft || "",
+        escalationNote: result.escalationNote || "",
+        shareRewrite: result.shareRewrite || "",
+        model:        result.model || "AI"
+      };
+
+      history.unshift(entry);
+      if (history.length > MAX_HISTORY) {
+        history.splice(MAX_HISTORY);
+      }
+
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn("[AIBrief] History save failed:", e.message);
+    }
+  }
+
+  /**
+   * Charge l'historique des briefs depuis localStorage.
+   * @returns {array} Tableau des briefs sauvegardés (plus récents d'abord)
+   */
+  function _loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn("[AIBrief] History load failed:", e.message);
+      return [];
+    }
+  }
+
+  /**
+   * Récupère un brief spécifique de l'historique par ID.
+   * @param {string} briefId - ID du brief à récupérer
+   * @returns {object|null} Le brief ou null si non trouvé
+   */
+  function _getBriefFromHistory(briefId) {
+    const history = _loadHistory();
+    return history.find(b => b.id === briefId) || null;
+  }
+
   // ── Construction du contexte ──────────────────────────────────────────────
   //
   // UNIQUEMENT les champs signaux connus et vérifiés.
@@ -297,6 +364,65 @@ const AIBrief = (() => {
       .join("");
   }
 
+  // ── Rendu de l'historique ────────────────────────────────────────────────
+
+  function _renderRecentBriefs() {
+    const history = _loadHistory();
+    if (history.length === 0) return "";
+
+    const recentList = history.slice(0, 5).map(brief => {
+      const date = new Date(brief.timestamp);
+      const timeStr = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const typeIcon = brief.entityType === "incident" ? "🔴" : "📄";
+      const title = _esc(brief.title).slice(0, 50) + (brief.title.length > 50 ? "…" : "");
+
+      return `
+        <button class="ai-brief-history-item" data-brief-id="${_esc(brief.id)}" title="Reopen: ${_esc(brief.title)}">
+          <span class="ai-brief-history-icon">${typeIcon}</span>
+          <span class="ai-brief-history-title">${title}</span>
+          <span class="ai-brief-history-time">${timeStr}</span>
+        </button>`;
+    }).join("");
+
+    return `
+      <div class="ai-brief-history-panel">
+        <div class="ai-brief-history-label">📋 Recent Briefs</div>
+        <div class="ai-brief-history-list">
+          ${recentList}
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Affiche un brief sauvegardé depuis l'historique.
+   * @param {string} briefId - ID du brief à afficher
+   */
+  function _showBriefFromHistory(briefId) {
+    const brief = _getBriefFromHistory(briefId);
+    if (!brief) return;
+
+    const body = document.getElementById("ai-brief-body");
+    if (!body) return;
+
+    // Construire un objet result compatible avec _renderResult
+    const result = {
+      analystBrief:   brief.analystBrief,
+      executiveBrief: brief.executiveBrief,
+      nextStep:       brief.nextStep,
+      ticketDraft:    brief.ticketDraft,
+      escalationNote: brief.escalationNote,
+      shareRewrite:   brief.shareRewrite,
+      model:          brief.model,
+      generatedAt:    brief.timestamp
+    };
+
+    body.innerHTML = _renderResult(result);
+    _bindTabs(body);
+    _bindCopyButtons(body, result);
+    _bindHistoryButtons(body);
+  }
+
   // ── Modal ─────────────────────────────────────────────────────────────────
 
   function showModal(entity, type) {
@@ -340,6 +466,7 @@ const AIBrief = (() => {
             <span>Generating AI brief…</span>
           </div>
         </div>
+        ${_renderRecentBriefs()}
       </div>`;
 
     overlay.style.display = "flex";
@@ -350,15 +477,33 @@ const AIBrief = (() => {
     overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
     document.addEventListener("keydown", _onEsc);
 
+    // Bind recent briefs buttons
+    _bindHistoryButtons(overlay);
+
     // Génération asynchrone
     generate(entity, type).then(result => {
       const body = document.getElementById("ai-brief-body");
       if (!body) return;
       body.innerHTML = _renderResult(result);
       if (!result.error) {
+        // Sauvegarder le brief généré dans l'historique
+        _saveBriefToHistory(result, entity, type);
         _bindTabs(body);
         _bindCopyButtons(body, result);
       }
+    });
+  }
+
+  /**
+   * Bind les boutons de l'historique pour réouvrir un brief sauvegardé.
+   */
+  function _bindHistoryButtons(container) {
+    container.querySelectorAll(".ai-brief-history-item").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const briefId = btn.dataset.briefId;
+        _showBriefFromHistory(briefId);
+      });
     });
   }
 

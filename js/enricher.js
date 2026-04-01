@@ -176,19 +176,9 @@ const Enricher = (() => {
 
       // Le nom du produit doit apparaître dans le texte (normalisé)
       const productN = norm(entry.product || "");
-      if (productN.length >= 5 && textN.includes(productN)) {
+      if (productN.length >= 7 && textN.includes(productN)) {
         matches.push(cveId);
         continue;
-      }
-
-      // Fallback : mots-clés du vulnerabilityName (sans le prefix vendor)
-      if (entry.vulnerabilityName) {
-        const vulnN = norm(entry.vulnerabilityName)
-          .replace(norm(entry.vendorProject || ""), "")
-          .slice(0, 25);
-        if (vulnN.length >= 5 && textN.includes(vulnN)) {
-          matches.push(cveId);
-        }
       }
     }
 

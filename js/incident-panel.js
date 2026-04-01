@@ -18,6 +18,10 @@ const IncidentPanel = (() => {
   let _sortBy        = "default"; // "default" | "priority"
   let _lastIncidents = [];       // cache pour export IOC au clic
   let _remediationFilter = "all"; // "all"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_patch"|"unknown"
+  let _exploitationFilter = "all"; // "all"|"active_exploitation"|"kev"|"public_poc"|"campaign_activity"|"none"
+  let _actionabilityFilter = "all"; // "all"|"with_ioc"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_clear_action"
+  let _recencyFilter = "all"; // "all"|"24h"|"72h"|"week"|"older"
+  let _environmentFilter = "all"; // "all"|"watchlist"|"matches_you"|"exposed_vendor"|"no_environment_match"
 
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
@@ -51,6 +55,139 @@ const IncidentPanel = (() => {
 
     // 5. unknown — impossible de déterminer
     return "unknown";
+  }
+
+  // ── Détermination du statut d'exploitation (exclusive) ────────────────────
+  // Priorité : active_exploitation > kev > public_poc > campaign_activity > none
+  // Retourne un seul état par incident basé sur les signaux disponibles.
+
+  function _exploitationStatus(incident) {
+    // 1. active_exploitation — exploitation active confirmée (KEV + angle exploitation)
+    if (incident.kev && incident.angles.includes("exploitation")) {
+      return "active_exploitation";
+    }
+
+    // 2. kev — CISA KEV confirmé (exploitation active mais pas d'angle exploitation dans les articles)
+    if (incident.kev) {
+      return "kev";
+    }
+
+    // 3. public_poc — PoC public disponible (angle PoC détecté)
+    if (incident.angles.includes("poc")) {
+      return "public_poc";
+    }
+
+    // 4. campaign_activity — activité de campagne/menace détectée (angle exploitation sans KEV)
+    if (incident.angles.includes("exploitation")) {
+      return "campaign_activity";
+    }
+
+    // 5. none — aucun signal d'exploitation
+    return "none";
+  }
+
+  // ── Détermination du statut d'actionabilité (exclusive) ──────────────────
+  // Priorité : with_ioc > patch_available > virtual_patch > mitigation_only > no_clear_action
+  // Retourne un seul état par incident basé sur les signaux d'action disponibles.
+
+  function _actionabilityStatus(incident) {
+    // 1. with_ioc — incident a des IOCs extraits (action immédiate possible)
+    if (incident.rawIocCount > 0) {
+      return "with_ioc";
+    }
+
+    // 2. patch_available — correctif officiel disponible (action claire)
+    const remStatus = _remediationStatus(incident);
+    if (remStatus === "patch_available") {
+      return "patch_available";
+    }
+
+    // 3. virtual_patch — mitigation technique disponible (action technique possible)
+    if (remStatus === "virtual_patch") {
+      return "virtual_patch";
+    }
+
+    // 4. mitigation_only — seulement des mesures de mitigation (action limitée)
+    if (remStatus === "mitigation_only") {
+      return "mitigation_only";
+    }
+
+    // 5. no_clear_action — aucune action claire identifiée
+    return "no_clear_action";
+  }
+
+  // ── Détermination du statut de récence (exclusive) ────────────────────────
+  // Priorité : 24h > 72h > week > older
+  // Utilise lastSeen (timestamp le plus récent de l'incident)
+
+  function _recencyStatus(incident) {
+    if (!incident.lastSeen) return "older";
+
+    const now = new Date();
+    const lastSeenDate = new Date(incident.lastSeen);
+    const diffMs = now - lastSeenDate;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffHours / 24;
+
+    // 1. < 24h — incident très récent
+    if (diffHours < 24) {
+      return "24h";
+    }
+
+    // 2. < 72h — incident récent (mais pas dans les 24h)
+    if (diffDays < 3) {
+      return "72h";
+    }
+
+    // 3. this_week — incident de cette semaine (mais pas dans les 72h)
+    if (diffDays < 7) {
+      return "week";
+    }
+
+    // 4. older — incident plus ancien que 7 jours
+    return "older";
+  }
+
+  // ── Détermination du statut de contexte environnement (exclusive) ─────────
+  // Priorité : watchlist > matches_you > exposed_vendor > no_environment_match
+  // Réutilise les signaux existants pour déterminer la pertinence environnementale.
+
+  function _environmentContextStatus(incident) {
+    // 1. watchlist — incident a des correspondances explicites watchlist
+    if (incident.watchlistHit && (incident.articles || []).some(a => a.watchlistMatches?.length > 0)) {
+      return "watchlist";
+    }
+
+    // 2. matches_you — incident pertinent au profil actif (sans dupliquer Watchlist)
+    // Signal précis : correspondance vendor/product/technology du profil actif
+    // via la watchlist du profil (items activés uniquement), comparée aux vendors agrégés de l'incident.
+    try {
+      if (typeof ProfileManager !== "undefined") {
+        const prof   = ProfileManager.getActiveProfile();
+        const items  = prof?.watchlist || [];
+        const tracked = new Set(
+          items
+            .filter(it => it && it.enabled !== false && ["vendor", "product", "technology"].includes((it.type || "").toLowerCase()))
+            .map(it => String(it.value || "").toLowerCase())
+        );
+        if (tracked.size > 0) {
+          const incVendors = (incident.vendors || []).map(v => String(v).toLowerCase());
+          if (incVendors.some(v => tracked.has(v))) {
+            return "matches_you";
+          }
+        }
+      }
+    } catch { /* robuste si ProfileManager absent */ }
+
+    // 3. exposed_vendor — incident implique un vendor/produit identifié comme exposé
+    // Signal : présence de vendors + score élevé ou EPSS élevé indique exposition
+    if ((incident.vendors || []).length > 0 && 
+        ((incident.maxScore ?? 0) >= 70 || (incident.maxEpss ?? 0) >= 0.6)) {
+      return "exposed_vendor";
+    }
+
+    // 4. no_environment_match — aucune correspondance environnementale identifiée
+    return "no_environment_match";
   }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
@@ -365,6 +502,26 @@ const IncidentPanel = (() => {
       incidents = incidents.filter(i => _remediationStatus(i) === _remediationFilter);
     }
 
+    // Filtre exploitation (appliqué en AND avec les autres filtres)
+    if (_exploitationFilter !== "all") {
+      incidents = incidents.filter(i => _exploitationStatus(i) === _exploitationFilter);
+    }
+
+    // Filtre actionabilité (appliqué en AND avec les autres filtres)
+    if (_actionabilityFilter !== "all") {
+      incidents = incidents.filter(i => _actionabilityStatus(i) === _actionabilityFilter);
+    }
+
+    // Filtre récence (appliqué en AND avec les autres filtres)
+    if (_recencyFilter !== "all") {
+      incidents = incidents.filter(i => _recencyStatus(i) === _recencyFilter);
+    }
+
+    // Filtre contexte environnement (appliqué en AND avec les autres filtres)
+    if (_environmentFilter !== "all") {
+      incidents = incidents.filter(i => _environmentContextStatus(i) === _environmentFilter);
+    }
+
     // Tri priorité
     if (_sortBy === "priority") {
       incidents = incidents.slice().sort((a, b) =>
@@ -433,6 +590,26 @@ const IncidentPanel = (() => {
     // Filtre Remediation — select
     list.querySelectorAll(".ip-remediation-select").forEach(sel => {
       sel.addEventListener("change", e => { _remediationFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Exploitation — select
+    list.querySelectorAll(".ip-exploitation-select").forEach(sel => {
+      sel.addEventListener("change", e => { _exploitationFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Actionability — select
+    list.querySelectorAll(".ip-actionability-select").forEach(sel => {
+      sel.addEventListener("change", e => { _actionabilityFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Recency — select
+    list.querySelectorAll(".ip-recency-select").forEach(sel => {
+      sel.addEventListener("change", e => { _recencyFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Environment — select
+    list.querySelectorAll(".ip-environment-select").forEach(sel => {
+      sel.addEventListener("change", e => { _environmentFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -537,6 +714,10 @@ const IncidentPanel = (() => {
     const f  = _filterBy;
     const sf = _statusFilter;
     const rf = _remediationFilter;
+    const ef = _exploitationFilter;
+    const af = _actionabilityFilter;
+    const recf = _recencyFilter;
+    const envf = _environmentFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -561,12 +742,50 @@ const IncidentPanel = (() => {
       { value: "unknown", label: "Unknown" }
     ].map(o => `<option value="${o.value}"${rf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
 
+    // Options du select Exploitation
+    const exploitationOptions = [
+      { value: "all", label: "Exploitation" },
+      { value: "active_exploitation", label: "🔴 Active exploitation" },
+      { value: "kev", label: "🟠 KEV" },
+      { value: "public_poc", label: "🟡 Public PoC" },
+      { value: "campaign_activity", label: "🔵 Campaign / threat activity" },
+      { value: "none", label: "⚪ No exploitation signal" }
+    ].map(o => `<option value="${o.value}"${ef === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
+    // Options du select Actionability
+    const actionabilityOptions = [
+      { value: "all", label: "Actionability" },
+      { value: "with_ioc", label: "With IOC" },
+      { value: "patch_available", label: "Patch available" },
+      { value: "virtual_patch", label: "Virtual patch" },
+      { value: "mitigation_only", label: "Mitigation only" },
+      { value: "no_clear_action", label: "No clear action" }
+    ].map(o => `<option value="${o.value}"${af === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
+    // Options du select Recency
+    const recencyOptions = [
+      { value: "all", label: "Recency" },
+      { value: "24h", label: "< 24h" },
+      { value: "72h", label: "< 72h" },
+      { value: "week", label: "This week" },
+      { value: "older", label: "Older" }
+    ].map(o => `<option value="${o.value}"${recf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
+    // Options du select Environment
+    const environmentOptions = [
+      { value: "all", label: "Environment" },
+      { value: "watchlist", label: "Watchlist" },
+      { value: "matches_you", label: "Matches you" },
+      { value: "exposed_vendor", label: "Exposed vendor" },
+      { value: "no_environment_match", label: "No environment match" }
+    ].map(o => `<option value="${o.value}"${envf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
           <input type="search" class="ip-search-input"
                  placeholder="🔎 Search incident, CVE, vendor, product..."
-                 value="${_searchQuery.replace(/"/g, """)}">
+                 value='${(_searchQuery || "").replace(/'/g, "")}'>
         </div>
         <div class="ip-filter-bar">
           <button class="ip-filter-btn${f==="all"       ?" active":""}" data-filter="all">All</button>
@@ -578,6 +797,10 @@ const IncidentPanel = (() => {
           <button class="ip-filter-btn${f==="high"      ?" active":""}" data-filter="high">📊 Score ≥ 70</button>
           <button class="ip-filter-btn${f==="ioc"       ?" active":""}" data-filter="ioc">🔗 With IOC${iocCount ? ` (${iocCount})` : ""}</button>
           <select class="ip-remediation-select">${remediationOptions}</select>
+          <select class="ip-exploitation-select">${exploitationOptions}</select>
+          <select class="ip-actionability-select">${actionabilityOptions}</select>
+          <select class="ip-recency-select">${recencyOptions}</select>
+          <select class="ip-environment-select">${environmentOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>

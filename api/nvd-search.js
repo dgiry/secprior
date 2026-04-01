@@ -15,7 +15,10 @@ module.exports = async (req, res) => {
   const apiKey = process.env.NVD_API_KEY || "";
   const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(q.slice(0, 150))}&resultsPerPage=5`;
 
-  const headers = { Accept: "application/json" };
+  const headers = {
+    Accept: "application/json",
+    "User-Agent": "CyberVeille-Pro/2.0 (+https://github.com/dgiry/cyberveille-pro)"
+  };
   if (apiKey) headers["apiKey"] = apiKey;
 
   try {
@@ -25,10 +28,17 @@ module.exports = async (req, res) => {
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: `NVD API : HTTP ${response.status}`,
-        query: q
-      });
+      // Graceful handling for 403/429: include hint, add short CDN cache to reduce hammering
+      if (response.status === 429) {
+        res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=60");
+        res.setHeader("Retry-After", "30");
+      }
+      const hint = response.status === 403
+        ? "Forbidden: missing or invalid NVD API key, or request blocked. Configure NVD_API_KEY."
+        : response.status === 429
+          ? "Rate limit: too many requests to NVD. Please retry later."
+          : "Upstream error";
+      return res.status(response.status).json({ error: `NVD API: HTTP ${response.status} — ${hint}`, query: q });
     }
 
     const json = await response.json();
