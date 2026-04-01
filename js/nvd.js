@@ -153,6 +153,7 @@ const NVD = (() => {
           const retryMs = isNaN(ra) ? 60_000 : ra * 1000;
           backoffUntil = Date.now() + retryMs;
           console.warn(`[NVD] 429 rate-limited for ${key}. Backing off ~${Math.round(retryMs/1000)}s`);
+          try { window.dispatchEvent(new CustomEvent('nvd:backoff', { detail: { until: backoffUntil } })); } catch {}
           return null;
         }
 

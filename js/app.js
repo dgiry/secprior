@@ -47,6 +47,18 @@ const App = (() => {
       if (!state.articles?.length) console.warn("[App] render() called with empty state.articles");
       UI.updateTimestamp();
 
+      // Ops panel update (live mode)
+      try {
+        const mode = 'live';
+        const feedCount = (typeof FeedManager !== 'undefined') ? FeedManager.getActiveCount() : '—';
+        OpsPanel.update({
+          sourceMode: mode,
+          feedCount,
+          articleCount: state.articles.length,
+          lastRefreshAt: Date.now()
+        });
+      } catch {}
+
       // Mettre à jour le dashboard stats
       StatsPanel.update(articles);
       VendorPanel.update(articles);
@@ -109,6 +121,9 @@ const App = (() => {
         if (typeof PWA !== 'undefined' && navigator.onLine) {
           try { PWA.setAppConnectivityState('degraded'); } catch {}
         }
+        try {
+          OpsPanel.update({ sourceMode: 'cache', articleCount: state.articles.length, lastRefreshAt: Date.now() });
+        } catch {}
       }
     } finally {
       UI.showSpinner(false);
@@ -402,6 +417,16 @@ const App = (() => {
     HealthPanel.init();
     document.getElementById("btn-health")?.addEventListener("click", () => HealthPanel.toggle());
 
+    // ── Ops / Debug léger ─────────────────────────────────────────────────────
+    OpsPanel.init();
+    document.getElementById('btn-ops')?.addEventListener('click', () => OpsPanel.toggle());
+    // Écoute backoff NVD → affichage statut
+    window.addEventListener('nvd:backoff', (e) => {
+      const until = e.detail?.until;
+      const eta = until ? Math.max(0, Math.round((until - Date.now())/1000)) : null;
+      OpsPanel.update({ nvd: eta ? `rate-limited (~${eta}s)` : 'rate-limited' });
+    });
+
     // ── Panneau Vendors / Assets exposés ──────────────────────────────────────
     VendorPanel.init();
     document.getElementById("btn-vendors")?.addEventListener("click", () => VendorPanel.toggle());
@@ -466,6 +491,7 @@ const App = (() => {
       VisibilityPanel.update(_restoredArticles);
       if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
+      try { OpsPanel.update({ sourceMode: 'restore', articleCount: _restoredArticles.length }); } catch {}
     } else {
       console.log("[App] No articles restored from long-lived cache");
     }
