@@ -37,6 +37,8 @@ const FeedManager = (() => {
   function _saveHealth(h)           { _save(HEALTH_KEY, h); }
 
   // ── Catégorie déduite pour les flux par défaut ──────────────────────────────
+  // Utilise CONFIG.FEED_CATEGORIES pour la classification SOC/CISO
+  // Fallback : inférence simple par ID si non trouvé dans la config
 
   function _inferCategory(feed) {
     const id = feed.id.toLowerCase();
@@ -44,6 +46,35 @@ const FeedManager = (() => {
     if (["welivesecurity","sans","zdi"].includes(id)) return "exploit";
     if (["talos","unit42","securelist"].includes(id))  return "threat";
     return "news";
+  }
+
+  /**
+   * Retourne la catégorie SOC/CISO d'un flux : "operational" | "cti_campaigns" | "strategic"
+   * Résout par ID d'abord, puis par nom en fallback.
+   * @param {string|object} feedIdOrFeed - ID du flux ou objet flux complet
+   * @returns {string} Catégorie du flux, ou "operational" par défaut
+   */
+  function getCategoryForFeed(feedIdOrFeed) {
+    const feedId = typeof feedIdOrFeed === 'string' ? feedIdOrFeed : feedIdOrFeed?.id;
+    if (!feedId) return "operational";
+
+    // Résolution par ID (priorité haute)
+    const categories = CONFIG.FEED_CATEGORIES || {};
+    if (categories[feedId]) return categories[feedId];
+
+    // Fallback : résolution par nom (si objet fourni)
+    if (typeof feedIdOrFeed === 'object' && feedIdOrFeed.name) {
+      const name = feedIdOrFeed.name.toLowerCase();
+      for (const [id, cat] of Object.entries(categories)) {
+        const configFeed = (CONFIG.FEEDS || []).find(f => f.id === id);
+        if (configFeed && configFeed.name.toLowerCase() === name) {
+          return cat;
+        }
+      }
+    }
+
+    // Défaut : operational
+    return "operational";
   }
 
   // ── Construction de la liste complète ──────────────────────────────────────
@@ -388,7 +419,8 @@ const FeedManager = (() => {
     resetCustomFeeds,
     restoreDefaultFeeds,
     recordFetchResult,
-    initializeDefaultFeedsIfEmpty
+    initializeDefaultFeedsIfEmpty,
+    getCategoryForFeed
   };
 
 })();

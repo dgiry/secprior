@@ -47,6 +47,30 @@ const CONFIG = {
   ALERT_COOLDOWN_MIN: 30,      // Minutes entre deux alertes (évite le spam)
   ALERT_BATCH_SIZE:   5,       // Max articles par alerte envoyée
 
+  // ── Feed Categories — Classification pour SOC/CISO views ──────────────────
+  // Catégories : "operational" | "cti_campaigns" | "strategic"
+  // Utilisé par FeedManager.getCategoryForFeed(feedId) pour classifier les sources
+  FEED_CATEGORIES: {
+    // Operational : alertes officielles, bulletins, PoCs
+    "certfr-alertes":    "operational",
+    "certfr-bulletins":  "operational",
+    "certfr":            "operational",
+    "cisa":              "operational",
+    "zdi":               "operational",
+    "sans":              "operational",
+    "ncsc":              "operational",
+    "securityweek":      "operational",
+    "bleepingcomputer":  "operational",
+    // CTI / Campaigns : analyses de menaces, campagnes, renseignement
+    "thehackernews":     "cti_campaigns",
+    "krebsonsecurity":   "cti_campaigns",
+    "talos":             "cti_campaigns",
+    "unit42":            "cti_campaigns",
+    "securelist":        "cti_campaigns",
+    "welivesecurity":    "cti_campaigns",
+    "zataz":             "cti_campaigns"
+  },
+
   // ── Feeds — FALLBACK STATIQUE ─────────────────────────────────────────────
   // Sur Vercel (USE_API=true), cette liste est remplacée au démarrage par
   // les données de GET /api/feeds (api/lib/feeds.js — source canonique unique).
