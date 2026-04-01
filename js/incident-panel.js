@@ -20,6 +20,7 @@ const IncidentPanel = (() => {
   let _remediationFilter = "all"; // "all"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_patch"|"unknown"
   let _exploitationFilter = "all"; // "all"|"active_exploitation"|"kev"|"public_poc"|"campaign_activity"|"none"
   let _actionabilityFilter = "all"; // "all"|"with_ioc"|"patch_available"|"virtual_patch"|"mitigation_only"|"no_clear_action"
+  let _recencyFilter = "all"; // "all"|"24h"|"72h"|"week"|"older"
 
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
@@ -112,6 +113,38 @@ const IncidentPanel = (() => {
 
     // 5. no_clear_action — aucune action claire identifiée
     return "no_clear_action";
+  }
+
+  // ── Détermination du statut de récence (exclusive) ────────────────────────
+  // Priorité : 24h > 72h > week > older
+  // Utilise lastSeen (timestamp le plus récent de l'incident)
+
+  function _recencyStatus(incident) {
+    if (!incident.lastSeen) return "older";
+
+    const now = new Date();
+    const lastSeenDate = new Date(incident.lastSeen);
+    const diffMs = now - lastSeenDate;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffHours / 24;
+
+    // 1. < 24h — incident très récent
+    if (diffHours < 24) {
+      return "24h";
+    }
+
+    // 2. < 72h — incident récent (mais pas dans les 24h)
+    if (diffDays < 3) {
+      return "72h";
+    }
+
+    // 3. this_week — incident de cette semaine (mais pas dans les 72h)
+    if (diffDays < 7) {
+      return "week";
+    }
+
+    // 4. older — incident plus ancien que 7 jours
+    return "older";
   }
 
   // ── Vue par défaut — appliquée à chaque ouverture simple (sans contexte) ──
@@ -436,6 +469,11 @@ const IncidentPanel = (() => {
       incidents = incidents.filter(i => _actionabilityStatus(i) === _actionabilityFilter);
     }
 
+    // Filtre récence (appliqué en AND avec les autres filtres)
+    if (_recencyFilter !== "all") {
+      incidents = incidents.filter(i => _recencyStatus(i) === _recencyFilter);
+    }
+
     // Tri priorité
     if (_sortBy === "priority") {
       incidents = incidents.slice().sort((a, b) =>
@@ -514,6 +552,11 @@ const IncidentPanel = (() => {
     // Filtre Actionability — select
     list.querySelectorAll(".ip-actionability-select").forEach(sel => {
       sel.addEventListener("change", e => { _actionabilityFilter = e.target.value; _render(); });
+    });
+
+    // Filtre Recency — select
+    list.querySelectorAll(".ip-recency-select").forEach(sel => {
+      sel.addEventListener("change", e => { _recencyFilter = e.target.value; _render(); });
     });
 
     // Statut analyste — changement select (mise à jour badge ciblée, pas de re-render)
@@ -620,6 +663,7 @@ const IncidentPanel = (() => {
     const rf = _remediationFilter;
     const ef = _exploitationFilter;
     const af = _actionabilityFilter;
+    const recf = _recencyFilter;
 
     let statusBarHTML = "";
     if (typeof EntityStatus !== "undefined") {
@@ -664,6 +708,15 @@ const IncidentPanel = (() => {
       { value: "no_clear_action", label: "No clear action" }
     ].map(o => `<option value="${o.value}"${af === o.value ? " selected" : ""}>${o.label}</option>`).join("");
 
+    // Options du select Recency
+    const recencyOptions = [
+      { value: "all", label: "Recency" },
+      { value: "24h", label: "< 24h" },
+      { value: "72h", label: "< 72h" },
+      { value: "week", label: "This week" },
+      { value: "older", label: "Older" }
+    ].map(o => `<option value="${o.value}"${recf === o.value ? " selected" : ""}>${o.label}</option>`).join("");
+
     return `
       <div class="ip-controls">
         <div class="ip-search-bar">
@@ -683,6 +736,7 @@ const IncidentPanel = (() => {
           <select class="ip-remediation-select">${remediationOptions}</select>
           <select class="ip-exploitation-select">${exploitationOptions}</select>
           <select class="ip-actionability-select">${actionabilityOptions}</select>
+          <select class="ip-recency-select">${recencyOptions}</select>
         </div>
         <div class="ip-sort-bar">
           <span class="ip-dim ip-sort-label">Sort:</span>
