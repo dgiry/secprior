@@ -146,6 +146,8 @@ const PWA = (() => {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') _update();
     });
+    // Re-évaluer à la restauration de page (BFCache / PWA resume)
+    window.addEventListener('pageshow', _update);
     _update(); // vérification initiale
   }
 
