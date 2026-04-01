@@ -312,7 +312,53 @@ const FeedManager = (() => {
     console.log("[FeedManager] Flux par défaut restaurés");
   }
 
-  // ── API publique ────────────────────────────────────────────────────────────
+  // ── Initialisation des flux par défaut pour les nouveaux profils ──────────
+
+  /**
+   * Injecte un pack de flux par défaut si le profil actif n'en a aucun configuré.
+   * Appelé une seule fois au démarrage si le profil est vierge.
+   * Ne modifie jamais les flux existants.
+   */
+  function initializeDefaultFeedsIfEmpty() {
+    // Vérifier si des flux custom existent déjà
+    const custom = loadCustomFeeds();
+    if (custom.length > 0) return; // profil a déjà des flux → ne rien faire
+
+    // Vérifier si au moins un flux par défaut est activé
+    const active = getActiveFeeds();
+    if (active.length > 0) return; // au moins un flux actif → ne rien faire
+
+    // Profil vierge : injecter le pack par défaut
+    const defaultPack = [
+      { id: "certfr-alertes",    name: "CERT-FR Alertes",      enabled: true },
+      { id: "certfr-bulletins",  name: "CERT-FR Bulletins",    enabled: true },
+      { id: "cisa",              name: "CISA Advisories",      enabled: true },
+      { id: "zdi",               name: "Zero Day Initiative",  enabled: true },
+      { id: "thehackernews",     name: "The Hacker News",      enabled: true },
+      { id: "krebsonsecurity",   name: "Krebs on Security",    enabled: true },
+      { id: "securityweek",      name: "SecurityWeek",         enabled: true },
+      { id: "bleepingcomputer",  name: "BleepingComputer",     enabled: true },
+      { id: "sans",              name: "SANS ISC",             enabled: true },
+      { id: "talos",             name: "Cisco Talos",          enabled: true },
+      { id: "unit42",            name: "Unit 42",              enabled: true },
+      { id: "ncsc",              name: "NCSC UK",              enabled: true }
+    ];
+
+    // Activer uniquement les flux par défaut qui existent dans CONFIG.FEEDS
+    const ov = _loadOverrides();
+    const configIds = new Set((CONFIG.FEEDS || []).map(f => f.id));
+    defaultPack.forEach(item => {
+      if (configIds.has(item.id)) {
+        ov[item.id] = item.enabled;
+      }
+    });
+    _saveOverrides(ov);
+
+    console.log("[FeedManager] Default feeds initialized for new profile");
+    if (typeof UI !== 'undefined') {
+      UI.showToast("📡 Default feeds enabled", "info");
+    }
+  }
 
   /**
    * Met à jour la santé d'un flux après un fetch automatique (appelé par feeds.js).
@@ -326,6 +372,7 @@ const FeedManager = (() => {
     }, !!feed.isDefault);
   }
 
+  // ── API publique ────────────────────────────────────────────────────────────
   return {
     loadCustomFeeds,
     saveCustomFeeds,
@@ -340,7 +387,8 @@ const FeedManager = (() => {
     validateFeed,
     resetCustomFeeds,
     restoreDefaultFeeds,
-    recordFetchResult
+    recordFetchResult,
+    initializeDefaultFeedsIfEmpty
   };
 
 })();

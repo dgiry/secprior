@@ -299,6 +299,11 @@ const App = (() => {
     // await garantit que CONFIG.FEEDS est à jour AVANT tout appel à FeedManager
     await _loadFeedsFromAPI();
 
+    // Initialiser les flux par défaut si le profil est vierge (onboarding)
+    if (typeof FeedManager !== 'undefined') {
+      FeedManager.initializeDefaultFeedsIfEmpty();
+    }
+
     // Demander permission notifications
     UI.requestNotificationPermission();
 
