@@ -99,48 +99,53 @@ const PWA = (() => {
   }
 
   // ── Détection connectivité ────────────────────────────────────────────────────
+  // Exposés au module pour permettre une mise à jour immédiate depuis setAppConnectivityState
+  const _ensureBar = (html) => {
+    let bar = document.getElementById('pwa-offline-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'pwa-offline-bar';
+      const navbar = document.querySelector('.navbar');
+      navbar ? navbar.after(bar) : document.body.prepend(bar);
+    }
+    bar.innerHTML = html;
+    return bar;
+  };
+
+  const _update = () => {
+    const offline = !navigator.onLine;
+    const bar = document.getElementById('pwa-offline-bar');
+
+    if (offline) {
+      _ensureBar(`
+        <span>⚡ Offline mode</span>
+        <span class="pwa-offline-hint">Content shown from local cache. Live updates paused.</span>
+      `);
+      _appConnState = 'offline';
+    } else {
+      // Online — show degraded if requested, otherwise remove bar
+      if (_appConnState === 'degraded') {
+        _ensureBar(`
+          <span>⏳ Degraded mode</span>
+          <span class="pwa-offline-hint">Showing cached or partially refreshed data. Some services may be temporarily unavailable.</span>
+        `);
+      } else if (bar) {
+        bar.remove();
+        if (window.UI) UI.showToast('Connexion rétablie — Actualisation en cours…', 'success');
+        setTimeout(() => window.App?.refreshForced?.(), 500);
+      }
+      if (_appConnState === 'offline') _appConnState = 'live';
+    }
+  };
 
   function _listenConnectivity() {
-    const _ensureBar = (html) => {
-      let bar = document.getElementById('pwa-offline-bar');
-      if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'pwa-offline-bar';
-        const navbar = document.querySelector('.navbar');
-        navbar ? navbar.after(bar) : document.body.prepend(bar);
-      }
-      bar.innerHTML = html;
-      return bar;
-    };
-
-    const _update = () => {
-      const offline = !navigator.onLine;
-      const bar = document.getElementById('pwa-offline-bar');
-
-      if (offline) {
-        _ensureBar(`
-          <span>⚡ Offline mode</span>
-          <span class="pwa-offline-hint">Content shown from local cache. Live updates paused.</span>
-        `);
-        _appConnState = 'offline';
-      } else {
-        // Online — show degraded if requested, otherwise remove bar
-        if (_appConnState === 'degraded') {
-          _ensureBar(`
-            <span>⏳ Degraded mode</span>
-            <span class="pwa-offline-hint">Showing cached or partially refreshed data. Some services may be temporarily unavailable.</span>
-          `);
-        } else if (bar) {
-          bar.remove();
-          if (window.UI) UI.showToast('Connexion rétablie — Actualisation en cours…', 'success');
-          setTimeout(() => window.App?.refreshForced?.(), 500);
-        }
-        if (_appConnState === 'offline') _appConnState = 'live';
-      }
-    };
-
     window.addEventListener('online',  _update);
     window.addEventListener('offline', _update);
+    // Re-évaluer l'état à la prise de focus et quand l'onglet redevient visible
+    window.addEventListener('focus', _update);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') _update();
+    });
     _update(); // vérification initiale
   }
 
@@ -228,6 +233,8 @@ const PWA = (() => {
     _appConnState = state;
     // Mettre à jour la barre uniquement si on est en ligne (hors-ligne géré par navigator.onLine)
     if (navigator.onLine) {
+      // Mise à jour immédiate, tout en conservant l'évènement synthétique
+      _update();
       const evt = new Event('online'); // réutiliser le même flux d'update
       window.dispatchEvent(evt);
     }
