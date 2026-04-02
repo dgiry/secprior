@@ -26,6 +26,7 @@ const Pipeline = (() => {
     let articles;
     try {
       articles = await Enricher.enrich(rawArticles);
+      console.log(`[Pipeline] 2b. Après enrichissement → ${articles.length} articles`);
       console.log(`[Pipeline] 2. Enrichissement → ${articles.filter(a => a.isKEV).length} KEV, ` +
                   `${articles.filter(a => a.epssScore !== null).length} EPSS`);
     } catch (e) {
@@ -40,6 +41,7 @@ const Pipeline = (() => {
     // ── Étape 4 : Extraction IOCs ──────────────────────────────────────────
     // Placée AVANT le scoring pour que scoreComposite() dispose de iocCount.
     const withIOCs    = IOCExtractor.enrichAll(deduped);
+    console.log(`[Pipeline] 4b. Après IOC extract → ${withIOCs.length} articles`);
     const iocArticles = withIOCs.filter(a => a.iocCount > 0).length;
     const totalIOCs   = withIOCs.reduce((n, a) => n + (a.iocCount || 0), 0);
     console.log(`[Pipeline] 4. IOCs → ${totalIOCs} IOCs extraits dans ${iocArticles} articles`);
@@ -57,10 +59,12 @@ const Pipeline = (() => {
 
     const high   = scored.filter(a => a.criticality === "high").length;
     const medium = scored.filter(a => a.criticality === "medium").length;
+    console.log(`[Pipeline] 5b. Après scoring → ${scored.length} articles`);
     console.log(`[Pipeline] 5. Scoring → ${high} HIGH · ${medium} MEDIUM · ${scored.length - high - medium} LOW`);
 
     // ── Étape 6 : Contextualisation ────────────────────────────────────────
     const contextualized = Contextualizer.contextualize(scored);
+    console.log(`[Pipeline] 6b. Après contextualisation → ${contextualized.length} articles`);
     const trending    = contextualized.filter(a => a.isTrending).length;
     const watchlisted = contextualized.filter(a => a.watchlistMatches?.length > 0).length;
     console.log(`[Pipeline] 6. Contextualisation → ${trending} trending · ${watchlisted} watchlist hits`);
@@ -70,6 +74,7 @@ const Pipeline = (() => {
     // enrichis aux étapes 2-6 (EPSS, KEV, watchlist, trending, IOC, CVE).
     // Ne modifie pas score, criticality ni scoreBreakdown.
     const withPriority = contextualized.map(a => ({ ...a, ...computePriority(a) }));
+    console.log(`[Pipeline] 7b. Après priorité → ${withPriority.length} articles`);
     const critNow = withPriority.filter(a => a.priorityLevel === "critical_now").length;
     const invest  = withPriority.filter(a => a.priorityLevel === "investigate").length;
     console.log(`[Pipeline] 7. Priorité → ${critNow} critical_now · ${invest} investigate`);
