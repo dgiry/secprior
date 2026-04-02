@@ -10,19 +10,33 @@ const OpsPanel = (() => {
     _box = document.createElement('div');
     _box.id = 'ops-panel';
     _box.className = 'ops-panel';
+    // Style inline minimal pour assurer la visibilité sans CSS global
     _box.style.display = 'none';
+    _box.style.position = 'fixed';
+    _box.style.right = '12px';
+    _box.style.bottom = '12px';
+    _box.style.zIndex = '9999';
+    _box.style.background = '#0d1117';
+    _box.style.border = '1px solid #30363d';
+    _box.style.borderRadius = '8px';
+    _box.style.padding = '8px 10px';
+    _box.style.minWidth = '260px';
+    _box.style.maxWidth = '360px';
+    _box.style.color = '#c9d1d9';
+    _box.style.fontSize = '.85rem';
+    _box.style.boxShadow = '0 8px 24px rgba(0,0,0,.35)';
     _box.innerHTML = `
-      <div class="ops-hd">
-        <span class="ops-title">🧩 Ops / Debug</span>
-        <button id="ops-close" class="ops-close" title="Fermer">✕</button>
+      <div class="ops-hd" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
+        <span class="ops-title" style="font-weight:600">🧩 Ops / Debug</span>
+        <button id="ops-close" class="ops-close" title="Fermer" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:2px 8px;font-size:.8rem;cursor:pointer">✕</button>
       </div>
-      <div class="ops-body" id="ops-body">
-        <div class="ops-row"><span class="ops-k">Mode source</span><span class="ops-v" id="ops-source-mode">—</span></div>
-        <div class="ops-row"><span class="ops-k">Flux actifs</span><span class="ops-v" id="ops-feed-count">—</span></div>
-        <div class="ops-row"><span class="ops-k">Articles</span><span class="ops-v" id="ops-article-count">—</span></div>
-        <div class="ops-row"><span class="ops-k">Dernier refresh</span><span class="ops-v" id="ops-last-refresh">—</span></div>
-        <div class="ops-row"><span class="ops-k">NVD</span><span class="ops-v" id="ops-nvd">—</span></div>
-        <div class="ops-row"><span class="ops-k">KEV reverse match</span><span class="ops-v" id="ops-kev">—</span></div>
+      <div class="ops-body" id="ops-body" style="display:flex;flex-direction:column;gap:6px">
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Mode source</span><span class="ops-v" id="ops-source-mode" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Flux actifs</span><span class="ops-v" id="ops-feed-count" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Articles</span><span class="ops-v" id="ops-article-count" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernier refresh</span><span class="ops-v" id="ops-last-refresh" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">NVD</span><span class="ops-v" id="ops-nvd">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">KEV reverse match</span><span class="ops-v" id="ops-kev" style="font-variant-numeric:tabular-nums">—</span></div>
       </div>`;
     document.body.appendChild(_box);
     document.getElementById('ops-close')?.addEventListener('click', hide);
