@@ -1167,5 +1167,25 @@ const IncidentPanel = (() => {
     if (panel && panel.style.display !== "none") _render();
   }
 
-  return { init, toggle, update, buildIncidentIndex, getFilters, setFilters };
+  // ── Statistiques de signal (pour Ops panel) ───────────────────────────────
+  // Retourne les comptages d'incidents par statut de contexte environnement.
+  // Utile pour valider la pertinence contextuelle en temps réel.
+  function getEnvironmentContextStats() {
+    const stats = {
+      watchlist: 0,
+      matches_you: 0,
+      exposed_vendor: 0,
+      no_environment_match: 0
+    };
+
+    // Compter les incidents par statut de contexte
+    (_lastIncidents || []).forEach(incident => {
+      const status = _environmentContextStatus(incident);
+      if (status in stats) stats[status]++;
+    });
+
+    return stats;
+  }
+
+  return { init, toggle, update, buildIncidentIndex, getFilters, setFilters, getEnvironmentContextStats };
 })();

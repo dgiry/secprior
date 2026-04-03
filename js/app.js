@@ -51,15 +51,17 @@ const App = (() => {
       if (!state.articles?.length) console.warn("[App] render() called with empty state.articles");
       UI.updateTimestamp();
 
-      // Ops panel update (live mode)
+      // Ops panel update (live mode) with signal quality metrics
       try {
         const mode = 'live';
         const feedCount = (typeof FeedManager !== 'undefined') ? FeedManager.getActiveCount() : '—';
+        const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
         OpsPanel.update({
           sourceMode: mode,
           feedCount,
           articleCount: state.articles.length,
-          lastRefreshAt: Date.now()
+          lastRefreshAt: Date.now(),
+          environmentContextStats: envStats
         });
       } catch {}
 
@@ -683,7 +685,10 @@ const App = (() => {
       VisibilityPanel.update(_restoredArticles);
       if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
-      try { OpsPanel.update({ sourceMode: 'restore', articleCount: _restoredArticles.length }); } catch {}
+      try {
+        const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
+        OpsPanel.update({ sourceMode: 'restore', articleCount: _restoredArticles.length, environmentContextStats: envStats });
+      } catch {}
     } else {
       console.log("[App] No articles restored from long-lived cache");
     }

@@ -31,12 +31,22 @@ const OpsPanel = (() => {
         <button id="ops-close" class="ops-close" title="Fermer" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:2px 8px;font-size:.8rem;cursor:pointer">✕</button>
       </div>
       <div class="ops-body" id="ops-body" style="display:flex;flex-direction:column;gap:6px">
+        <!-- Source / Feeds / Articles -->
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Mode source</span><span class="ops-v" id="ops-source-mode" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Flux actifs</span><span class="ops-v" id="ops-feed-count" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Articles</span><span class="ops-v" id="ops-article-count" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernier refresh</span><span class="ops-v" id="ops-last-refresh" style="font-variant-numeric:tabular-nums">—</span></div>
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">NVD</span><span class="ops-v" id="ops-nvd">—</span></div>
+
+        <!-- Séparateur -->
+        <div style="border-top:1px solid #30363d;margin:4px 0"></div>
+
+        <!-- Signal quality — Validating contextual/environment signals -->
+        <div style="font-size:.8rem;opacity:.7;font-weight:600;margin-top:2px">Signal quality</div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Matches you</span><span class="ops-v" id="ops-matches-you" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Watchlist</span><span class="ops-v" id="ops-watchlist" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Exposed vendor</span><span class="ops-v" id="ops-exposed-vendor" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">KEV reverse match</span><span class="ops-v" id="ops-kev" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">NVD status</span><span class="ops-v" id="ops-nvd">—</span></div>
       </div>`;
     document.body.appendChild(_box);
     document.getElementById('ops-close')?.addEventListener('click', hide);
@@ -61,7 +71,7 @@ const OpsPanel = (() => {
   }
 
   // API de mise à jour — App et autres modules envoient des signaux
-  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, nvd, kev }) {
+  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, nvd, kev, environmentContextStats }) {
     _ensureBox();
     const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     if (sourceMode)   s('ops-source-mode', sourceMode);
@@ -70,6 +80,14 @@ const OpsPanel = (() => {
     if (lastRefreshAt) s('ops-last-refresh', _fmt(lastRefreshAt));
     if (nvd)           s('ops-nvd', nvd);
     if (kev!=null)     s('ops-kev', String(kev));
+
+    // Signal quality indicators (environment context status distribution)
+    if (environmentContextStats) {
+      const stats = environmentContextStats;
+      s('ops-matches-you', String(stats.matches_you || 0));
+      s('ops-watchlist', String(stats.watchlist || 0));
+      s('ops-exposed-vendor', String(stats.exposed_vendor || 0));
+    }
   }
 
   function init() {
