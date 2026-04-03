@@ -85,11 +85,17 @@ const UI = (() => {
     // ── Badges IOCs (max 3 sur la carte, click-to-copy) ──────────────────────
     const iocBadges = _buildIOCBadges(article.iocs, article.iocCount);
 
+    // Badge "Nouveau depuis la dernière visite" — affiché dans le header
+    const newBadge = article._isNew
+      ? `<span class="badge badge-new" title="Published since your last visit">🆕 New</span>`
+      : "";
+
     return `
-      <article class="card crit-${article.criticality}" data-id="${article.id}"
+      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}" data-id="${article.id}"
                title="Click to see full details">
         <header class="card-header">
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
+          ${newBadge}
           <span class="badge badge-source">${article.sourceIcon} ${article.sourceName}</span>
           <time class="card-time" title="${article.pubDate.toLocaleString()}">${age}</time>
           <button class="btn-star ${starred ? 'starred' : ''}"
@@ -179,6 +185,7 @@ const UI = (() => {
     const crit       = document.getElementById('filter-criticality')?.value   || 'all';
     const prio       = document.getElementById('filter-priority-level')?.value || 'all';
     const status     = document.getElementById('filter-status')?.value         || 'all';
+    const dateVal    = document.getElementById('filter-date')?.value            || 'all';
     const showFavs   = document.getElementById('btn-favs')?.classList.contains('active') || false;
 
     let icon  = '🔍';
@@ -192,7 +199,12 @@ const UI = (() => {
          ${label}
        </button>`;
 
-    if (showFavs) {
+    if (dateVal === 'lastvisit') {
+      icon  = '🆕';
+      title = 'No new articles since your last visit';
+      hint  = 'All caught up! Nothing was published since you last opened ThreatLens.';
+      cta   = _resetBtn('filter-date', 'See all articles');
+    } else if (showFavs) {
       icon  = '⭐';
       title = 'No favorites yet';
       hint  = 'Click ⭐ on an article card to add it to your favorites.';
@@ -292,10 +304,15 @@ const UI = (() => {
 
     // Filtre date
     if (state.date && state.date !== "all") {
-      const now = Date.now();
-      const windows = { "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
-      const win = windows[state.date];
-      if (win) filtered = filtered.filter(a => (now - a.pubDate.getTime()) <= win);
+      if (state.date === "lastvisit" && state.lastVisitTs) {
+        // Articles publiés après le début de la session précédente
+        filtered = filtered.filter(a => a.pubDate.getTime() > state.lastVisitTs);
+      } else {
+        const now = Date.now();
+        const windows = { "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
+        const win = windows[state.date];
+        if (win) filtered = filtered.filter(a => (now - a.pubDate.getTime()) <= win);
+      }
     }
 
     // ── Filtres risque opérationnel (combinés en AND) ─────────────────────────

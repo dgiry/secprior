@@ -122,5 +122,27 @@ const Storage = {
    */
   clearArticles() {
     try { localStorage.removeItem(ARTICLES_KEY); } catch {}
+  },
+
+  // ─── Dernière visite (New since last visit) ───────────────────────────────
+
+  /**
+   * Retourne le timestamp de début de la session précédente,
+   * utilisé pour identifier les articles "nouveaux" lors de cette session.
+   * Retourne null si aucune session précédente n'est enregistrée.
+   */
+  getLastVisit() {
+    try {
+      const v = localStorage.getItem("cv_last_visit");
+      return v ? parseInt(v, 10) : null;
+    } catch { return null; }
+  },
+
+  /**
+   * Enregistre le timestamp de début de session actuelle.
+   * Appelé une seule fois par session (géré via sessionStorage dans app.js).
+   */
+  setLastVisit(ts) {
+    try { localStorage.setItem("cv_last_visit", String(ts)); } catch {}
   }
 };
