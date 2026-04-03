@@ -212,9 +212,20 @@ const App = (() => {
     const pluralEl = document.getElementById("nsv-ctx-plural");
     if (!bar) return;
     if (state.date === "lastvisit" && state.lastVisitTs) {
-      const n = state.articles.filter(a =>
-        a.pubDate instanceof Date && a.pubDate.getTime() > state.lastVisitTs
-      ).length;
+      // Compte les articles réellement affichés (après tous les filtres actifs)
+      const filtered = UI.applyFilters(state.articles, {
+        query:         state.query,
+        criticality:   state.criticality,
+        source:        state.source,
+        date:          state.date,
+        lastVisitTs:   state.lastVisitTs,
+        priorityLevel: state.priorityLevel,
+        sortBy:        state.sortBy,
+        statusFilter:  state.statusFilter,
+        showFavOnly:   state.showFavOnly,
+        riskFilters:   RiskFilter.getFilters()
+      });
+      const n = filtered.length;
       bar.style.display  = "flex";
       if (countEl)  countEl.textContent  = n;
       if (pluralEl) pluralEl.textContent = n !== 1 ? "s" : "";
@@ -451,7 +462,18 @@ const App = (() => {
 
     // ── Export CSV enrichi (CVSS inclus si disponible) ───────────────────────
     document.getElementById("btn-export")?.addEventListener("click", () => {
-      const filtered = UI.applyFilters(state.articles, state);
+      const filtered = UI.applyFilters(state.articles, {
+        query:         state.query,
+        criticality:   state.criticality,
+        source:        state.source,
+        date:          state.date,
+        lastVisitTs:   state.lastVisitTs,
+        priorityLevel: state.priorityLevel,
+        sortBy:        state.sortBy,
+        statusFilter:  state.statusFilter,
+        showFavOnly:   state.showFavOnly,
+        riskFilters:   RiskFilter.getFilters()
+      });
       UI.exportCSVEnriched(filtered, state.nvdMap);
     });
 
@@ -660,6 +682,7 @@ const App = (() => {
   /** Quitte la vue NSV et revient à "All time". */
   function exitNewSinceVisit() {
     state.date = "all";
+    state._nsvDismissed = false; // Restaure le badge pour la session
     const el = document.getElementById("filter-date");
     if (el) el.value = "all";
     render(); // masque la context bar, re-affiche le badge si non dismissed
