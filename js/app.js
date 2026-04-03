@@ -184,6 +184,7 @@ const App = (() => {
     });
     UI.renderCards(filtered);
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
+    _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
     _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
     _updateContextBar();                      // bandeau contextuel sous la statusbar
   }
@@ -204,6 +205,15 @@ const App = (() => {
     } else {
       badge.style.display = "none";
     }
+  }
+
+  // ─── Compteur non-lu (navbar) ──────────────────────────────────────────────
+  function _updateUnreadCount(filtered) {
+    const countEl = document.getElementById("unread-count");
+    if (!countEl) return;
+    // Compte les articles non-lus dans l'ensemble actuellement affiché
+    const unreadCount = filtered.filter(a => !Storage.isRead(a.id)).length;
+    countEl.textContent = unreadCount;
   }
 
   // ─── Bandeau contextuel NSV (sous la statusbar, au-dessus du feed) ────────
