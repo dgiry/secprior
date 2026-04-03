@@ -537,6 +537,7 @@ const UI = (() => {
     requestNotificationPermission,
     notifyCritical,
     toggleFav,
-    initSourceFilter
+    initSourceFilter,
+    timeAgo
   };
 })();

@@ -210,6 +210,7 @@ const App = (() => {
     const bar      = document.getElementById("nsv-context-bar");
     const countEl  = document.getElementById("nsv-ctx-count");
     const pluralEl = document.getElementById("nsv-ctx-plural");
+    const timeEl   = document.getElementById("nsv-ctx-time");
     if (!bar) return;
     if (state.date === "lastvisit" && state.lastVisitTs) {
       // Compte les articles réellement affichés (après tous les filtres actifs)
@@ -226,9 +227,11 @@ const App = (() => {
         riskFilters:   RiskFilter.getFilters()
       });
       const n = filtered.length;
+      const relTime = UI.timeAgo(state.lastVisitTs);
       bar.style.display  = "flex";
       if (countEl)  countEl.textContent  = n;
       if (pluralEl) pluralEl.textContent = n !== 1 ? "s" : "";
+      if (timeEl)   timeEl.textContent   = ` (${relTime} ago)`;
     } else {
       bar.style.display = "none";
     }
@@ -408,9 +411,11 @@ const App = (() => {
     if (feedCountEl) feedCountEl.textContent = FeedManager.getActiveCount();
 
     // ── Événements filtres ───────────────────────────────────────────────────
+    let searchTimeout;
     document.getElementById("search-input")?.addEventListener("input", e => {
       state.query = e.target.value.trim();
-      render();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => render(), 150);
     });
 
     document.getElementById("filter-criticality")?.addEventListener("change", e => {
@@ -441,6 +446,37 @@ const App = (() => {
     document.getElementById("filter-status")?.addEventListener("change", e => {
       state.statusFilter = e.target.value;
       render();
+    });
+
+    // ── Raccourcis clavier pour power users ──────────────────────────────────
+    document.addEventListener("keydown", e => {
+      const target = e.target;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if (e.key === "/") {
+        // "/" focus search input (sauf si déjà dedans)
+        const searchInput = document.getElementById("search-input");
+        if (target !== searchInput) {
+          e.preventDefault();
+          searchInput?.focus();
+        }
+      } else if (e.key.toUpperCase() === "R" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "R" force refresh
+        e.preventDefault();
+        refresh(true);
+        scheduleRefresh();
+      } else if (e.key.toUpperCase() === "N" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "N" activate "Since last visit" view
+        e.preventDefault();
+        filterNewSinceVisit();
+      } else if (e.key === "Escape") {
+        // "Escape" close nav dropdowns and side panels
+        _closeNavDropdowns();
+        ["cve-panel", "incident-panel", "vendor-panel", "visibility-panel", "stats-panel", "briefing-panel", "health-panel"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
     });
 
     // ── Raccourci "Top priorités" — filtre critique + tri priorité ────────────
