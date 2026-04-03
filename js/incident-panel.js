@@ -159,21 +159,68 @@ const IncidentPanel = (() => {
     }
 
     // 2. matches_you — incident pertinent au profil actif (sans dupliquer Watchlist)
-    // Signal précis : correspondance vendor/product/technology du profil actif
-    // via la watchlist du profil (items activés uniquement), comparée aux vendors agrégés de l'incident.
+    // Signaux multiples pour meilleure contextualisation :
+    //   - Correspondance vendor (vendor exact)
+    //   - Correspondance produit/technologie (dans le texte des articles)
+    // Résultat : moins axé sur le vendor seul, plus contextuel et granulaire.
     try {
       if (typeof ProfileManager !== "undefined") {
-        const prof   = ProfileManager.getActiveProfile();
-        const items  = prof?.watchlist || [];
-        const tracked = new Set(
-          items
-            .filter(it => it && it.enabled !== false && ["vendor", "product", "technology"].includes((it.type || "").toLowerCase()))
-            .map(it => String(it.value || "").toLowerCase())
-        );
-        if (tracked.size > 0) {
+        const prof = ProfileManager.getActiveProfile();
+        const items = prof?.watchlist || [];
+
+        // Séparer les items suivis par type
+        const tracked = {
+          vendors: new Set(),
+          products: new Set(),
+          technologies: new Set()
+        };
+        items
+          .filter(it => it && it.enabled !== false)
+          .forEach(it => {
+            const type = (it.type || "").toLowerCase();
+            const value = String(it.value || "").toLowerCase();
+            if (type === "vendor") tracked.vendors.add(value);
+            else if (type === "product") tracked.products.add(value);
+            else if (type === "technology") tracked.technologies.add(value);
+          });
+
+        const hasTrackedItems = tracked.vendors.size > 0 || tracked.products.size > 0 || tracked.technologies.size > 0;
+
+        if (hasTrackedItems) {
+          // Signal 1 : Correspondance vendor exacte (existant, mais maintenant contextuel)
           const incVendors = (incident.vendors || []).map(v => String(v).toLowerCase());
-          if (incVendors.some(v => tracked.has(v))) {
+          if (incVendors.some(v => tracked.vendors.has(v))) {
             return "matches_you";
+          }
+
+          // Signal 2 : Correspondance produit/technologie dans le texte des articles
+          // (Plus granulaire que le vendor seul, captures spécificité du produit/technologie)
+          const articleText = (incident.articles || [])
+            .map(a => ((a.title || "") + " " + (a.description || "")).toLowerCase())
+            .join(" ");
+
+          // Vérifier correspondance produits (ex: "Windows Server 2019", "Apache Log4j")
+          if (tracked.products.size > 0) {
+            for (const product of tracked.products) {
+              // Utiliser des limites de mots pour éviter les faux positifs (ex: "service" → "service" n'importe où)
+              const wordBoundary = /\b/.test(product.charAt(0)) ? "\\b" : "";
+              const pattern = new RegExp(wordBoundary + product.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
+              if (pattern.test(articleText)) {
+                return "matches_you";
+              }
+            }
+          }
+
+          // Vérifier correspondance technologies (ex: "Kubernetes", "Docker", "SQL Server")
+          if (tracked.technologies.size > 0) {
+            for (const tech of tracked.technologies) {
+              // Limites de mots pour éviter faux positifs
+              const wordBoundary = /\b/.test(tech.charAt(0)) ? "\\b" : "";
+              const pattern = new RegExp(wordBoundary + tech.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
+              if (pattern.test(articleText)) {
+                return "matches_you";
+              }
+            }
           }
         }
       }
@@ -181,7 +228,7 @@ const IncidentPanel = (() => {
 
     // 3. exposed_vendor — incident implique un vendor/produit identifié comme exposé
     // Signal : présence de vendors + score élevé ou EPSS élevé indique exposition
-    if ((incident.vendors || []).length > 0 && 
+    if ((incident.vendors || []).length > 0 &&
         ((incident.maxScore ?? 0) >= 70 || (incident.maxEpss ?? 0) >= 0.6)) {
       return "exposed_vendor";
     }
