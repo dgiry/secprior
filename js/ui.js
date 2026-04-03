@@ -90,8 +90,9 @@ const UI = (() => {
       ? `<span class="badge badge-new" title="Published since your last visit">🆕 New</span>`
       : "";
 
+    const isRead = (typeof Storage !== 'undefined') ? Storage.isRead(article.id) : false;
     return `
-      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}" data-id="${article.id}"
+      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}" data-id="${article.id}"
                title="Click to see full details">
         <header class="card-header">
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
@@ -279,6 +280,12 @@ const UI = (() => {
     if (state.showFavOnly) {
       const favs = Storage.getFavorites();
       filtered = filtered.filter(a => favs.has(a.id));
+    }
+
+    // Filtre non-lu seulement
+    if (state.showUnreadOnly) {
+      const read = Storage.getRead();
+      filtered = filtered.filter(a => !read.has(a.id));
     }
 
     // Recherche keyword (title + description + CVEs + IOC domains)

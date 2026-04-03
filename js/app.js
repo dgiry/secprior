@@ -13,6 +13,7 @@ const App = (() => {
     sortBy: "default",    // default (date) | priority (priorityScore desc)
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
+    showUnreadOnly: false,
     timerId: null,
     _cveLinkId:   null,   // CVE unique (clic sur une ligne) — priorité haute
     _cveLinkIds:  null,   // Tableau de CVEs (filtre panneau) — priorité basse
@@ -522,6 +523,15 @@ const App = (() => {
       render();
     });
 
+    // ── Toggle non-lu seulement ────────────────────────────────────────────────
+    document.getElementById("btn-unread")?.addEventListener("click", () => {
+      state.showUnreadOnly = !state.showUnreadOnly;
+      const btn = document.getElementById("btn-unread");
+      btn.classList.toggle("active", state.showUnreadOnly);
+      btn.title = state.showUnreadOnly ? "Show all articles" : "Unread only";
+      render();
+    });
+
     // ── Initialiser le modal Paramètres ──────────────────────────────────────
     SettingsModal.init();
 
@@ -641,7 +651,8 @@ const App = (() => {
       priorityLevel: state.priorityLevel,
       sortBy:        state.sortBy,
       statusFilter:  state.statusFilter,
-      showFavOnly:   state.showFavOnly
+      showFavOnly:   state.showFavOnly,
+      showUnreadOnly: state.showUnreadOnly
     };
   }
   function setFilters(f) {
@@ -684,6 +695,11 @@ const App = (() => {
       state.showFavOnly = f.showFavOnly;
       const btn = document.getElementById("btn-favs");
       if (btn) btn.classList.toggle("active", f.showFavOnly);
+    }
+    if (f.showUnreadOnly !== undefined) {
+      state.showUnreadOnly = f.showUnreadOnly;
+      const btn = document.getElementById("btn-unread");
+      if (btn) btn.classList.toggle("active", f.showUnreadOnly);
     }
     render();
   }

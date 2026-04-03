@@ -259,6 +259,10 @@ a:hover { text-decoration: underline; }
   border-left: 3px solid rgba(45,206,137,.55) !important;
 }
 
+.card-read {
+  opacity: 0.68;
+}
+
 /* ── CVE Link badge (status bar) ────────────────────────────────────────── */
 .cve-link-badge {
   display: inline-flex; align-items: center; gap: .3rem;

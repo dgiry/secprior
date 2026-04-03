@@ -32,6 +32,9 @@ const ArticleModal = (() => {
     const content = document.getElementById('art-modal-content');
     if (!modal || !content) return;
 
+    // Marquer l'article comme lu
+    if (typeof Storage !== 'undefined') Storage.markRead(article.id);
+
     content.innerHTML = _buildContent(article);
 
     // Bind des boutons footer (injectés dynamiquement)

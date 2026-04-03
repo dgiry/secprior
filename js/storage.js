@@ -3,6 +3,7 @@
 
 const CACHE_KEY    = "cv_cache";
 const FAV_KEY      = "cv_favorites";
+const READ_KEY     = "cv_read_articles";
 
 // ── Persistance articles post-pipeline ────────────────────────────────────────
 // Clé séparée de cv_cache (articles bruts, 5 min) — ici articles entièrement
@@ -144,5 +145,58 @@ const Storage = {
    */
   setLastVisit(ts) {
     try { localStorage.setItem("cv_last_visit", String(ts)); } catch {}
+  },
+
+  // ─── Suivi lu/non-lu (Read tracking) ──────────────────────────────────────
+
+  /**
+   * Retourne l'ensemble des articles marqués comme lus.
+   */
+  getRead() {
+    try {
+      const raw = localStorage.getItem(READ_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  },
+
+  /**
+   * Marque un article comme lu.
+   * Idempotent : peut être appelé plusieurs fois sans effet de bord.
+   */
+  markRead(id) {
+    const read = this.getRead();
+    if (!read.has(id)) {
+      read.add(id);
+      try {
+        localStorage.setItem(READ_KEY, JSON.stringify([...read]));
+      } catch (e) {
+        console.warn("[Storage] markRead failed:", e.message);
+      }
+    }
+  },
+
+  /**
+   * Toggle l'état lu/non-lu d'un article.
+   */
+  toggleRead(id) {
+    const read = this.getRead();
+    if (read.has(id)) {
+      read.delete(id);
+    } else {
+      read.add(id);
+    }
+    try {
+      localStorage.setItem(READ_KEY, JSON.stringify([...read]));
+    } catch (e) {
+      console.warn("[Storage] toggleRead failed:", e.message);
+    }
+    return read.has(id);
+  },
+
+  /**
+   * Vérifie si un article est marqué comme lu.
+   */
+  isRead(id) {
+    return this.getRead().has(id);
   }
 };
