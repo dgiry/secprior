@@ -9,15 +9,19 @@ const UI = (() => {
   const $lastUp  = () => document.getElementById("last-update");
 
   // ─── Parser recherche avancée ──────────────────────────────────────────────
-  // Parse query strings like: "ransomware -phishing source:cisa vendor:microsoft cve:CVE-2025-"
-  // Returns: { plainTerms[], excludeTerms[], sourceFilter?, vendorFilter?, cveFilter? }
+  // Parse query strings like: "ransomware -phishing source:cisa vendor:microsoft cve:CVE-2025- status:new priority:critical_now kev trending"
+  // Returns: { plainTerms[], excludeTerms[], sourceFilter?, vendorFilter?, cveFilter?, statusFilter?, priorityFilter?, onlyKEV, onlyTrending }
   function _parseSearchQuery(query) {
     const result = {
-      plainTerms:   [],
-      excludeTerms: [],
-      sourceFilter: null,
-      vendorFilter: null,
-      cveFilter:    null
+      plainTerms:      [],
+      excludeTerms:    [],
+      sourceFilter:    null,
+      vendorFilter:    null,
+      cveFilter:       null,
+      statusFilter:    null,
+      priorityFilter:  null,
+      onlyKEV:         false,
+      onlyTrending:    false
     };
 
     const terms = query.trim().split(/\s+/);
@@ -45,6 +49,12 @@ const UI = (() => {
             case 'cve':
               result.cveFilter = value.toLowerCase();
               break;
+            case 'status':
+              result.statusFilter = value.toLowerCase();
+              break;
+            case 'priority':
+              result.priorityFilter = value.toLowerCase();
+              break;
             default:
               // Unknown operator: treat as plain text
               result.plainTerms.push(term.toLowerCase());
@@ -53,6 +63,12 @@ const UI = (() => {
           // Malformed: operator with no value
           result.plainTerms.push(term.toLowerCase());
         }
+      } else if (term.toLowerCase() === 'kev') {
+        // Shorthand: kev
+        result.onlyKEV = true;
+      } else if (term.toLowerCase() === 'trending') {
+        // Shorthand: trending
+        result.onlyTrending = true;
       } else {
         // Plain text term
         result.plainTerms.push(term.toLowerCase());
@@ -342,7 +358,7 @@ const UI = (() => {
       filtered = filtered.filter(a => !read.has(a.id));
     }
 
-    // Recherche avancée (plain text + operators: source:, vendor:, cve:, -keyword)
+    // Recherche avancée (plain text + operators: source:, vendor:, cve:, status:, priority:, kev, trending, -keyword)
     if (state.query) {
       const parsed = _parseSearchQuery(state.query);
 
@@ -364,10 +380,11 @@ const UI = (() => {
           }
         }
 
-        // 3. vendor: filter (description or title, since enriched vendor data may vary)
+        // 3. vendor: filter (check title, description, or enriched vendors if available)
         if (parsed.vendorFilter) {
           const vendorMatch = a.title.toLowerCase().includes(parsed.vendorFilter) ||
-            (a.description && a.description.toLowerCase().includes(parsed.vendorFilter));
+            (a.description && a.description.toLowerCase().includes(parsed.vendorFilter)) ||
+            (a.vendors && a.vendors.some(v => v.toLowerCase().includes(parsed.vendorFilter)));
           if (!vendorMatch) return false;
         }
 
@@ -377,7 +394,32 @@ const UI = (() => {
           if (!cveMatch) return false;
         }
 
-        // 5. Plain text: ANY plain term matching = include
+        // 5. status: filter (analyst workflow status)
+        if (parsed.statusFilter && typeof EntityStatus !== 'undefined') {
+          const status = EntityStatus.getStatus('article', a.id);
+          if (!status || !status.toLowerCase().includes(parsed.statusFilter)) {
+            return false;
+          }
+        }
+
+        // 6. priority: filter
+        if (parsed.priorityFilter) {
+          if (!a.priorityLevel || !a.priorityLevel.toLowerCase().includes(parsed.priorityFilter)) {
+            return false;
+          }
+        }
+
+        // 7. kev shorthand (KEV articles only)
+        if (parsed.onlyKEV && !a.isKEV) {
+          return false;
+        }
+
+        // 8. trending shorthand (trending articles only)
+        if (parsed.onlyTrending && !a.isTrending) {
+          return false;
+        }
+
+        // 9. Plain text: ANY plain term matching = include
         if (parsed.plainTerms.length > 0) {
           const plainMatch = parsed.plainTerms.some(term =>
             a.title.toLowerCase().includes(term) ||
