@@ -72,6 +72,36 @@ a:hover { text-decoration: underline; }
 .search-input:focus { outline: none; border-color: var(--accent); }
 .search-input::placeholder { color: var(--text2); }
 
+/* ── Search input wrapper + hint ─────────────────────────────────────────── */
+.search-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.search-hint {
+  font-size: .65rem;
+  color: var(--text2);
+  opacity: 0.45;
+  margin-top: .2rem;
+  margin-left: .4rem;
+  white-space: nowrap;
+  transition: opacity .15s ease;
+  pointer-events: none;
+}
+
+.search-hint code {
+  background: rgba(255, 255, 255, .05);
+  padding: 0 .3rem;
+  border-radius: 2px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: .6rem;
+}
+
+.search-input-wrapper:focus-within .search-hint {
+  opacity: 0;
+}
+
 .btn {
   background: var(--surface2);
   border: 1px solid var(--border);
