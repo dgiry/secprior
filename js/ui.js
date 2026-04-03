@@ -8,6 +8,60 @@ const UI = (() => {
   const $toasts  = () => document.getElementById("toast-area");
   const $lastUp  = () => document.getElementById("last-update");
 
+  // ─── Parser recherche avancée ──────────────────────────────────────────────
+  // Parse query strings like: "ransomware -phishing source:cisa vendor:microsoft cve:CVE-2025-"
+  // Returns: { plainTerms[], excludeTerms[], sourceFilter?, vendorFilter?, cveFilter? }
+  function _parseSearchQuery(query) {
+    const result = {
+      plainTerms:   [],
+      excludeTerms: [],
+      sourceFilter: null,
+      vendorFilter: null,
+      cveFilter:    null
+    };
+
+    const terms = query.trim().split(/\s+/);
+
+    terms.forEach(term => {
+      if (!term) return;
+
+      if (term.startsWith('-') && term.length > 1) {
+        // Exclusion: -keyword
+        result.excludeTerms.push(term.slice(1).toLowerCase());
+      } else if (term.includes(':')) {
+        // Operator: key:value
+        const colonIdx = term.indexOf(':');
+        const op = term.slice(0, colonIdx).toLowerCase();
+        const value = term.slice(colonIdx + 1);
+
+        if (value) {
+          switch (op) {
+            case 'source':
+              result.sourceFilter = value.toLowerCase();
+              break;
+            case 'vendor':
+              result.vendorFilter = value.toLowerCase();
+              break;
+            case 'cve':
+              result.cveFilter = value.toLowerCase();
+              break;
+            default:
+              // Unknown operator: treat as plain text
+              result.plainTerms.push(term.toLowerCase());
+          }
+        } else {
+          // Malformed: operator with no value
+          result.plainTerms.push(term.toLowerCase());
+        }
+      } else {
+        // Plain text term
+        result.plainTerms.push(term.toLowerCase());
+      }
+    });
+
+    return result;
+  }
+
   // ─── Temps relatif ─────────────────────────────────────────────────────────
   function timeAgo(date) {
     const diff = Math.floor((Date.now() - date) / 1000);
@@ -288,15 +342,54 @@ const UI = (() => {
       filtered = filtered.filter(a => !read.has(a.id));
     }
 
-    // Recherche keyword (title + description + CVEs + IOC domains)
+    // Recherche avancée (plain text + operators: source:, vendor:, cve:, -keyword)
     if (state.query) {
-      const q = state.query.toLowerCase();
-      filtered = filtered.filter(a =>
-        a.title.toLowerCase().includes(q) ||
-        (a.description && a.description.toLowerCase().includes(q)) ||
-        (a.cves || []).some(c => c.toLowerCase().includes(q)) ||
-        (a.iocs?.domains || []).some(d => d.includes(q))
-      );
+      const parsed = _parseSearchQuery(state.query);
+
+      filtered = filtered.filter(a => {
+        // 1. Exclusions : ANY matching term = exclude article
+        for (const excludeTerm of parsed.excludeTerms) {
+          const textMatch = a.title.toLowerCase().includes(excludeTerm) ||
+            (a.description && a.description.toLowerCase().includes(excludeTerm));
+          const cveMatch = (a.cves || []).some(c => c.toLowerCase().includes(excludeTerm));
+          const iocMatch = (a.iocs?.domains || []).some(d => d.includes(excludeTerm));
+
+          if (textMatch || cveMatch || iocMatch) return false;
+        }
+
+        // 2. source: filter
+        if (parsed.sourceFilter) {
+          if (!a.source || !a.source.toLowerCase().includes(parsed.sourceFilter)) {
+            return false;
+          }
+        }
+
+        // 3. vendor: filter (description or title, since enriched vendor data may vary)
+        if (parsed.vendorFilter) {
+          const vendorMatch = a.title.toLowerCase().includes(parsed.vendorFilter) ||
+            (a.description && a.description.toLowerCase().includes(parsed.vendorFilter));
+          if (!vendorMatch) return false;
+        }
+
+        // 4. cve: filter
+        if (parsed.cveFilter) {
+          const cveMatch = (a.cves || []).some(c => c.toLowerCase().includes(parsed.cveFilter));
+          if (!cveMatch) return false;
+        }
+
+        // 5. Plain text: ANY plain term matching = include
+        if (parsed.plainTerms.length > 0) {
+          const plainMatch = parsed.plainTerms.some(term =>
+            a.title.toLowerCase().includes(term) ||
+            (a.description && a.description.toLowerCase().includes(term)) ||
+            (a.cves || []).some(c => c.toLowerCase().includes(term)) ||
+            (a.iocs?.domains || []).some(d => d.includes(term))
+          );
+          if (!plainMatch) return false;
+        }
+
+        return true;
+      });
     }
 
     // Filtre criticité
