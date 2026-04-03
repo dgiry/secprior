@@ -14,6 +14,7 @@ const App = (() => {
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
     showUnreadOnly: false,
+    lastSavedQuery: null,  // Track last saved search (avoid duplicates in history)
     timerId: null,
     _cveLinkId:   null,   // CVE unique (clic sur une ligne) — priorité haute
     _cveLinkIds:  null,   // Tableau de CVEs (filtre panneau) — priorité basse
@@ -187,6 +188,13 @@ const App = (() => {
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
     _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
     _updateContextBar();                      // bandeau contextuel sous la statusbar
+
+    // Sauvegarder la recherche si elle a changé (éviter les doublons)
+    if (state.query !== state.lastSavedQuery) {
+      Storage.addRecentSearch(state.query);
+      state.lastSavedQuery = state.query;
+    }
+    _updateRecentSearches();                  // mettre à jour l'historique UI
   }
 
   // ─── Badge "New since last visit" ─────────────────────────────────────────
@@ -246,6 +254,42 @@ const App = (() => {
     } else {
       bar.style.display = "none";
     }
+  }
+
+  // ─── Historique recherches récentes ──────────────────────────────────────
+  function _updateRecentSearches() {
+    const panel = document.getElementById("recent-searches-panel");
+    if (!panel) return;
+
+    const searches = Storage.getRecentSearches();
+    if (searches.length === 0) {
+      panel.style.display = "none";
+      return;
+    }
+
+    panel.style.display = "block";
+    const header = `
+      <div class="recent-searches-header">
+        <span class="recent-searches-label">Recent</span>
+        <button class="recent-searches-clear"
+                onclick="App.clearRecentSearchHistory()"
+                title="Clear search history">✕</button>
+      </div>
+    `;
+    const buttons = searches.map((q) => {
+      const display = q.length > 50 ? q.slice(0, 47) + "…" : q;
+      return `<div class="recent-search-item">
+                <button class="recent-search-btn"
+                        onclick="App.applyRecentSearch(${JSON.stringify(q)})"
+                        title="${q}">
+                  ${display}
+                </button>
+                <button class="recent-search-remove"
+                        onclick="App.removeRecentSearch(${JSON.stringify(q)})"
+                        title="Remove from history">✕</button>
+              </div>`;
+    }).join("");
+    panel.innerHTML = header + buttons;
   }
 
   // ─── Lien CVE → Feed ───────────────────────────────────────────────────────
@@ -428,6 +472,9 @@ const App = (() => {
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => render(), 150);
     });
+
+    // ── Initialiser le panel recherches récentes ────────────────────────────
+    _updateRecentSearches();
 
     document.getElementById("filter-criticality")?.addEventListener("change", e => {
       state.criticality = e.target.value;
@@ -756,9 +803,41 @@ const App = (() => {
     _updateNewBadge();
   }
 
+  // ─── Recent searches API ──────────────────────────────────────────────────
+  /**
+   * Applique une recherche récente en mettant à jour l'input et en déclenchant render().
+   * Appelée via les boutons du panel recent-searches-panel.
+   */
+  function applyRecentSearch(query) {
+    state.query = query;
+    const searchInput = document.getElementById("search-input");
+    if (searchInput) searchInput.value = query;
+    // Mettre à jour lastSavedQuery pour éviter un doublon immédiat
+    state.lastSavedQuery = query;
+    render();
+  }
+
+  /**
+   * Vide l'historique des recherches récentes et ferme le panel.
+   * La recherche actuelle et les résultats restent inchangés.
+   */
+  function clearRecentSearchHistory() {
+    Storage.clearRecentSearches();
+    _updateRecentSearches();
+  }
+
+  /**
+   * Supprime une recherche individuelle de l'historique récent.
+   * Remet à jour le panel. La recherche actuelle reste inchangée.
+   */
+  function removeRecentSearch(query) {
+    Storage.removeRecentSearch(query);
+    _updateRecentSearches();
+  }
+
   return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
            filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter,
-           filterNewSinceVisit, exitNewSinceVisit, dismissNewBadge };
+           filterNewSinceVisit, exitNewSinceVisit, dismissNewBadge, applyRecentSearch, clearRecentSearchHistory, removeRecentSearch };
 })();
 
 // Démarrer quand le DOM est prêt

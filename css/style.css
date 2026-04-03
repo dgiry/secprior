@@ -102,6 +102,108 @@ a:hover { text-decoration: underline; }
   opacity: 0;
 }
 
+/* ── Recent searches panel ─────────────────────────────────────────────────── */
+.recent-searches-panel {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin-top: .3rem;
+  max-height: 150px;
+  overflow-y: auto;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .3rem;
+  pointer-events: auto;
+}
+
+.recent-search-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 4px;
+  padding: .3rem .5rem;
+  font-family: var(--font);
+  font-size: .75rem;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background .1s, color .1s, border-color .1s;
+}
+.recent-search-btn:hover {
+  background: var(--surface2);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.recent-search-item {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  width: 100%;
+}
+
+.recent-search-item .recent-search-btn {
+  flex: 1;
+  margin: 0;
+}
+
+.recent-search-remove {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: .7rem;
+  padding: .2rem .3rem;
+  opacity: .5;
+  flex-shrink: 0;
+  transition: color .1s, opacity .1s;
+  display: none;
+}
+
+.recent-search-item:hover .recent-search-remove {
+  display: inline-block;
+  opacity: .8;
+}
+
+.recent-search-remove:hover {
+  opacity: 1;
+  color: var(--err);
+}
+
+.recent-searches-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: .2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: .3rem;
+  font-size: .7rem;
+  opacity: .7;
+}
+
+.recent-searches-label {
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.recent-searches-clear {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: .8rem;
+  padding: 0;
+  opacity: .6;
+  transition: color .1s, opacity .1s;
+}
+.recent-searches-clear:hover {
+  opacity: 1;
+  color: var(--err);
+}
+
 .btn {
   background: var(--surface2);
   border: 1px solid var(--border);

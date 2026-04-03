@@ -1,9 +1,11 @@
 // storage.js — Couche d'abstraction LocalStorage
 // Gère le cache des articles et les favoris
 
-const CACHE_KEY    = "cv_cache";
-const FAV_KEY      = "cv_favorites";
-const READ_KEY     = "cv_read_articles";
+const CACHE_KEY         = "cv_cache";
+const FAV_KEY           = "cv_favorites";
+const READ_KEY          = "cv_read_articles";
+const RECENT_SEARCHES_KEY = "cv_recent_searches";
+const RECENT_SEARCHES_MAX = 5;
 
 // ── Persistance articles post-pipeline ────────────────────────────────────────
 // Clé séparée de cv_cache (articles bruts, 5 min) — ici articles entièrement
@@ -198,5 +200,72 @@ const Storage = {
    */
   isRead(id) {
     return this.getRead().has(id);
+  },
+
+  // ─── Historique recherches récentes ──────────────────────────────────────
+
+  /**
+   * Retourne l'historique des recherches récentes (array trié par recency).
+   */
+  getRecentSearches() {
+    try {
+      const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  },
+
+  /**
+   * Ajoute une recherche à l'historique si elle est significative.
+   * Évite les doublons consécutifs et les chaînes vides.
+   */
+  addRecentSearch(query) {
+    if (!query || query.trim() === "") return;
+
+    const searches = this.getRecentSearches();
+    const trimmed = query.trim();
+
+    // Ne pas sauvegarder si c'est le même que le dernier
+    if (searches.length > 0 && searches[0] === trimmed) return;
+
+    // Ajouter au début
+    searches.unshift(trimmed);
+
+    // Garder seulement les N derniers
+    const bounded = searches.slice(0, RECENT_SEARCHES_MAX);
+
+    try {
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(bounded));
+    } catch (e) {
+      console.warn("[Storage] addRecentSearch failed:", e.message);
+    }
+  },
+
+  /**
+   * Supprime une recherche individuelle de l'historique.
+   * Idempotent : ignorer si la recherche n'existe pas.
+   */
+  removeRecentSearch(query) {
+    const searches = this.getRecentSearches();
+    const filtered = searches.filter(s => s !== query);
+
+    // Si la liste n'a pas changé, ignorer
+    if (filtered.length === searches.length) return;
+
+    try {
+      if (filtered.length === 0) {
+        localStorage.removeItem(RECENT_SEARCHES_KEY);
+      } else {
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {
+      console.warn("[Storage] removeRecentSearch failed:", e.message);
+    }
+  },
+
+  /**
+   * Vide l'historique des recherches.
+   */
+  clearRecentSearches() {
+    try { localStorage.removeItem(RECENT_SEARCHES_KEY); } catch {}
   }
 };
