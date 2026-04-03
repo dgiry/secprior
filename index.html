@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=42">
+  <link rel="stylesheet" href="css/style.css?v=43">
 </head>
 <body>
 
@@ -404,16 +404,27 @@
     <span>Last update: <strong id="last-update">—</strong></span>
     <span style="margin-left:auto"><strong id="article-count">0</strong> articles displayed</span>
     <span id="nsv-badge" class="nsv-badge" style="display:none"
-          title="Articles publiés depuis votre dernière visite">
+          onclick="App.filterNewSinceVisit()"
+          title="Click to view new articles since your last visit">
       🆕 <span id="nsv-count">0</span> new
-      <button class="nsv-btn nsv-see-btn" onclick="App.filterNewSinceVisit()">View</button>
-      <button class="nsv-btn nsv-dismiss-btn" onclick="App.dismissNewBadge()" title="Dismiss">✕</button>
+      <button class="nsv-btn nsv-dismiss-btn"
+              onclick="event.stopPropagation();App.dismissNewBadge()"
+              title="Dismiss">✕</button>
     </span>
     <span id="cve-link-badge" class="cve-link-badge" style="display:none"
           title="Feed filtré par cette CVE — cliquer ✕ pour revenir à la vue globale">
       🔗&nbsp;<span class="cve-link-badge-id"></span>
       <button class="cve-link-badge-close" onclick="App.clearCVEFilter()" title="Libérer le filtre">✕</button>
     </span>
+  </div>
+
+  <!-- ── Bandeau contextuel "New since last visit" ─────────────────────────── -->
+  <div id="nsv-context-bar" style="display:none">
+    <span class="nsv-ctx-icon">🆕</span>
+    <span class="nsv-ctx-label">New since your last visit —
+      <strong id="nsv-ctx-count">0</strong> article<span id="nsv-ctx-plural"></span>
+    </span>
+    <button class="nsv-ctx-back" onclick="App.exitNewSinceVisit()">← Back to all</button>
   </div>
 
   <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
@@ -948,7 +959,7 @@
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=18"></script>
   <script src="js/pdf-report.js?v=18"></script>
-  <script src="js/app.js?v=23"></script>
+  <script src="js/app.js?v=24"></script>
   <script src="js/vendor-panel.js?v=18"></script>
   <script src="js/entity-status.js?v=3"></script>
   <script src="js/ioc-utils.js?v=2"></script>

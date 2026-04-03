@@ -184,6 +184,7 @@ const App = (() => {
     UI.renderCards(filtered);
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
     _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
+    _updateContextBar();                      // bandeau contextuel sous la statusbar
   }
 
   // ─── Badge "New since last visit" ─────────────────────────────────────────
@@ -195,11 +196,30 @@ const App = (() => {
     const badge   = document.getElementById("nsv-badge");
     const countEl = document.getElementById("nsv-count");
     if (!badge || !countEl) return;
-    if (count > 0 && !state._nsvDismissed) {
+    // Masquer le badge quand la vue NSV est active (la context bar prend le relais)
+    if (count > 0 && !state._nsvDismissed && state.date !== "lastvisit") {
       badge.style.display = "inline-flex";
       countEl.textContent = count;
     } else {
       badge.style.display = "none";
+    }
+  }
+
+  // ─── Bandeau contextuel NSV (sous la statusbar, au-dessus du feed) ────────
+  function _updateContextBar() {
+    const bar      = document.getElementById("nsv-context-bar");
+    const countEl  = document.getElementById("nsv-ctx-count");
+    const pluralEl = document.getElementById("nsv-ctx-plural");
+    if (!bar) return;
+    if (state.date === "lastvisit" && state.lastVisitTs) {
+      const n = state.articles.filter(a =>
+        a.pubDate instanceof Date && a.pubDate.getTime() > state.lastVisitTs
+      ).length;
+      bar.style.display  = "flex";
+      if (countEl)  countEl.textContent  = n;
+      if (pluralEl) pluralEl.textContent = n !== 1 ? "s" : "";
+    } else {
+      bar.style.display = "none";
     }
   }
 
@@ -628,14 +648,21 @@ const App = (() => {
 
   // ─── New since last visit — API publique ──────────────────────────────────
 
-  /** Active le filtre "depuis ma dernière visite" et masque le badge. */
+  /** Active le filtre "depuis ma dernière visite" — ouvre la vue dédiée. */
   function filterNewSinceVisit() {
     state.date = "lastvisit";
     state._nsvDismissed = true;
     const el = document.getElementById("filter-date");
     if (el) el.value = "lastvisit";
-    _updateNewBadge();
-    render();
+    render(); // _updateNewBadge + _updateContextBar appelés dans render()
+  }
+
+  /** Quitte la vue NSV et revient à "All time". */
+  function exitNewSinceVisit() {
+    state.date = "all";
+    const el = document.getElementById("filter-date");
+    if (el) el.value = "all";
+    render(); // masque la context bar, re-affiche le badge si non dismissed
   }
 
   /** Masque le badge NSV sans activer le filtre. */
@@ -646,7 +673,7 @@ const App = (() => {
 
   return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
            filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter,
-           filterNewSinceVisit, dismissNewBadge };
+           filterNewSinceVisit, exitNewSinceVisit, dismissNewBadge };
 })();
 
 // Démarrer quand le DOM est prêt
