@@ -23,6 +23,49 @@ const IncidentPanel = (() => {
   let _recencyFilter = "all"; // "all"|"24h"|"72h"|"week"|"older"
   let _environmentFilter = "all"; // "all"|"watchlist"|"matches_you"|"exposed_vendor"|"no_environment_match"
 
+  // ── Alias groups pour variantes de noms produit/technologie ────────────────
+  // Ensemble intentionnellement petit d'alias haute-confiance.
+  // Améliore la correspondance contextuelle sans basculer en fuzzy matching.
+  // Appliqué UNIQUEMENT aux produits/technologies, non aux vendors.
+
+  const PRODUCT_TECH_ALIASES = Object.freeze({
+    // Productivité cloud Microsoft
+    "office 365": ["office 365", "o365", "microsoft 365", "m365"],
+    "o365": ["office 365", "o365", "microsoft 365", "m365"],
+    "microsoft 365": ["office 365", "o365", "microsoft 365", "m365"],
+    "m365": ["office 365", "o365", "microsoft 365", "m365"],
+
+    // Identité Azure
+    "azure ad": ["azure ad", "azure active directory", "entra id", "microsoft entra"],
+    "azure active directory": ["azure ad", "azure active directory", "entra id", "microsoft entra"],
+    "entra id": ["azure ad", "azure active directory", "entra id", "microsoft entra"],
+    "microsoft entra": ["azure ad", "azure active directory", "entra id", "microsoft entra"],
+
+    // Orchestration de conteneurs
+    "kubernetes": ["kubernetes", "k8s"],
+    "k8s": ["kubernetes", "k8s"],
+
+    // Famille Windows Server (mapping précis uniquement)
+    "windows server": ["windows server", "windows server 2016", "windows server 2019", "windows server 2022"],
+    "windows server 2016": ["windows server", "windows server 2016", "windows server 2019", "windows server 2022"],
+    "windows server 2019": ["windows server", "windows server 2016", "windows server 2019", "windows server 2022"],
+    "windows server 2022": ["windows server", "windows server 2016", "windows server 2019", "windows server 2022"],
+  });
+
+  /**
+   * Retourne tous les variants (alias) d'un nom produit/technologie.
+   * Priorité : exact match d'abord, puis aliases du groupe.
+   */
+  function _getProductTechVariants(name) {
+    const normalized = String(name).toLowerCase().trim();
+    // Si le nom exact est dans les alias, retourner tous les variants du groupe
+    if (PRODUCT_TECH_ALIASES[normalized]) {
+      return PRODUCT_TECH_ALIASES[normalized];
+    }
+    // Sinon, retourner le nom seul (pas d'alias)
+    return [normalized];
+  }
+
   // ── Détermination du statut de remédiation (exclusive) ────────────────────
   // Priorité : no_patch > patch_available > virtual_patch > mitigation_only > unknown
 
@@ -200,25 +243,35 @@ const IncidentPanel = (() => {
             .join(" ");
 
           // Vérifier correspondance produits (ex: "Windows Server 2019", "Apache Log4j")
+          // Avec support des alias pour variantes communes (ex: Office 365 / M365 / O365)
           if (tracked.products.size > 0) {
             for (const product of tracked.products) {
-              // Utiliser des limites de mots pour éviter les faux positifs (ex: "service" → "service" n'importe où)
-              const wordBoundary = /\b/.test(product.charAt(0)) ? "\\b" : "";
-              const pattern = new RegExp(wordBoundary + product.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
-              if (pattern.test(articleText)) {
-                return "matches_you";
+              // Obtenir tous les variants (alias) du produit
+              const variants = _getProductTechVariants(product);
+              for (const variant of variants) {
+                // Utiliser des limites de mots pour éviter les faux positifs
+                const wordBoundary = /\b/.test(variant.charAt(0)) ? "\\b" : "";
+                const pattern = new RegExp(wordBoundary + variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
+                if (pattern.test(articleText)) {
+                  return "matches_you";
+                }
               }
             }
           }
 
           // Vérifier correspondance technologies (ex: "Kubernetes", "Docker", "SQL Server")
+          // Avec support des alias pour variantes communes (ex: Kubernetes / K8s)
           if (tracked.technologies.size > 0) {
             for (const tech of tracked.technologies) {
-              // Limites de mots pour éviter faux positifs
-              const wordBoundary = /\b/.test(tech.charAt(0)) ? "\\b" : "";
-              const pattern = new RegExp(wordBoundary + tech.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
-              if (pattern.test(articleText)) {
-                return "matches_you";
+              // Obtenir tous les variants (alias) de la technologie
+              const variants = _getProductTechVariants(tech);
+              for (const variant of variants) {
+                // Limites de mots pour éviter faux positifs
+                const wordBoundary = /\b/.test(variant.charAt(0)) ? "\\b" : "";
+                const pattern = new RegExp(wordBoundary + variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + wordBoundary, "i");
+                if (pattern.test(articleText)) {
+                  return "matches_you";
+                }
               }
             }
           }
