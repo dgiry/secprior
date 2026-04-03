@@ -14,8 +14,10 @@ const App = (() => {
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
     timerId: null,
-    _cveLinkId:  null,    // CVE unique (clic sur une ligne) — priorité haute
-    _cveLinkIds: null     // Tableau de CVEs (filtre panneau) — priorité basse
+    _cveLinkId:   null,   // CVE unique (clic sur une ligne) — priorité haute
+    _cveLinkIds:  null,   // Tableau de CVEs (filtre panneau) — priorité basse
+    lastVisitTs:  null,   // Timestamp début session précédente (New since last visit)
+    _nsvDismissed: false  // Badge NSV masqué par l'utilisateur pour cette session
   };
 
   // ─── Refresh principal via Pipeline ────────────────────────────────────────
@@ -161,11 +163,18 @@ const App = (() => {
       );
     }
 
+    // Marquer les articles "nouveaux depuis la dernière visite"
+    const ts = state.lastVisitTs;
+    articlesToFilter.forEach(a => {
+      a._isNew = ts ? a.pubDate.getTime() > ts : false;
+    });
+
     const filtered = UI.applyFilters(articlesToFilter, {
       query:         state.query,
       criticality:   state.criticality,
       source:        state.source,
       date:          state.date,
+      lastVisitTs:   state.lastVisitTs,        // pour le filtre "lastvisit"
       priorityLevel: state.priorityLevel,
       sortBy:        state.sortBy,
       statusFilter:  state.statusFilter,
@@ -174,6 +183,24 @@ const App = (() => {
     });
     UI.renderCards(filtered);
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
+    _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
+  }
+
+  // ─── Badge "New since last visit" ─────────────────────────────────────────
+  function _updateNewBadge() {
+    if (!state.lastVisitTs) return;
+    const count = state.articles.filter(a =>
+      a.pubDate instanceof Date && a.pubDate.getTime() > state.lastVisitTs
+    ).length;
+    const badge   = document.getElementById("nsv-badge");
+    const countEl = document.getElementById("nsv-count");
+    if (!badge || !countEl) return;
+    if (count > 0 && !state._nsvDismissed) {
+      badge.style.display = "inline-flex";
+      countEl.textContent = count;
+    } else {
+      badge.style.display = "none";
+    }
   }
 
   // ─── Lien CVE → Feed ───────────────────────────────────────────────────────
@@ -305,6 +332,26 @@ const App = (() => {
 
   // ─── Initialisation ────────────────────────────────────────────────────────
   async function init() {
+    // ── New since last visit — initialisation ─────────────────────────────
+    // Pattern sessionStorage : stable sur F5, reset sur fermeture d'onglet.
+    // state.lastVisitTs = début de la session PRÉCÉDENTE (référence de comparaison).
+    // localStorage cv_last_visit = début de la session ACTUELLE (pour la prochaine fois).
+    {
+      const prevVisit = Storage.getLastVisit();
+      if (!sessionStorage.getItem("cv_sv")) {
+        // Nouvelle session — sessionStorage vide = nouvel onglet / retour après fermeture
+        sessionStorage.setItem("cv_sv", "1");
+        // Sauvegarder le début de cette session pour la prochaine visite
+        Storage.setLastVisit(Date.now());
+        // Le point de comparaison est l'ancienne valeur (session précédente)
+        state.lastVisitTs = prevVisit; // null si première visite
+      } else {
+        // Même session (F5 / rechargement) — garder la référence stable
+        // On lit cv_last_visit qui pointe sur le début de CETTE session
+        state.lastVisitTs = prevVisit;
+      }
+    }
+
     // ── Maintenance préventive du localStorage ─────────────────────────────
     // Purge les statuts analyste "closed/false_positive" de plus de 90 jours
     // pour éviter la croissance indéfinie du store EntityStatus.
@@ -579,8 +626,27 @@ const App = (() => {
     return "main";
   }
 
+  // ─── New since last visit — API publique ──────────────────────────────────
+
+  /** Active le filtre "depuis ma dernière visite" et masque le badge. */
+  function filterNewSinceVisit() {
+    state.date = "lastvisit";
+    state._nsvDismissed = true;
+    const el = document.getElementById("filter-date");
+    if (el) el.value = "lastvisit";
+    _updateNewBadge();
+    render();
+  }
+
+  /** Masque le badge NSV sans activer le filtre. */
+  function dismissNewBadge() {
+    state._nsvDismissed = true;
+    _updateNewBadge();
+  }
+
   return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
-           filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter };
+           filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter,
+           filterNewSinceVisit, dismissNewBadge };
 })();
 
 // Démarrer quand le DOM est prêt

@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=41">
+  <link rel="stylesheet" href="css/style.css?v=42">
 </head>
 <body>
 
@@ -136,6 +136,7 @@
 
     <select id="filter-date" class="select-filter" title="Filter by time period">
       <option value="all">📅 All time</option>
+      <option value="lastvisit">🆕 Since last visit</option>
       <option value="24h">⏱ Last 24h</option>
       <option value="7d">📆 Last 7 days</option>
       <option value="30d">🗓 Last 30 days</option>
@@ -402,6 +403,12 @@
     <span>Auto-refresh: 10 min</span>
     <span>Last update: <strong id="last-update">—</strong></span>
     <span style="margin-left:auto"><strong id="article-count">0</strong> articles displayed</span>
+    <span id="nsv-badge" class="nsv-badge" style="display:none"
+          title="Articles publiés depuis votre dernière visite">
+      🆕 <span id="nsv-count">0</span> new
+      <button class="nsv-btn nsv-see-btn" onclick="App.filterNewSinceVisit()">View</button>
+      <button class="nsv-btn nsv-dismiss-btn" onclick="App.dismissNewBadge()" title="Dismiss">✕</button>
+    </span>
     <span id="cve-link-badge" class="cve-link-badge" style="display:none"
           title="Feed filtré par cette CVE — cliquer ✕ pour revenir à la vue globale">
       🔗&nbsp;<span class="cve-link-badge-id"></span>
@@ -925,7 +932,7 @@
   <script src="js/ops-panel.js?v=1"></script>
   <script src="js/demo-data.js?v=14"></script>
   <script src="js/scorer.js?v=14"></script>
-  <script src="js/storage.js?v=14"></script>
+  <script src="js/storage.js?v=15"></script>
   <script src="js/feeds.js?v=14"></script>
   <script src="js/enricher.js?v=17"></script>
   <script src="js/deduplicator.js?v=13"></script>
@@ -939,9 +946,9 @@
   <script src="js/tv1-sync.js?v=2"></script>
   <script src="js/settings-modal.js?v=20"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
-  <script src="js/ui.js?v=17"></script>
+  <script src="js/ui.js?v=18"></script>
   <script src="js/pdf-report.js?v=18"></script>
-  <script src="js/app.js?v=22"></script>
+  <script src="js/app.js?v=23"></script>
   <script src="js/vendor-panel.js?v=18"></script>
   <script src="js/entity-status.js?v=3"></script>
   <script src="js/ioc-utils.js?v=2"></script>
