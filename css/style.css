@@ -196,7 +196,14 @@ a:hover { text-decoration: underline; }
   border-radius: 4px;
   padding: .1rem .45rem;
   font-size: .72rem; font-weight: 600;
+  cursor: pointer;
   animation: nsvIn .2s ease;
+  transition: background .12s, border-color .12s;
+  user-select: none;
+}
+.nsv-badge:hover {
+  background: rgba(45,206,137,.22);
+  border-color: rgba(45,206,137,.55);
 }
 @keyframes nsvIn {
   from { opacity: 0; transform: translateY(-3px); }
@@ -208,7 +215,35 @@ a:hover { text-decoration: underline; }
   opacity: .75; line-height: 1; transition: opacity .12s;
 }
 .nsv-btn:hover { opacity: 1; }
-.nsv-see-btn   { font-weight: 700; text-decoration: underline dotted; }
+
+/* ── Bandeau contextuel NSV (au-dessus du feed, quand vue active) ─────────── */
+#nsv-context-bar {
+  display: none;
+  align-items: center;
+  gap: .6rem;
+  padding: .45rem 1rem;
+  background: rgba(45,206,137,.07);
+  border-bottom: 1px solid rgba(45,206,137,.18);
+  color: #2dce89;
+  font-size: .8rem;
+}
+.nsv-ctx-icon  { font-size: .9rem; flex-shrink: 0; }
+.nsv-ctx-label { flex: 1; }
+.nsv-ctx-back  {
+  background: none;
+  border: 1px solid rgba(45,206,137,.35);
+  color: #2dce89;
+  border-radius: 4px;
+  padding: .2rem .65rem;
+  cursor: pointer;
+  font-size: .75rem;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.nsv-ctx-back:hover {
+  background: rgba(45,206,137,.14);
+  border-color: rgba(45,206,137,.55);
+}
 
 /* ── New since last visit — badge sur les cartes ─────────────────────────── */
 .badge-new {
