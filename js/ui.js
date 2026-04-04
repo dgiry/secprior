@@ -280,6 +280,8 @@ const UI = (() => {
     const countEl = $count();
     if (countEl) countEl.textContent = articles.length;
 
+    // Recalculer immédiatement les temps relatifs (évite d'attendre 60s)
+    _updateCardTimes();
     // Démarrer la mise à jour périodique des temps relatifs
     _startCardTimeUpdater();
   }
