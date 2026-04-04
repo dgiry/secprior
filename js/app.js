@@ -86,6 +86,7 @@ const App = (() => {
         state.lastRefreshMode = mode;
         const articleChange = state.articles.length - state.previousArticleCount;
         state.previousArticleCount = state.articles.length;
+        const feedHealth = _getPriorityFeedHealth();
         OpsPanel.update({
           sourceMode: mode,
           feedCount,
@@ -93,6 +94,7 @@ const App = (() => {
           lastRefreshAt: now,
           lastFreshFetchAt: state.lastFreshFetchAt,
           articleChange,
+          feedHealth,
           environmentContextStats: envStats
         });
         // Persister le timestamp de la dernière fetch live (pour restauration session)
@@ -166,11 +168,13 @@ const App = (() => {
         try {
           const now = Date.now();
           state.lastRefreshMode = 'degraded';
+          const feedHealth = _getPriorityFeedHealth();
           OpsPanel.update({
             sourceMode: 'degraded',
             articleCount: state.articles.length,
             lastRefreshAt: now,
-            lastFreshFetchAt: state.lastFreshFetchAt  // Keep last fresh fetch timestamp
+            lastFreshFetchAt: state.lastFreshFetchAt,  // Keep last fresh fetch timestamp
+            feedHealth
           });
         } catch {}
       }
@@ -192,6 +196,23 @@ const App = (() => {
     const ago_str = ago < 1 ? "Just now" : `${ago}m ago`;
     const status = state.lastRefreshMode === 'live' ? '✓ Live' : (state.lastRefreshMode === 'restore' ? '↻ Cached' : state.lastRefreshMode);
     btn.title = `Force feed update · Last fresh: ${ago_str} (${status})`;
+  }
+
+  // ─── Collecter la santé des flux prioritaires pour l'Ops Panel ──────────────
+  function _getPriorityFeedHealth() {
+    const priorityIds = ['securityweek', 'cyber-centre', 'certeu', 'cisa-ics'];
+    if (typeof FeedManager === 'undefined') return [];
+
+    return priorityIds
+      .map(id => FeedManager.getAllFeeds().find(f => f.id === id))
+      .filter(f => f) // ignore missing feeds
+      .map(f => ({
+        name: f.name,
+        status: f.lastStatus || 'unknown',
+        lastTestAt: f.lastTestAt,
+        lastItemCount: f.lastItemCount,
+        lastErrorMessage: f.lastErrorMessage
+      }));
   }
 
   // ─── Enrichissement NVD en arrière-plan ───────────────────────────────────
@@ -752,10 +773,12 @@ const App = (() => {
           const freshFetchTs = localStorage.getItem('cv_last_fresh_fetch_at');
           if (freshFetchTs) state.lastFreshFetchAt = parseInt(freshFetchTs, 10);
         } catch {}
+        const feedHealth = _getPriorityFeedHealth();
         OpsPanel.update({
           sourceMode: 'restore',
           articleCount: _restoredArticles.length,
           lastFreshFetchAt: state.lastFreshFetchAt,
+          feedHealth,
           environmentContextStats: envStats
         });
       } catch {}

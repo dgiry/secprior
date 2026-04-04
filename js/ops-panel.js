@@ -49,6 +49,15 @@ const OpsPanel = (() => {
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Exposed vendor</span><span class="ops-v" id="ops-exposed-vendor" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">KEV reverse match</span><span class="ops-v" id="ops-kev" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">NVD status</span><span class="ops-v" id="ops-nvd">—</span></div>
+
+        <!-- Séparateur -->
+        <div style="border-top:1px solid #30363d;margin:4px 0"></div>
+
+        <!-- Feed Health (Priority feeds) -->
+        <div style="font-size:.8rem;opacity:.7;font-weight:600;margin-top:2px">Priority Feed Health</div>
+        <div id="ops-feed-health" style="display:flex;flex-direction:column;gap:3px;font-size:.8rem">
+          <!-- Priority feeds status injected here -->
+        </div>
       </div>`;
     document.body.appendChild(_box);
     document.getElementById('ops-close')?.addEventListener('click', hide);
@@ -72,8 +81,23 @@ const OpsPanel = (() => {
     try { return new Date(dt).toLocaleString('fr-CA'); } catch { return '—'; }
   }
 
+  // ─── Formateur pour timestamps relatifs ────────────────────────────────────
+  function _relTime(iso) {
+    if (!iso) return '—';
+    try {
+      const ms = Date.now() - new Date(iso).getTime();
+      const mins = Math.floor(ms / 60000);
+      const hrs = Math.floor(mins / 60);
+      const days = Math.floor(hrs / 24);
+      if (days > 0) return `${days}d ago`;
+      if (hrs > 0) return `${hrs}h ago`;
+      if (mins > 0) return `${mins}m ago`;
+      return 'just now';
+    } catch { return '—'; }
+  }
+
   // API de mise à jour — App et autres modules envoient des signaux
-  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, lastFreshFetchAt, articleChange, nvd, kev, environmentContextStats }) {
+  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, lastFreshFetchAt, articleChange, nvd, kev, environmentContextStats, feedHealth }) {
     _ensureBox();
     const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     if (sourceMode)   s('ops-source-mode', sourceMode);
@@ -95,6 +119,25 @@ const OpsPanel = (() => {
       s('ops-matches-you', String(stats.matches_you || 0));
       s('ops-watchlist', String(stats.watchlist || 0));
       s('ops-exposed-vendor', String(stats.exposed_vendor || 0));
+    }
+
+    // Feed health for priority feeds (SecurityWeek, Cyber Centre Canada, CERT-EU, CISA ICS)
+    if (feedHealth && feedHealth.length > 0) {
+      const el = document.getElementById('ops-feed-health');
+      if (el) {
+        el.innerHTML = feedHealth.map(f => {
+          const statusIcon = f.status === 'ok' ? '✓' : f.status === 'error' ? '✗' : '⏳';
+          const statusColor = f.status === 'ok' ? '#3fb950' : f.status === 'error' ? '#f85149' : '#d29922';
+          const itemInfo = f.lastItemCount !== null ? ` (${f.lastItemCount} items)` : '';
+          const timeAgo = _relTime(f.lastTestAt);
+          const errorMsg = f.lastErrorMessage ? ` — ${f.lastErrorMessage.slice(0, 30)}` : '';
+          return `<div style="display:flex;gap:6px;align-items:baseline;font-size:.75rem">
+            <span style="color:${statusColor};font-weight:bold">${statusIcon}</span>
+            <span style="flex:1">${f.name}${itemInfo}</span>
+            <span style="opacity:.6;white-space:nowrap">${timeAgo}${errorMsg}</span>
+          </div>`;
+        }).join('');
+      }
     }
   }
 
