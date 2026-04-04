@@ -89,7 +89,7 @@ const CONFIG = {
     { id: "cisa-ics",         name: "CISA ICS Advisories",    url: "https://www.cisa.gov/ics/advisories/advisory-feed.xml",           lang: "en", icon: "🦅" },
     { id: "ncsc",             name: "NCSC UK",                url: "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",     lang: "en", icon: "🇬🇧" },
     { id: "certeu",           name: "CERT-EU",                url: "https://www.cert.europa.eu/feed",                                 lang: "en", icon: "🇪🇺" },
-    { id: "cyber-centre",     name: "Cyber Centre Canada",    url: "https://www.cyber.gc.ca/en/feeds.xml",                            lang: "en", icon: "🇨🇦" },
+    { id: "cyber-centre",     name: "Cyber Centre Canada",    url: "https://www.cyber.gc.ca/api/cccs/atom/v1/get?feed=alerts_advisories&lang=en",                            lang: "en", icon: "🇨🇦" },
     { id: "zdi",              name: "Zero Day Initiative",    url: "https://www.zerodayinitiative.com/rss/published/",                lang: "en", icon: "💀" },
     { id: "sans",             name: "SANS ISC",               url: "https://isc.sans.edu/rssfeed_full.xml",                          lang: "en", icon: "⚡" },
     { id: "bleepingcomputer", name: "Bleeping Computer",      url: "https://www.bleepingcomputer.com/feed/",                          lang: "en", icon: "🟣" },
