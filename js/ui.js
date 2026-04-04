@@ -87,6 +87,41 @@ const UI = (() => {
     return `${Math.floor(diff/86400)}d`;
   }
 
+  // ─── Mise à jour périodique des temps relatifs (card-time) ──────────────────
+  // Problème : les labels de temps relatif ("1h", "2d", etc.) sont calculés UNE FOIS
+  // au rendu et deviennent statiques. Ils deviennent stales rapidement.
+  // Solution : actualiser tous les labels visibles toutes les 60 secondes.
+  let _timeUpdateTimer = null;
+
+  function _updateCardTimes() {
+    const timeElements = document.querySelectorAll('.card-time');
+    timeElements.forEach(el => {
+      const article = el.closest('article');
+      if (!article) return;
+      const pubDateStr = el.title; // Format: "MM/DD/YYYY, HH:MM:SS AM/PM" ou équivalent
+      // Extraire la date depuis l'attribut title (qui est un toLocaleString())
+      try {
+        const pubDate = new Date(pubDateStr);
+        if (!isNaN(pubDate.getTime())) {
+          el.textContent = timeAgo(pubDate);
+        }
+      } catch {}
+    });
+  }
+
+  function _startCardTimeUpdater() {
+    if (_timeUpdateTimer) clearInterval(_timeUpdateTimer);
+    // Mettre à jour toutes les 60 secondes pour garder les temps relatifs frais
+    _timeUpdateTimer = setInterval(_updateCardTimes, 60000);
+  }
+
+  function _stopCardTimeUpdater() {
+    if (_timeUpdateTimer) {
+      clearInterval(_timeUpdateTimer);
+      _timeUpdateTimer = null;
+    }
+  }
+
   // ─── Rendu d'une carte article ─────────────────────────────────────────────
   function cardHTML(article) {
     const m = getCriticalityMeta(article.criticality);
@@ -247,6 +282,9 @@ const UI = (() => {
 
     const countEl = $count();
     if (countEl) countEl.textContent = articles.length;
+
+    // Démarrer la mise à jour périodique des temps relatifs
+    _startCardTimeUpdater();
   }
 
   // ─── Empty state contextuel ────────────────────────────────────────────────
