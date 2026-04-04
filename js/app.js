@@ -34,6 +34,15 @@ const App = (() => {
       state.articles = articles;
       console.log(`[App] state.articles set (${state.articles.length})`);
 
+      // Debug: Log priorityLevels après refresh
+      const critNowIds = state.articles.filter(a => a.priorityLevel === "critical_now").map(a => a.id);
+      const critNowTitles = state.articles.filter(a => a.priorityLevel === "critical_now").map(a => a.title.slice(0, 50));
+      console.log(`[App] Priority levels after refresh:`, {
+        critical_now_count: critNowIds.length,
+        critical_now_ids: critNowIds.slice(0, 5),
+        critical_now_titles: critNowTitles.slice(0, 3)
+      });
+
       // Persister les articles enrichis pour restauration au rechargement (TTL 6 h)
       Storage.setArticles(articles);
       console.log(`[App] Storage.setArticles persisted (${articles.length})`);
