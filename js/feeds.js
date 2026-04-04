@@ -204,7 +204,9 @@ async function fetchAllFeeds(forceRefresh = false) {
     if (cache && cache.items && cache.items.length > 0) {
       const oldestPubDate = cache.items.length > 0 ? Math.min(...cache.items.map(a => new Date(a.pubDate).getTime())) : null;
       const oldestAgo = oldestPubDate ? Math.floor((Date.now() - oldestPubDate) / 86400000) : 0;
-      console.log(`[Feeds] Cache used (${cache.items.length} articles, oldest: ${oldestAgo}d)`);
+      const fortinet = cache.items.find(a => a.title && a.title.includes('Fortinet'));
+      const cisa = cache.items.find(a => a.title && a.title.includes('CISA Adds Five'));
+      console.log(`[Feeds] Cache used (${cache.items.length} articles, oldest: ${oldestAgo}d) - Fortinet: ${fortinet ? 'YES' : 'NO'}, CISA Adds Five: ${cisa ? 'YES' : 'NO'}`);
       // Réhydrater les dates (JSON.parse les strings en string)
       return cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
     }
