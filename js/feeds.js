@@ -202,11 +202,17 @@ async function fetchAllFeeds(forceRefresh = false) {
   if (!forceRefresh && !Storage.isCacheStale()) {
     const cache = Storage.getCache();
     if (cache && cache.items && cache.items.length > 0) {
-      console.log("[Feeds] Cache used (%d articles)", cache.items.length);
+      const oldestPubDate = cache.items.length > 0 ? Math.min(...cache.items.map(a => new Date(a.pubDate).getTime())) : null;
+      const oldestAgo = oldestPubDate ? Math.floor((Date.now() - oldestPubDate) / 86400000) : 0;
+      console.log(`[Feeds] Cache used (${cache.items.length} articles, oldest: ${oldestAgo}d)`);
       // Réhydrater les dates (JSON.parse les strings en string)
       return cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
     }
   }
+
+  // Log si forceRefresh ou cache stale
+  if (forceRefresh) console.log("[Feeds] forceRefresh=true: fetching fresh data from sources");
+  else console.log("[Feeds] Cache is stale or empty: fetching fresh data from sources");
 
   // Utiliser les flux activés côté configuration (sans masque de vue persona)
   // pour la collecte réseau afin de ne pas réduire le scope par la vue
