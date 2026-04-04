@@ -377,18 +377,23 @@ const FeedManager = (() => {
 
     // Profil vierge : injecter le pack par défaut
     const defaultPack = [
+      // Operational: Official advisories & alerts
       { id: "certfr-alertes",    name: "CERT-FR Alertes",      enabled: true },
       { id: "certfr-bulletins",  name: "CERT-FR Bulletins",    enabled: true },
       { id: "cisa",              name: "CISA Advisories",      enabled: true },
+      { id: "cisa-ics",          name: "CISA ICS Advisories",  enabled: true },
+      { id: "ncsc",              name: "NCSC UK",              enabled: true },
+      { id: "certeu",            name: "CERT-EU",              enabled: true },
+      { id: "cyber-centre",      name: "Cyber Centre Canada",  enabled: true },
       { id: "zdi",               name: "Zero Day Initiative",  enabled: true },
+      { id: "sans",              name: "SANS ISC",             enabled: true },
+      { id: "bleepingcomputer",  name: "BleepingComputer",     enabled: true },
+      { id: "securityweek",      name: "SecurityWeek",         enabled: true },
+      // CTI / Campaigns: Threat intelligence & research
       { id: "thehackernews",     name: "The Hacker News",      enabled: true },
       { id: "krebsonsecurity",   name: "Krebs on Security",    enabled: true },
-      { id: "securityweek",      name: "SecurityWeek",         enabled: true },
-      { id: "bleepingcomputer",  name: "BleepingComputer",     enabled: true },
-      { id: "sans",              name: "SANS ISC",             enabled: true },
       { id: "talos",             name: "Cisco Talos",          enabled: true },
-      { id: "unit42",            name: "Unit 42",              enabled: true },
-      { id: "ncsc",              name: "NCSC UK",              enabled: true }
+      { id: "unit42",            name: "Unit 42",              enabled: true }
     ];
 
     // Activer uniquement les flux par défaut qui existent dans CONFIG.FEEDS

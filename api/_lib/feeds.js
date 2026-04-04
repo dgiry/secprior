@@ -11,19 +11,30 @@
 "use strict";
 
 const FEEDS = [
-  { id: "thehackernews",    name: "The Hacker News",        url: "https://feeds.feedburner.com/TheHackersNews",                     lang: "en", icon: "🔴" },
-  { id: "krebsonsecurity",  name: "Krebs on Security",      url: "https://krebsonsecurity.com/feed/",                               lang: "en", icon: "🔵" },
-  { id: "bleepingcomputer", name: "Bleeping Computer",      url: "https://www.bleepingcomputer.com/feed/",                          lang: "en", icon: "🟣" },
-  { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" },
+  // ── Operational: Official advisories & alerts ──────────────────────────────
+  { id: "certfr-alertes",   name: "CERT-FR Alertes",        url: "https://www.cert.ssi.gouv.fr/alerte/flux/",                      lang: "fr", icon: "🇫🇷" },
+  { id: "certfr-bulletins", name: "CERT-FR Bulletins",      url: "https://www.cert.ssi.gouv.fr/bulletin/flux/",                    lang: "fr", icon: "🇫🇷" },
   { id: "certfr",           name: "CERT-FR",                url: "https://www.cert.ssi.gouv.fr/feed/",                              lang: "fr", icon: "🇫🇷" },
   { id: "cisa",             name: "CISA Advisories",        url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",           lang: "en", icon: "🦅" },
+  { id: "cisa-ics",         name: "CISA ICS Advisories",    url: "https://www.cisa.gov/ics/advisories/advisory-feed.xml",           lang: "en", icon: "🦅" },
+  { id: "ncsc",             name: "NCSC UK",                url: "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",     lang: "en", icon: "🇬🇧" },
+  { id: "certeu",           name: "CERT-EU",                url: "https://www.cert.europa.eu/feed",                                 lang: "en", icon: "🇪🇺" },
+  { id: "cyber-centre",     name: "Cyber Centre Canada",    url: "https://www.cyber.gc.ca/en/feeds.xml",                            lang: "en", icon: "🇨🇦" },
   { id: "zdi",              name: "Zero Day Initiative",    url: "https://www.zerodayinitiative.com/rss/published/",                lang: "en", icon: "💀" },
-  { id: "welivesecurity",   name: "WeLiveSecurity (ESET)",  url: "https://www.welivesecurity.com/feed/",                           lang: "en", icon: "🧨" },
   { id: "sans",             name: "SANS ISC",               url: "https://isc.sans.edu/rssfeed_full.xml",                          lang: "en", icon: "⚡" },
+  { id: "bleepingcomputer", name: "Bleeping Computer",      url: "https://www.bleepingcomputer.com/feed/",                          lang: "en", icon: "🟣" },
+  { id: "securityweek",     name: "SecurityWeek",           url: "https://www.securityweek.com/feed/",                              lang: "en", icon: "📰" },
+
+  // ── CTI / Campaigns: Threat intelligence & research ─────────────────────────
+  { id: "thehackernews",    name: "The Hacker News",        url: "https://feeds.feedburner.com/TheHackersNews",                     lang: "en", icon: "🔴" },
+  { id: "krebsonsecurity",  name: "Krebs on Security",      url: "https://krebsonsecurity.com/feed/",                               lang: "en", icon: "🔵" },
   { id: "talos",            name: "Cisco Talos",            url: "https://blog.talosintelligence.com/rss/",                        lang: "en", icon: "🔬" },
-  { id: "securelist",       name: "Securelist (Kaspersky)", url: "https://securelist.com/feed/",                                   lang: "en", icon: "🕵️" },
   { id: "unit42",           name: "Unit 42 (Palo Alto)",    url: "https://unit42.paloaltonetworks.com/feed/",                      lang: "en", icon: "🔭" },
-  { id: "ncsc",             name: "NCSC UK",                url: "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",     lang: "en", icon: "🇬🇧" }
+  { id: "securelist",       name: "Securelist (Kaspersky)", url: "https://securelist.com/feed/",                                   lang: "en", icon: "🕵️" },
+  { id: "welivesecurity",   name: "WeLiveSecurity (ESET)",  url: "https://www.welivesecurity.com/feed/",                           lang: "en", icon: "🧨" },
+
+  // ── Strategic: Broader intelligence & analysis ──────────────────────────────
+  { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" }
 ];
 
 module.exports = { FEEDS };
