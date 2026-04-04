@@ -27,6 +27,12 @@ const App = (() => {
     console.log(`[App] refresh() begin · force=${force}`);
     UI.showSpinner(true);
     try {
+      // ── Quand force=true, invalider le cache enrichi pour forcer la recomputation ──
+      // Cela garantit que les articles refreshés seront différents des articles cachés.
+      if (force) {
+        console.log("[App] Force refresh: clearing enriched articles cache to ensure fresh data");
+        Storage.clearArticles();
+      }
       // ── Pipeline 6 étapes : Collecter → Enrichir → Dédupliquer → Scorer → Contextualiser
       const articles = await Pipeline.run(force);
       console.log(`[App] refresh() pipeline returned ${articles.length} articles`);

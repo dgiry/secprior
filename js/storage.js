@@ -9,11 +9,12 @@ const RECENT_SEARCHES_MAX = 5;
 
 // ── Persistance articles post-pipeline ────────────────────────────────────────
 // Clé séparée de cv_cache (articles bruts, 5 min) — ici articles entièrement
-// enrichis (score, KEV, EPSS, watchlist, priorité) avec TTL long (6 h).
+// enrichis (score, KEV, EPSS, watchlist, priorité) avec TTL modéré (30 min).
+// TTL réduit de 6h → 30min pour que force refresh visibles immédiatement.
 // Bump ARTICLES_VER dès que le schéma article du pipeline change
 // pour invalider automatiquement les caches clients existants.
 const ARTICLES_KEY = "cv_articles";
-const ARTICLES_TTL = 6 * 60 * 60 * 1000; // 6 heures
+const ARTICLES_TTL = 30 * 60 * 1000; // 30 minutes (was 6 hours)
 const ARTICLES_VER = 1;                   // à incrémenter si format change
 
 const Storage = {
