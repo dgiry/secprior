@@ -16,7 +16,7 @@ const FEEDS = [
   { id: "certfr-bulletins", name: "CERT-FR Bulletins",      url: "https://www.cert.ssi.gouv.fr/actualite/feed/",                   lang: "fr", icon: "🇫🇷" },
   { id: "certfr",           name: "CERT-FR",                url: "https://www.cert.ssi.gouv.fr/feed/",                              lang: "fr", icon: "🇫🇷" },
   { id: "cisa",             name: "CISA Advisories",        url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",           lang: "en", icon: "🦅" },
-  { id: "cisa-ics",         name: "CISA ICS Advisories",    url: "https://www.cisa.gov/ics/advisories/advisory-feed.xml",           lang: "en", icon: "🦅" },
+  { id: "cisa-ics",         name: "CISA ICS Advisories",    url: "https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml", lang: "en", icon: "🦅" },
   { id: "ncsc",             name: "NCSC UK",                url: "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",     lang: "en", icon: "🇬🇧" },
   { id: "certeu",           name: "CERT-EU",                url: "https://www.cert.europa.eu/publications/security-advisories-rss", lang: "en", icon: "🇪🇺" },
   { id: "cyber-centre",     name: "Cyber Centre Canada",    url: "https://www.cyber.gc.ca/api/cccs/atom/v1/get?feed=alerts_advisories&lang=en",                            lang: "en", icon: "🇨🇦" },
