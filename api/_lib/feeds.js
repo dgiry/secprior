@@ -12,8 +12,8 @@
 
 const FEEDS = [
   // ── Operational: Official advisories & alerts ──────────────────────────────
-  { id: "certfr-alertes",   name: "CERT-FR Alertes",        url: "https://www.cert.ssi.gouv.fr/alerte/flux/",                      lang: "fr", icon: "🇫🇷" },
-  { id: "certfr-bulletins", name: "CERT-FR Bulletins",      url: "https://www.cert.ssi.gouv.fr/bulletin/flux/",                    lang: "fr", icon: "🇫🇷" },
+  { id: "certfr-alertes",   name: "CERT-FR Alertes",        url: "https://www.cert.ssi.gouv.fr/alerte/feed/",                      lang: "fr", icon: "🇫🇷" },
+  { id: "certfr-bulletins", name: "CERT-FR Bulletins",      url: "https://www.cert.ssi.gouv.fr/actualite/feed/",                   lang: "fr", icon: "🇫🇷" },
   { id: "certfr",           name: "CERT-FR",                url: "https://www.cert.ssi.gouv.fr/feed/",                              lang: "fr", icon: "🇫🇷" },
   { id: "cisa",             name: "CISA Advisories",        url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",           lang: "en", icon: "🦅" },
   { id: "cisa-ics",         name: "CISA ICS Advisories",    url: "https://www.cisa.gov/ics/advisories/advisory-feed.xml",           lang: "en", icon: "🦅" },
