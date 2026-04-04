@@ -19,7 +19,11 @@ const App = (() => {
     _cveLinkId:   null,   // CVE unique (clic sur une ligne) — priorité haute
     _cveLinkIds:  null,   // Tableau de CVEs (filtre panneau) — priorité basse
     lastVisitTs:  null,   // Timestamp début session précédente (New since last visit)
-    _nsvDismissed: false  // Badge NSV masqué par l'utilisateur pour cette session
+    _nsvDismissed: false, // Badge NSV masqué par l'utilisateur pour cette session
+    // ─── Freshness tracking ──────────────────────────────────────────────────
+    lastFreshFetchAt: null,   // Timestamp of last live (non-cache) fetch
+    lastRefreshMode: null,    // 'restore' | 'cache' | 'live' | 'degraded'
+    previousArticleCount: 0   // Article count before last refresh (for change detection)
   };
 
   // ─── Refresh principal via Pipeline ────────────────────────────────────────
@@ -69,19 +73,32 @@ const App = (() => {
       render();
       if (!state.articles?.length) console.warn("[App] render() called with empty state.articles");
       UI.updateTimestamp();
+      _updateRefreshButtonStatus();  // Update freshness indicator on button
 
       // Ops panel update (live mode) with signal quality metrics
       try {
         const mode = 'live';
         const feedCount = (typeof FeedManager !== 'undefined') ? FeedManager.getActiveCount() : '—';
         const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
+        // ── Freshness tracking ────────────────────────────────────────────────
+        const now = Date.now();
+        state.lastFreshFetchAt = now;  // Track when we last fetched live data
+        state.lastRefreshMode = mode;
+        const articleChange = state.articles.length - state.previousArticleCount;
+        state.previousArticleCount = state.articles.length;
         OpsPanel.update({
           sourceMode: mode,
           feedCount,
           articleCount: state.articles.length,
-          lastRefreshAt: Date.now(),
+          lastRefreshAt: now,
+          lastFreshFetchAt: state.lastFreshFetchAt,
+          articleChange,
           environmentContextStats: envStats
         });
+        // Persister le timestamp de la dernière fetch live (pour restauration session)
+        try {
+          localStorage.setItem('cv_last_fresh_fetch_at', String(state.lastFreshFetchAt));
+        } catch {}
       } catch {}
 
       // Mettre à jour le dashboard stats
@@ -147,13 +164,34 @@ const App = (() => {
           try { PWA.setAppConnectivityState('degraded'); } catch {}
         }
         try {
-          OpsPanel.update({ sourceMode: 'cache', articleCount: state.articles.length, lastRefreshAt: Date.now() });
+          const now = Date.now();
+          state.lastRefreshMode = 'degraded';
+          OpsPanel.update({
+            sourceMode: 'degraded',
+            articleCount: state.articles.length,
+            lastRefreshAt: now,
+            lastFreshFetchAt: state.lastFreshFetchAt  // Keep last fresh fetch timestamp
+          });
         } catch {}
       }
     } finally {
       UI.showSpinner(false);
       console.log("[App] refresh() end");
     }
+  }
+
+  // ─── Mettre à jour le tooltip du bouton refresh avec infos de fraîcheur ────
+  function _updateRefreshButtonStatus() {
+    const btn = document.getElementById("btn-refresh");
+    if (!btn) return;
+    if (!state.lastFreshFetchAt) {
+      btn.title = "Force feed update · No live fetch yet";
+      return;
+    }
+    const ago = Math.floor((Date.now() - state.lastFreshFetchAt) / 60000); // en minutes
+    const ago_str = ago < 1 ? "Just now" : `${ago}m ago`;
+    const status = state.lastRefreshMode === 'live' ? '✓ Live' : (state.lastRefreshMode === 'restore' ? '↻ Cached' : state.lastRefreshMode);
+    btn.title = `Force feed update · Last fresh: ${ago_str} (${status})`;
   }
 
   // ─── Enrichissement NVD en arrière-plan ───────────────────────────────────
@@ -216,6 +254,7 @@ const App = (() => {
       state.lastSavedQuery = state.query;
     }
     _updateRecentSearches();                  // mettre à jour l'historique UI
+    _updateRefreshButtonStatus();             // mettre à jour l'indicateur de fraîcheur
   }
 
   // ─── Badge "New since last visit" ─────────────────────────────────────────
@@ -706,8 +745,21 @@ const App = (() => {
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
       try {
         const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
-        OpsPanel.update({ sourceMode: 'restore', articleCount: _restoredArticles.length, environmentContextStats: envStats });
+        state.lastRefreshMode = 'restore';
+        state.previousArticleCount = _restoredArticles.length;
+        // Try to get last fresh fetch timestamp from localStorage if available
+        try {
+          const freshFetchTs = localStorage.getItem('cv_last_fresh_fetch_at');
+          if (freshFetchTs) state.lastFreshFetchAt = parseInt(freshFetchTs, 10);
+        } catch {}
+        OpsPanel.update({
+          sourceMode: 'restore',
+          articleCount: _restoredArticles.length,
+          lastFreshFetchAt: state.lastFreshFetchAt,
+          environmentContextStats: envStats
+        });
       } catch {}
+      _updateRefreshButtonStatus();  // Update freshness indicator on button
     } else {
       console.log("[App] No articles restored from long-lived cache");
     }

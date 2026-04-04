@@ -36,6 +36,8 @@ const OpsPanel = (() => {
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Flux actifs</span><span class="ops-v" id="ops-feed-count" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Articles</span><span class="ops-v" id="ops-article-count" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernier refresh</span><span class="ops-v" id="ops-last-refresh" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernière fetch live</span><span class="ops-v" id="ops-last-fresh-fetch" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Changement articles</span><span class="ops-v" id="ops-article-change" style="font-variant-numeric:tabular-nums">—</span></div>
 
         <!-- Séparateur -->
         <div style="border-top:1px solid #30363d;margin:4px 0"></div>
@@ -71,13 +73,19 @@ const OpsPanel = (() => {
   }
 
   // API de mise à jour — App et autres modules envoient des signaux
-  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, nvd, kev, environmentContextStats }) {
+  function update({ sourceMode, feedCount, articleCount, lastRefreshAt, lastFreshFetchAt, articleChange, nvd, kev, environmentContextStats }) {
     _ensureBox();
     const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     if (sourceMode)   s('ops-source-mode', sourceMode);
     if (feedCount!=null)    s('ops-feed-count', String(feedCount));
     if (articleCount!=null) s('ops-article-count', String(articleCount));
     if (lastRefreshAt) s('ops-last-refresh', _fmt(lastRefreshAt));
+    if (lastFreshFetchAt) s('ops-last-fresh-fetch', _fmt(lastFreshFetchAt));
+    if (articleChange != null) {
+      // Format: +5 (new), -3 (removed), or ↔ 0 (unchanged)
+      const sign = articleChange > 0 ? '+' : (articleChange < 0 ? '' : '↔ ');
+      s('ops-article-change', `${sign}${Math.abs(articleChange)}`);
+    }
     if (nvd)           s('ops-nvd', nvd);
     if (kev!=null)     s('ops-kev', String(kev));
 
