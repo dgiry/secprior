@@ -96,16 +96,13 @@ const UI = (() => {
   function _updateCardTimes() {
     const timeElements = document.querySelectorAll('.card-time');
     timeElements.forEach(el => {
-      const article = el.closest('article');
-      if (!article) return;
-      const pubDateStr = el.title; // Format: "MM/DD/YYYY, HH:MM:SS AM/PM" ou équivalent
-      // Extraire la date depuis l'attribut title (qui est un toLocaleString())
-      try {
-        const pubDate = new Date(pubDateStr);
-        if (!isNaN(pubDate.getTime())) {
-          el.textContent = timeAgo(pubDate);
-        }
-      } catch {}
+      // Lire la date ISO depuis data-pubdate (machine-safe, non locale-dependent)
+      const isoStr = el.getAttribute('data-pubdate');
+      if (!isoStr) return;
+      const pubDate = new Date(isoStr);
+      if (!isNaN(pubDate.getTime())) {
+        el.textContent = timeAgo(pubDate);
+      }
     });
   }
 
@@ -203,7 +200,7 @@ const UI = (() => {
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
           ${newBadge}
           <span class="badge badge-source">${article.sourceIcon} ${article.sourceName}</span>
-          <time class="card-time" title="${article.pubDate.toLocaleString()}">${age}</time>
+          <time class="card-time" data-pubdate="${article.pubDate.toISOString()}" title="${article.pubDate.toLocaleString()}">${age}</time>
           <button class="btn-star ${starred ? 'starred' : ''}"
                   onclick="UI.toggleFav('${article.id}')"
                   title="${starred ? 'Remove from favorites' : 'Add to favorites'}">
