@@ -910,15 +910,25 @@ const SettingsModal = (() => {
           error_nokey:   '🔴 No API key',
           error_auth:    '🔴 Invalid API key (401)',
           error_scope:   '🔴 Insufficient scope (403)',
-          error_404:     '🟡 Endpoint not found (404)',
+          error_404:     '⚪ IPS API not available',
           error_timeout: '🟡 Timeout',
           error_network: '🟡 Unreachable',
         };
+        const tooltips = {
+          error_nokey:   'Configure your TV1 API key above',
+          error_auth:    'API key rejected — check TV1_API_KEY in Vercel env vars',
+          error_scope:   'Token lacks IPS scope — add ips:read in Automation Center',
+          error_404:     'IPS Filter API (TippingPoint) is not exposed via the TV1 REST API v3.0 — this is a platform limitation, not a configuration issue. Use "Search in Trend" for workbench alert correlation.',
+          error_timeout: 'TV1 API did not respond in time — check region setting',
+          error_network: 'Could not reach TV1 API — check connectivity',
+        };
         badge.textContent = labels[r] || '🔴 Error';
-        badge.title       = detail || r;
-        badge.className   = r === 'error_timeout' || r === 'error_network' || r === 'error_404'
+        badge.title       = tooltips[r] || detail || r;
+        badge.className   = r === 'error_timeout' || r === 'error_network'
           ? 'tv1-vp-badge tv1-vp-badge-warn'
-          : 'tv1-vp-badge tv1-vp-badge-error';
+          : r === 'error_404'
+            ? 'tv1-vp-badge tv1-vp-badge-idle'
+            : 'tv1-vp-badge tv1-vp-badge-error';
       }
     }
 
@@ -926,6 +936,15 @@ const SettingsModal = (() => {
     const vpStatusEl = document.getElementById('tv1-vp-status');
     if (vpStatusEl && typeof TrendVP !== 'undefined') {
       const st = TrendVP.getStats();
+      // IPS Filter API is not available in TV1 REST API v3.0 (TippingPoint is UI-only)
+      if (tv1.vpTestResult === 'error_404') {
+        vpStatusEl.innerHTML =
+          '⚠️ The IPS Filter API is not exposed via Trend Vision One REST API v3.0 — ' +
+          'virtual patch status cannot be retrieved programmatically. ' +
+          'This is a Trend Micro platform limitation (TippingPoint SMS is UI-only). ' +
+          '<strong>Use the "Search in Trend" action in article modal</strong> to correlate CVEs with Workbench alerts instead.';
+        return;
+      }
       if (!tv1.vpEnabled) {
         vpStatusEl.textContent = st.total > 0
           ? `⏸ VP disabled · ${st.total} CVE in cache (stale)`
