@@ -15,6 +15,7 @@ const ExecView = (function () {
   function init() {
     document.getElementById('btn-exec-view')?.addEventListener('click', open);
     document.getElementById('exec-view-close')?.addEventListener('click', close);
+    document.getElementById('btn-exec-print')?.addEventListener('click', _print);
     document.getElementById('modal-exec-view')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) close();
     });
@@ -37,6 +38,23 @@ const ExecView = (function () {
   function close() {
     const modal = document.getElementById('modal-exec-view');
     if (modal) modal.style.display = 'none';
+  }
+
+  function _print() {
+    // Stamp current date/time for the print header
+    const stamp = document.getElementById('ev-print-date');
+    if (stamp) {
+      stamp.textContent = new Date().toLocaleString([], {
+        dateStyle: 'medium', timeStyle: 'short'
+      });
+    }
+    // Scope print CSS to exec view only
+    document.body.classList.add('ev-printing');
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('ev-printing');
+      if (stamp) stamp.textContent = '';
+    }, { once: true });
+    window.print();
   }
 
   // ── Posture ────────────────────────────────────────────────────────────────

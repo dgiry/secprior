@@ -5018,6 +5018,62 @@ body.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 
+/* ── Print button (screen only) ──────────────────────────────────────────── */
+.ev-btn-print {
+  font-size: 1rem;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+.ev-btn-print:hover { opacity: 1; }
+
+.exec-modal-print-date {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-left: auto;
+  margin-right: 0.25rem;
+  display: none; /* visible only in print output */
+}
+
+/* ── Print / PDF ─────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the exec view */
+  body.ev-printing > *:not(#modal-exec-view) { display: none !important; }
+
+  /* Reset overlay — remove fixed positioning and backdrop */
+  body.ev-printing .exec-modal-overlay {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Full-width modal box */
+  body.ev-printing .exec-modal-box {
+    max-width: 100% !important;
+    min-height: auto !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Reveal print date, hide interactive controls */
+  .exec-modal-print-date { display: inline !important; }
+  .exec-modal-close,
+  .ev-btn-print { display: none !important; }
+
+  /* Page-break guards */
+  .ev-kpis,
+  .ev-act-list,
+  .ev-cols          { break-inside: avoid; page-break-inside: avoid; }
+  .ev-incident-card { break-inside: avoid; page-break-inside: avoid; }
+  .ev-section       { break-inside: avoid; page-break-inside: avoid; }
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .ev-kpis { grid-template-columns: repeat(2, 1fr); }
