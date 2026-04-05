@@ -171,7 +171,7 @@ const ExecView = (function () {
           ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
           ${row('📋', 'CVE-linked',                act.cveLinking,  'cve',  'Apply vendor advisory')}
           ${row('⏳', 'Zero-day',                  act.zeroDays,    'zero', 'No patch yet — monitor')}
-          ${row('📊', 'No direct action',           act.noSignal,    'none', 'Awareness only')}
+          ${row('📰', 'Awareness / No direct signal', act.noSignal,    'none', 'Strategic watch')}
         </div>
       </div>`;
   }
