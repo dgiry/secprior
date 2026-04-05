@@ -168,10 +168,54 @@ const UI = (() => {
       const lvl  = article.priorityLevel;
       const chips = [];
 
-      // ① Niveau de priorité (toujours en premier si non-low)
+      // ① Niveau de priorité + tooltip score breakdown (toujours en premier si non-low)
       if (lvl && lvl !== "low") {
         const pm = (typeof getPriorityMeta === 'function') ? getPriorityMeta(lvl) : null;
-        if (pm) chips.push(`<span class="sig-chip sig-chip-level sig-chip-${pm.css}" title="Priority level">${pm.icon} ${pm.label}</span>`);
+        if (pm) {
+          // ── Construire le tooltip score breakdown ──────────────────────────
+          const bd  = article.scoreBreakdown || {};
+          const ps  = article.priorityScore  || 0;
+          const base = article.score         || sig.baseScore || 0;
+
+          // Contributeurs base (scoreBreakdown) — labels lisibles, triés desc
+          const baseRows = [
+            bd.kev     > 0 ? { label: 'KEV exploit',       pts: bd.kev     } : null,
+            bd.epss    > 0 ? { label: `EPSS ${sig.epss != null ? sig.epss + '%' : ''}`, pts: bd.epss } : null,
+            bd.cvss    > 0 ? { label: 'CVSS severity',     pts: bd.cvss    } : null,
+            bd.sources > 0 ? { label: 'Source coverage',   pts: bd.sources } : null,
+            bd.ioc     > 0 ? { label: 'IOC indicators',    pts: bd.ioc     } : null,
+          ].filter(Boolean).sort((a, b) => b.pts - a.pts).slice(0, 4);
+
+          // Bonus priorité (signaux non couverts par le score base)
+          const bonusRows = [];
+          if (sig.watchlistBonus > 0) bonusRows.push({ label: 'Watchlist match', pts: sig.watchlistBonus });
+          if (sig.isZeroDay)           bonusRows.push({ label: '0-Day',          pts: 15 });
+          if (sig.trending)            bonusRows.push({ label: 'Trending',        pts: 8  });
+
+          // Construire les lignes HTML du tooltip
+          const tipRows = [
+            `<span class="stp-head">Score ${base}/100</span>`,
+            ...baseRows.map(r =>
+              `<span class="stp-row"><span class="stp-lbl">${r.label}</span><span class="stp-pts">+${r.pts}</span></span>`
+            ),
+          ];
+          if (bonusRows.length) {
+            bonusRows.sort((a, b) => b.pts - a.pts).slice(0, 2).forEach(r =>
+              tipRows.push(`<span class="stp-row stp-bonus"><span class="stp-lbl">${r.label}</span><span class="stp-pts">+${r.pts}</span></span>`)
+            );
+          }
+          // N'afficher le tooltip que si on a des données réelles
+          const scoreTip = (base > 0 || bonusRows.length)
+            ? `<span class="score-tip-popup">${tipRows.join('')}</span>`
+            : '';
+
+          chips.push(
+            `<span class="sig-chip sig-chip-level sig-chip-${pm.css}${scoreTip ? ' has-score-tip' : ''}">`
+            + `${pm.icon} ${pm.label}`
+            + scoreTip
+            + `</span>`
+          );
+        }
       }
 
       // ② KEV — exploitation confirmée CISA

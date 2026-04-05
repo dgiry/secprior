@@ -3756,6 +3756,75 @@ body.modal-open { overflow: hidden; }
 /* IOC */
 .sig-chip-ioc          { color:#e3b341; background:rgba(227,179,65,.11); border-color:rgba(227,179,65,.28); }
 
+/* ── Score breakdown tooltip sur le chip de niveau ──────────────────────── */
+.sig-chip-level.has-score-tip {
+  position: relative;
+  cursor: default;
+}
+
+/* Popup — caché par défaut, révélé au hover */
+.score-tip-popup {
+  display: none;
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 1200;
+  min-width: 170px;
+  max-width: 220px;
+  background: #1c2128;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.55);
+  pointer-events: none;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Petite flèche */
+.score-tip-popup::before {
+  content: '';
+  position: absolute;
+  top: -5px; left: 12px;
+  width: 8px; height: 8px;
+  background: #1c2128;
+  border-left: 1px solid rgba(255,255,255,.14);
+  border-top:  1px solid rgba(255,255,255,.14);
+  transform: rotate(45deg);
+}
+
+.sig-chip-level.has-score-tip:hover .score-tip-popup {
+  display: flex;
+}
+
+/* Ligne d'en-tête */
+.stp-head {
+  font-size: .67rem;
+  font-weight: 700;
+  color: #e6edf3;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+  margin-bottom: 2px;
+}
+
+/* Lignes contributeurs */
+.stp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+.stp-lbl { color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stp-pts { color: #e6edf3; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+/* Lignes bonus — légèrement distinctes */
+.stp-bonus .stp-lbl { color: #6e7681; font-style: italic; }
+.stp-bonus .stp-pts { color: #d29922; }
+
 /* ── Bloc "Pourquoi cette priorité ?" dans le modal article ──────────────── */
 .art-priority-block {
   padding: 12px 14px;
