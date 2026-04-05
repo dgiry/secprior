@@ -641,6 +641,10 @@ const App = (() => {
         // "N" activate "Since last visit" view
         e.preventDefault();
         filterNewSinceVisit();
+      } else if (e.key === "?" && !isInput) {
+        // "?" show keyboard shortcuts cheatsheet
+        e.preventDefault();
+        if (typeof KeyboardShortcuts !== 'undefined') KeyboardShortcuts.show();
       } else if (e.key === "Escape") {
         // "Escape" close nav dropdowns and side panels
         _closeNavDropdowns();
@@ -742,6 +746,9 @@ const App = (() => {
 
     // ── How It Works / Lightweight Product Guide ───────────────────────────────
     if (typeof HowItWorks !== 'undefined') HowItWorks.init();
+
+    // ── Keyboard Shortcuts Cheatsheet ──────────────────────────────────────────
+    if (typeof KeyboardShortcuts !== 'undefined') KeyboardShortcuts.init();
 
     // ── Panneau Corrélation CVE ↔ Articles ────────────────────────────────────
     CVEPanel.init();
