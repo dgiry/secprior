@@ -5194,6 +5194,43 @@ body.modal-open { overflow: hidden; }
   background: var(--border);
 }
 
+/* ── Scope pills (24h / 7d / 30d / All) ─────────────────────────────────── */
+.ev-scope-pills {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.ev-scope-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.5rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ev-scope-pill:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.ev-scope-pill.ev-scope-active {
+  background: rgba(88,166,255,.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Hide scope pills in print output */
+#ev-print-clone .ev-scope-pills { display: none !important; }
+
 /* ── Print button (screen only) ──────────────────────────────────────────── */
 .ev-btn-print {
   font-size: 1rem;

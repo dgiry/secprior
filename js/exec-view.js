@@ -8,7 +8,18 @@
 const ExecView = (function () {
   'use strict';
 
-  let _articles = [];
+  let _articles  = [];
+  let _scopeDays = 7;   // Default scope: last 7 days
+
+  // ── Scope filter ──────────────────────────────────────────────────────────
+  // Returns articles within the chosen time window.
+  // days === 0 means "all loaded" (no time restriction).
+
+  function _filterByScope(arts, days) {
+    if (!days || days === 0) return arts;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return arts.filter(a => a.pubDate && a.pubDate.getTime() >= cutoff);
+  }
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -18,6 +29,18 @@ const ExecView = (function () {
     document.getElementById('btn-exec-print')?.addEventListener('click', _print);
     document.getElementById('modal-exec-view')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) close();
+    });
+
+    // ── Scope pill buttons ─────────────────────────────────────────────────
+    document.querySelectorAll('#ev-scope-pills .ev-scope-pill').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        _scopeDays = parseInt(btn.dataset.days) || 0;
+        // Update active pill
+        document.querySelectorAll('#ev-scope-pills .ev-scope-pill')
+          .forEach(b => b.classList.toggle('ev-scope-active', b === btn));
+        _render();
+      });
     });
   }
 
@@ -298,7 +321,8 @@ const ExecView = (function () {
     const container = document.getElementById('exec-view-body');
     if (!container) return;
 
-    const arts     = _articles;
+    // Apply the chosen time scope before computing any stats
+    const arts     = _filterByScope(_articles, _scopeDays);
     const posture  = _computePosture(arts);
     const wlHits   = _watchlistHits(arts);
     const vendors  = _topVendors(arts, 6);
@@ -308,17 +332,21 @@ const ExecView = (function () {
     const act      = _computeActionability(arts);
 
     const now      = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const scopeLabel = _scopeDays === 1  ? 'Last 24h'
+                     : _scopeDays === 7  ? 'Last 7 days'
+                     : _scopeDays === 30 ? 'Last 30 days'
+                     : 'All articles';
     const period   = arts.length
-      ? `${arts.length} article${arts.length !== 1 ? 's' : ''} · updated ${now}`
-      : 'No data in current view';
+      ? `${arts.length} article${arts.length !== 1 ? 's' : ''} · ${scopeLabel} · ${now}`
+      : `No articles in scope (${scopeLabel})`;
 
     const noData = arts.length === 0;
 
     container.innerHTML = `
       ${noData ? `<div class="ev-no-data">
         <span style="font-size:2rem">📭</span>
-        <p>No articles in the current view.<br>
-           Load feeds or widen the time filter to generate the executive summary.</p>
+        <p>No articles in scope (${scopeLabel}).<br>
+           Widen the scope above or load more feeds.</p>
       </div>` : `
 
       <!-- ① Posture header -->
