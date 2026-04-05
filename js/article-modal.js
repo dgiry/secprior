@@ -200,6 +200,9 @@ const ArticleModal = (() => {
         ${EntityStatus.statusBlockHTML('article', article.id)}
       </div>` : ''}
 
+      <!-- ── TREND SEARCH RESULTS (populated on demand) ────────────────── -->
+      <div id="art-trend-search-result" class="art-trend-search-result" style="display:none"></div>
+
       <!-- ── PIED DE PAGE ────────────────────────────────────────────── -->
       <!-- Sprint 23 : footer rationalisé — 3 éléments : Favoris · ⚡ Actions · ↗ Ouvrir -->
       <!-- Le bouton IOC (art-modal-copy-ioc) est désormais dans le dropdown ⚡ Actions   -->
@@ -209,7 +212,11 @@ const ArticleModal = (() => {
           ${isFav ? '★ Favorite' : '☆ Favorite'}
         </button>
         ${typeof QuickActions !== 'undefined'
-          ? QuickActions.articleButtonsHTML({ showIoc: (article.iocCount || 0) > 0, articleId: article.id })
+          ? QuickActions.articleButtonsHTML({
+              showIoc: (article.iocCount || 0) > 0,
+              articleId: article.id,
+              showTrendSearch: typeof TrendSearch !== 'undefined' && TrendSearch.hasIndicators(article)
+            })
           : ''}
         <a href="${article.link}" target="_blank" rel="noopener noreferrer"
            class="btn btn-primary art-modal-open-btn">

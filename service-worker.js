@@ -22,7 +22,7 @@
 //     (les JS/CSS sont fetched Network-First au premier usage, pas pré-cachés)
 //   ✓ Détection localhost → Network-First automatique en dev
 
-const SW_VERSION   = 'v62';
+const SW_VERSION   = 'v63';
 const CACHE_STATIC = `cvpro-static-${SW_VERSION}`;
 const CACHE_DATA   = `cvpro-data-${SW_VERSION}`;
 

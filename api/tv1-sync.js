@@ -52,7 +52,8 @@ module.exports = async (req, res) => {
   if (req.method !== "GET")     return res.status(405).json({ error: "Method not allowed" });
 
   // ── Route to Virtual Patch mode ───────────────────────────────────────────
-  if (req.query.mode === "vp") return _handleVP(req, res);
+  if (req.query.mode === "vp")     return _handleVP(req, res);
+  if (req.query.mode === "search") return _handleSearch(req, res);
 
   const forceDemo = req.query.demo === "1";
   const apiKey    = process.env.TV1_API_KEY;
@@ -175,6 +176,100 @@ module.exports = async (req, res) => {
     fetchedAt: new Date().toISOString()
   });
 };
+
+// ── Search handler ────────────────────────────────────────────────────────────
+// GET /api/tv1-sync?mode=search&q=<indicator>&type=cve|ip|hash|domain[&region=us]
+//
+// Queries Workbench alerts with TMV1-Filter: indicatorValue eq '<q>'
+// Returns: { query, type, status, alertCount, topSeverity, latestAlert, source, cachedAt }
+//   status: "found" | "not_found" | "unknown"
+
+const _SEV_ORDER = ["critical", "high", "medium", "low"];
+
+async function _handleSearch(req, res) {
+  const { q, type = "cve" } = req.query;
+  if (!q) return res.status(400).json({ error: "Parameter 'q' required" });
+
+  const ALLOWED_TYPES = ["cve", "ip", "hash", "domain"];
+  if (!ALLOWED_TYPES.includes(type))
+    return res.status(400).json({ error: "Invalid type" });
+
+  // Sanitize: strip quotes/control chars, cap length
+  const sanitized = q.trim().replace(/['"\\]/g, "").slice(0, 256);
+  if (!sanitized) return res.status(400).json({ error: "Empty query" });
+
+  const _unknown = (reason) => res.status(200).json({
+    query: sanitized, type, status: "unknown", reason,
+    alertCount: null, topSeverity: null, latestAlert: null,
+    source: "trend_v1", cachedAt: Date.now()
+  });
+
+  const apiKey = process.env.TV1_API_KEY || "";
+  if (!apiKey) return _unknown("not_configured");
+
+  const region  = ((req.query.region || process.env.TV1_REGION || "us")).toLowerCase();
+  const base    = TV1_BASE[region] || TV1_BASE.us;
+  // Fetch top 5 alerts matching the indicator — enough to extract severity/latest
+  const url     = `${base}/v3.0/workbench/alerts?orderBy=createdDateTime%20desc&top=5`;
+
+  try {
+    const tv1Res = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "TMV1-Filter":   `indicatorValue eq '${sanitized}'`,
+        "Accept":        "application/json",
+        "User-Agent":    "CyberVeille-Pro/2.0"
+      },
+      signal: AbortSignal.timeout(10_000)
+    });
+
+    if (tv1Res.status === 429) {
+      const ra = tv1Res.headers.get("Retry-After") || "60";
+      res.setHeader("Retry-After", ra);
+      return res.status(429).json({ error: "Rate limited", retryAfter: ra });
+    }
+    if (!tv1Res.ok) return _unknown(`tv1_http_${tv1Res.status}`);
+
+    const json  = await tv1Res.json();
+    const total = typeof json.totalCount === "number" ? json.totalCount : (json.items || []).length;
+    const items = json.items || [];
+
+    res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=300");
+
+    if (total === 0) {
+      return res.status(200).json({
+        query: sanitized, type, status: "not_found",
+        alertCount: 0, topSeverity: null, latestAlert: null,
+        source: "trend_v1", cachedAt: Date.now()
+      });
+    }
+
+    // Top severity across returned items
+    const topSeverity = items.reduce((best, item) => {
+      const sev = (item.severity || "").toLowerCase();
+      const idx = _SEV_ORDER.indexOf(sev);
+      if (idx === -1) return best;
+      return best === null || idx < _SEV_ORDER.indexOf(best) ? sev : best;
+    }, null);
+
+    const latest = items[0] || null;
+
+    return res.status(200).json({
+      query: sanitized, type, status: "found",
+      alertCount: total, topSeverity,
+      latestAlert: latest ? {
+        id:        latest.id || null,
+        name:      (latest.name || latest.description || "").slice(0, 120),
+        severity:  latest.severity || null,
+        createdAt: latest.createdDateTime || null
+      } : null,
+      source: "trend_v1", cachedAt: Date.now()
+    });
+
+  } catch (err) {
+    return _unknown(err.name === "TimeoutError" ? "timeout" : "network_error");
+  }
+}
 
 // ── Virtual Patch handler ─────────────────────────────────────────────────────
 // GET /api/tv1-sync?mode=vp&cveId=CVE-YYYY-NNNNN[&region=us]

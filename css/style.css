@@ -4437,6 +4437,65 @@ body.modal-open { overflow: hidden; }
 
 /* ── AI Brief — Sprint IA v1 ─────────────────────────────────────────────── */
 
+/* Bouton "🔵 Search in Trend" dans les quick-actions dropdowns */
+.qa-actions-item-trend-search { color: #58a6ff; }
+.qa-actions-item-trend-search:hover { background: rgba(88,166,255,.1); color: #79c0ff; }
+
+/* ── Trend Search result block (art-trend-search-result) ────────────────────── */
+.art-trend-search-result {
+  margin: .5rem 1.2rem .25rem;
+  border: 1px solid rgba(88,166,255,.2);
+  border-radius: 8px;
+  background: rgba(13,27,42,.6);
+  font-size: .82rem;
+  overflow: hidden;
+}
+
+.ts-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .75rem;
+  border-bottom: 1px solid rgba(88,166,255,.15);
+  background: rgba(88,166,255,.06);
+}
+.ts-title    { font-weight: 600; color: #58a6ff; }
+.ts-subtitle { color: #8b949e; font-size: .78rem; }
+
+.ts-rows { padding: .25rem 0; }
+
+.ts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .3rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.ts-row:last-child { border-bottom: none; }
+
+.ts-q {
+  font-family: monospace;
+  font-size: .8rem;
+  color: #e6edf3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-badge {
+  font-size: .78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ts-badge-found   { font-weight: 600; }
+.ts-badge-notfound{ color: #8b949e; }
+.ts-badge-unknown { color: #8b949e; font-style: italic; }
+.ts-badge-loading { color: #58a6ff; animation: ts-spin .8s linear infinite; display: inline-block; }
+
+@keyframes ts-spin { to { transform: rotate(360deg); } }
+
 /* Bouton "✦ AI Brief" dans les quick-actions dropdowns */
 .qa-actions-item-ai {
   color: #a371f7;

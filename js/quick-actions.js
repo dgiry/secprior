@@ -1384,6 +1384,12 @@ const QuickActions = (() => {
                   title="Copy CVEs, URL, ATT&CK, IPs and detected domains">
             🔬 Copy IOCs
           </button>` : ''}
+          ${opts && opts.showTrendSearch ? `
+          <div class="qa-actions-sep" role="separator"></div>
+          <button class="qa-actions-item qa-actions-item-trend-search" id="art-modal-trend-search"
+                  title="Check whether Trend Vision One has alerts matching CVEs or IOCs in this article">
+            🔵 Search in Trend
+          </button>` : ''}
         </div>
       </div>`;
   }
@@ -1511,6 +1517,18 @@ const QuickActions = (() => {
       });
 
     // Note : art-modal-copy-ioc est bindé dans article-modal.js (accès à _copyIOCs privé)
+
+    // ── Search in Trend ──────────────────────────────────────────────────────
+    document.getElementById('art-modal-trend-search')
+      ?.addEventListener('click', e => {
+        e.stopPropagation();
+        const popover = document.getElementById('art-qa-popover');
+        const trigger = document.getElementById('art-qa-trigger');
+        if (popover) popover.style.display = 'none';
+        if (trigger) trigger.classList.remove('qa-actions-open');
+        if (typeof TrendSearch !== 'undefined')
+          TrendSearch._triggerUI(article);
+      });
   }
 
   // ── Bind panneau incident ─────────────────────────────────────────────────
