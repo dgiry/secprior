@@ -157,18 +157,25 @@ const RiskFilter = (() => {
 
   function _pillHTML(p) {
     if (p.hasInput) {
-      // Pill EPSS avec champ numérique intégré
+      // Pill EPSS avec champ numérique intégré + boutons preset
       return `
-        <div class="risk-pill-wrap" data-risk="${p.id}">
-          <button class="risk-pill risk-pill-${p.color}" data-risk="${p.id}"
-                  title="${p.title}">
-            ${p.icon}
-          </button>
-          <span class="risk-pill-sep">EPSS &gt;</span>
-          <input  class="risk-epss-input" id="risk-epss-input"
-                  type="number" min="1" max="99" value="${_threshold}"
-                  title="EPSS threshold (%)">
-          <span class="risk-pill-pct">%</span>
+        <div class="risk-epss-group">
+          <div class="risk-pill-wrap" data-risk="${p.id}">
+            <button class="risk-pill risk-pill-${p.color}" data-risk="${p.id}"
+                    title="${p.title}">
+              ${p.icon}
+            </button>
+            <span class="risk-pill-sep">EPSS &gt;</span>
+            <input  class="risk-epss-input" id="risk-epss-input"
+                    type="number" min="1" max="99" value="${_threshold}"
+                    title="EPSS threshold (%)">
+            <span class="risk-pill-pct">%</span>
+          </div>
+          <div class="risk-epss-presets">
+            <button class="risk-epss-preset" data-pct="50" title="EPSS ≥ 50% — exploitation likely">50%</button>
+            <button class="risk-epss-preset" data-pct="70" title="EPSS ≥ 70% — high exploitation probability">70%</button>
+            <button class="risk-epss-preset" data-pct="90" title="EPSS ≥ 90% — imminent exploitation">90%</button>
+          </div>
         </div>`;
     }
     return `
@@ -176,6 +183,13 @@ const RiskFilter = (() => {
               title="${p.title}">
         ${p.icon} ${p.label}
       </button>`;
+  }
+
+  function _updatePresetHighlight() {
+    document.querySelectorAll('.risk-epss-preset').forEach(btn => {
+      const active = _active.has('epss') && parseInt(btn.dataset.pct) === _threshold;
+      btn.classList.toggle('risk-epss-preset-active', active);
+    });
   }
 
   function _bindBarEvents(bar) {
@@ -190,6 +204,7 @@ const RiskFilter = (() => {
           _active.add(id);
           _activatePill(id);
         }
+        if (id === 'epss') _updatePresetHighlight();
         _updateDesc();
         _notify();
       });
@@ -198,16 +213,33 @@ const RiskFilter = (() => {
     // ── Champ seuil EPSS ────────────────────────────────────────────────────
     const epssInput = document.getElementById('risk-epss-input');
     if (epssInput) {
-      // Empêcher le clic sur l'input de déclencher le bouton parent
-      epssInput.addEventListener('click',   e => e.stopPropagation());
+      epssInput.addEventListener('click',     e => e.stopPropagation());
       epssInput.addEventListener('mousedown', e => e.stopPropagation());
 
       epssInput.addEventListener('change', e => {
         _threshold = Math.max(1, Math.min(99, parseInt(e.target.value) || 10));
         e.target.value = _threshold;
-        if (_active.has('epss')) _notify(); // re-filter si EPSS actif
+        _updatePresetHighlight();
+        if (_active.has('epss')) _notify();
       });
     }
+
+    // ── Boutons preset EPSS ─────────────────────────────────────────────────
+    bar.querySelectorAll('.risk-epss-preset').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        _threshold = parseInt(btn.dataset.pct);
+        const input = document.getElementById('risk-epss-input');
+        if (input) input.value = _threshold;
+        if (!_active.has('epss')) {
+          _active.add('epss');
+          _activatePill('epss');
+        }
+        _updatePresetHighlight();
+        _updateDesc();
+        _notify();
+      });
+    });
 
     // ── Bouton Effacer ──────────────────────────────────────────────────────
     document.getElementById('risk-clear-btn')?.addEventListener('click', () => {
@@ -216,6 +248,7 @@ const RiskFilter = (() => {
         b.classList.remove('risk-pill-active');
         b.removeAttribute('aria-pressed');
       });
+      _updatePresetHighlight();
       _updateDesc();
       _notify();
     });

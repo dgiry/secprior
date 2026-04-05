@@ -1092,6 +1092,38 @@ a:hover { text-decoration: underline; }
   font-size: .72rem; color: var(--text2); padding-right: .5rem;
 }
 
+/* ── EPSS preset buttons ─────────────────────────────────────────────── */
+.risk-epss-group {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.risk-epss-presets {
+  display: flex;
+  gap: 2px;
+}
+.risk-epss-preset {
+  font-size: .68rem;
+  padding: .18rem .4rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.risk-epss-preset:hover {
+  border-color: #f0883e;
+  color: var(--text);
+}
+.risk-epss-preset-active {
+  background: #2a1a00;
+  border-color: #f0883e;
+  color: #fdba74;
+  font-weight: 600;
+}
+
 /* Fin de ligne : compteur + clear */
 .risk-filter-end {
   display: flex; align-items: center; gap: .6rem; margin-left: auto; flex-shrink: 0;
