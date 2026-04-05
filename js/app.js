@@ -109,7 +109,8 @@ const App = (() => {
       CVEPanel.update(articles);
       IncidentPanel.update(articles);
       VisibilityPanel.update(articles);
-      if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(articles);
+      if (typeof ProfilePanel  !== 'undefined') ProfilePanel.update(articles);
+      if (typeof ExecView      !== 'undefined') ExecView.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -722,6 +723,9 @@ const App = (() => {
     VendorPanel.init();
     document.getElementById("btn-vendors")?.addEventListener("click", () => VendorPanel.toggle());
 
+    // ── Vue Exec / CISO ───────────────────────────────────────────────────────
+    if (typeof ExecView !== 'undefined') ExecView.init();
+
     // ── Panneau Corrélation CVE ↔ Articles ────────────────────────────────────
     CVEPanel.init();
 
@@ -780,7 +784,8 @@ const App = (() => {
       CVEPanel.update(_restoredArticles);
       IncidentPanel.update(_restoredArticles);
       VisibilityPanel.update(_restoredArticles);
-      if (typeof ProfilePanel !== 'undefined') ProfilePanel.update(_restoredArticles);
+      if (typeof ProfilePanel  !== 'undefined') ProfilePanel.update(_restoredArticles);
+      if (typeof ExecView      !== 'undefined') ExecView.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
       try {
         const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
