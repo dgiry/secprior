@@ -4949,6 +4949,13 @@ body.modal-open { overflow: hidden; }
 }
 
 /* ── Exec View — Actionability Section ───────────────────────────────────── */
+.ev-act-meta {
+  font-size: 0.75rem;
+  color: var(--text3, #6e7681);
+  margin: 0.15rem 0 0.6rem 0;
+  font-style: italic;
+}
+
 .ev-act-list {
   display: flex;
   flex-direction: column;

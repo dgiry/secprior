@@ -165,6 +165,7 @@ const ExecView = (function () {
     return `
       <div class="ev-section">
         <h3 class="ev-section-title">⚙️ Actionability</h3>
+        <p class="ev-act-meta">Signals are independent — one article can match several.</p>
         <div class="ev-act-list">
           ${row('🔑', 'KEV / Actively exploited',  act.kev,         'kev',  'Patch immediately')}
           ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
