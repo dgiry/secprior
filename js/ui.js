@@ -586,7 +586,14 @@ const UI = (() => {
     }
 
     // Filtre date
-    if (state.date && state.date !== "all") {
+    // ── Important: Skip time filter for critical/investigate articles ─────────
+    // Critical vulnerabilities remain critical regardless of age. Applying the
+    // "Last 24h" filter would hide important enriched articles (e.g., CVE-2026-5281
+    // marked critical_now but published > 24h ago). Time filter still applies to
+    // 'watch' and 'low' priority articles for recency focus.
+    const isCriticalOrInvestigate = state.priorityLevel === 'critical_now' || state.priorityLevel === 'investigate';
+
+    if (state.date && state.date !== "all" && !isCriticalOrInvestigate) {
       if (state.date === "lastvisit" && state.lastVisitTs) {
         // Articles publiés après le début de la session précédente
         filtered = filtered.filter(a => a.pubDate.getTime() > state.lastVisitTs);
