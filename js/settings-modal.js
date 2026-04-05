@@ -896,29 +896,29 @@ const SettingsModal = (() => {
       const r      = tv1.vpTestResult;
       const detail = tv1.vpTestReason ? ` (${tv1.vpTestReason})` : '';
       if (!r || r === 'untested') {
-        badge.textContent = '⚪ Not tested';
-        badge.title       = 'Click "Test connection" to verify the VP API';
+        badge.textContent = '⚪ SWP posture API not validated yet';
+        badge.title       = 'Click "Test connection" to validate the SWP posture API';
         badge.className   = 'tv1-vp-badge tv1-vp-badge-idle';
       } else if (r === 'ok') {
         const ago = tv1.vpTestAt
           ? Math.round((Date.now() - tv1.vpTestAt) / 60_000) : null;
         badge.textContent = `🟢 Connected${ago !== null ? ` · ${ago < 1 ? '<1' : ago} min ago` : ''}`;
-        badge.title       = 'IPS catalog reachable and API key valid';
+        badge.title       = 'SWP endpoint API reachable — IPS posture data available';
         badge.className   = 'tv1-vp-badge tv1-vp-badge-ok';
       } else {
         const labels = {
           error_nokey:   '🔴 No API key',
           error_auth:    '🔴 Invalid API key (401)',
           error_scope:   '🔴 Insufficient scope (403)',
-          error_404:     '⚪ IPS API not available',
+          error_404:     '⚪ SWP posture API not validated yet',
           error_timeout: '🟡 Timeout',
           error_network: '🟡 Unreachable',
         };
         const tooltips = {
           error_nokey:   'Configure your TV1 API key above',
           error_auth:    'API key rejected — check TV1_API_KEY in Vercel env vars',
-          error_scope:   'Token lacks IPS scope — add ips:read in Automation Center',
-          error_404:     'IPS Filter API (TippingPoint) is not exposed via the TV1 REST API v3.0 — this is a platform limitation, not a configuration issue. Use "Search in Trend" for workbench alert correlation.',
+          error_scope:   'Token lacks endpoint-security scope — check Automation Center permissions',
+          error_404:     'SWP posture endpoint not found — API validation required before this feature can be used.',
           error_timeout: 'TV1 API did not respond in time — check region setting',
           error_network: 'Could not reach TV1 API — check connectivity',
         };
@@ -936,21 +936,20 @@ const SettingsModal = (() => {
     const vpStatusEl = document.getElementById('tv1-vp-status');
     if (vpStatusEl && typeof TrendVP !== 'undefined') {
       const st = TrendVP.getStats();
-      // IPS Filter API is not available in TV1 REST API v3.0 (TippingPoint is UI-only)
+      // SWP posture: per-CVE virtual patch catalog is not supported
       if (tv1.vpTestResult === 'error_404') {
         vpStatusEl.innerHTML =
-          '⚠️ The IPS Filter API is not exposed via Trend Vision One REST API v3.0 — ' +
-          'virtual patch status cannot be retrieved programmatically. ' +
-          'This is a Trend Micro platform limitation (TippingPoint SMS is UI-only). ' +
-          '<strong>Use the "Search in Trend" action in article modal</strong> to correlate CVEs with Workbench alerts instead.';
+          'Per-CVE virtual patch filter availability is not supported in SWP-only mode. ' +
+          'ThreatLens can instead use SWP machine posture to show whether Intrusion Prevention appears active on Trend-managed endpoints. ' +
+          '<strong>Use the "Search in Trend" action in article modal</strong> to correlate CVEs with Workbench alerts.';
         return;
       }
       if (!tv1.vpEnabled) {
         vpStatusEl.textContent = st.total > 0
-          ? `⏸ VP disabled · ${st.total} CVE in cache (stale)`
-          : '⏸ VP disabled — enable above to activate enrichment.';
+          ? `⏸ SWP posture disabled · ${st.total} entries in cache (stale)`
+          : '⏸ SWP posture disabled — enable above to activate.';
       } else if (st.total === 0) {
-        vpStatusEl.textContent = '⏳ No VP data cached yet — will enrich on next feed refresh.';
+        vpStatusEl.textContent = '⏳ No SWP posture data cached yet — will populate on next feed refresh.';
       } else {
         const agoMs  = st.newestAt ? Date.now() - st.newestAt : null;
         const agoStr = agoMs === null ? ''
@@ -958,7 +957,7 @@ const SettingsModal = (() => {
           : agoMs < 3_600_000     ? ` · updated ${Math.round(agoMs / 60_000)} min ago`
           :                         ` · updated ${Math.round(agoMs / 3_600_000)} h ago`;
         vpStatusEl.textContent =
-          `🛡️ VP cache: ${st.total} CVE enriched · ${st.available} with patch · ${st.notAvailable} without${agoStr}`;
+          `🖥 SWP posture: ${st.total} endpoints · ${st.available} IPS active · ${st.notAvailable} not active${agoStr}`;
       }
     }
   }

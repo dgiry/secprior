@@ -217,7 +217,7 @@ const MorningBrief = (() => {
     L.push(`    📋  Apply advisory     (CVE):  ${pad(act.cve)}`);
     L.push(`    ⏳  Zero-day — monitor       :  ${pad(act.zeroDay)}`);
     if (act.vp !== null) {
-      L.push(`    🛡️  Trend virtual patch (VP) :  ${pad(act.vp)}`);
+      L.push(`    🖥  SWP IPS posture signal   :  ${pad(act.vp)}`);
     }
     L.push('');
     L.push(SEP);
