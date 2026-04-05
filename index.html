@@ -940,6 +940,22 @@
           <!-- Statut dernière sync -->
           <div id="tv1-last-sync" class="settings-hint" style="margin-top:.4rem;min-height:1.2em"></div>
 
+          <!-- Virtual Patch toggle -->
+          <div style="display:flex;align-items:center;gap:.6rem;margin-top:.75rem">
+            <input type="checkbox" id="tv1-vp-enabled"
+                   onchange="SettingsModal.toggleVP(this.checked)"
+                   style="width:1rem;height:1rem;cursor:pointer">
+            <label for="tv1-vp-enabled" style="cursor:pointer;font-size:.9rem">
+              🛡️ Enable Virtual Patch signal (IPS filter availability per CVE)
+            </label>
+          </div>
+          <p class="settings-hint" style="margin-top:.3rem;margin-left:1.6rem">
+            Queries the Trend Vision One IPS catalog to show whether a virtual patch
+            exists for each CVE — read-only, no deployment. Requires <code>TV1_API_KEY</code>.
+          </p>
+          <!-- VP cache status — populated by SettingsModal on open -->
+          <div id="tv1-vp-status" class="settings-hint" style="margin-top:.3rem;margin-left:1.6rem;min-height:1.2em"></div>
+
           <!-- Preview area — populated dynamically by JS -->
           <div id="tv1-preview" style="display:none;margin-top:.75rem"></div>
         </div>
@@ -1260,9 +1276,10 @@
   <script src="js/risk-filter.js?v=14"></script>
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
+  <script src="js/trend-vp.js?v=2"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=20"></script>
+  <script src="js/settings-modal.js?v=22"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=18"></script>
   <script src="js/pdf-report.js?v=18"></script>

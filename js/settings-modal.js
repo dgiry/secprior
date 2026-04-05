@@ -59,6 +59,30 @@ const SettingsModal = (() => {
       const tv1 = TV1Sync.loadConfig();
       const sel = document.getElementById('tv1-region');
       if (sel && tv1.region) sel.value = tv1.region;
+      const vpCb = document.getElementById('tv1-vp-enabled');
+      if (vpCb) vpCb.checked = !!tv1.vpEnabled;
+
+      // Afficher le statut du cache Virtual Patch
+      const vpStatusEl = document.getElementById('tv1-vp-status');
+      if (vpStatusEl && typeof TrendVP !== 'undefined') {
+        const st = TrendVP.getStats();
+        if (!tv1.vpEnabled) {
+          vpStatusEl.textContent = st.total > 0
+            ? `⏸ VP disabled · ${st.total} CVE in cache (stale)`
+            : '⏸ VP disabled — enable above to activate enrichment.';
+        } else if (st.total === 0) {
+          vpStatusEl.textContent = '⏳ No VP data cached yet — will enrich on next feed refresh.';
+        } else {
+          const agoMs  = st.newestAt ? Date.now() - st.newestAt : null;
+          const agoStr = agoMs === null ? '' : agoMs < 60_000
+            ? ' · updated just now'
+            : agoMs < 3_600_000
+              ? ` · updated ${Math.round(agoMs / 60_000)} min ago`
+              : ` · updated ${Math.round(agoMs / 3_600_000)} h ago`;
+          vpStatusEl.textContent =
+            `🛡️ VP cache: ${st.total} CVE enriched · ${st.available} with patch · ${st.notAvailable} without${agoStr}`;
+        }
+      }
 
       // Afficher le statut de la dernière sync
       const lastSyncEl = document.getElementById('tv1-last-sync');
@@ -881,6 +905,17 @@ const SettingsModal = (() => {
     });
   }
 
+  // ── VP toggle ──────────────────────────────────────────────────────────────
+
+  function toggleVP(checked) {
+    if (typeof TV1Sync === 'undefined') return;
+    const cfg = TV1Sync.loadConfig();
+    TV1Sync.saveConfig({ ...cfg, vpEnabled: !!checked });
+    // Persist region from current select value if set
+    const region = document.getElementById('tv1-region')?.value;
+    if (region) TV1Sync.saveConfig({ ...TV1Sync.loadConfig(), region });
+  }
+
   // ── API publique ────────────────────────────────────────────────────────────
 
   return {
@@ -897,6 +932,8 @@ const SettingsModal = (() => {
     // Integrations
     saveIntegrations,
     // TV1 Watchlist Sync
-    syncTV1Watchlist
+    syncTV1Watchlist,
+    // TV1 Virtual Patch toggle
+    toggleVP
   };
 })();

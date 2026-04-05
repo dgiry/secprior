@@ -22,8 +22,9 @@
 const MorningBrief = (() => {
   'use strict';
 
-  let _getArticles = null;   // () => Article[]
-  let _scopeDays   = 7;      // default scope: last 7 days
+  let _getArticles    = null;  // () => Article[]
+  let _getTrendVPMap  = null;  // () => { "CVE-XXXX": vpData }
+  let _scopeDays      = 7;     // default scope: last 7 days
 
   const SEP = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
@@ -114,11 +115,17 @@ const MorningBrief = (() => {
       !!(a.prioritySignals?.isZeroDay ||
          (a.attackTags || []).some(t => t.label === '0-Day') ||
          /zero.?day|0day/i.test(a.title || ''));
+    const vpMap = (_getTrendVPMap && CONFIG.TREND_V1_ENABLED) ? _getTrendVPMap() : null;
     return {
       kev:     arts.filter(a => a.isKEV).length,
       ioc:     arts.filter(a => (a.iocCount || 0) > 0).length,
       cve:     arts.filter(a => (a.cves || []).length > 0).length,
-      zeroDay: arts.filter(isZD).length
+      zeroDay: arts.filter(isZD).length,
+      vp:      vpMap !== null
+               ? arts.filter(a =>
+                   (a.cves || []).some(c => vpMap[c.toUpperCase()]?.status === 'available')
+                 ).length
+               : null  // null = line omitted in brief
     };
   }
 
@@ -209,6 +216,9 @@ const MorningBrief = (() => {
     L.push(`    🔍  Hunt in SIEM/EDR   (IOC):  ${pad(act.ioc)}`);
     L.push(`    📋  Apply advisory     (CVE):  ${pad(act.cve)}`);
     L.push(`    ⏳  Zero-day — monitor       :  ${pad(act.zeroDay)}`);
+    if (act.vp !== null) {
+      L.push(`    🛡️  Trend virtual patch (VP) :  ${pad(act.vp)}`);
+    }
     L.push('');
     L.push(SEP);
 
@@ -267,8 +277,9 @@ const MorningBrief = (() => {
     modal.style.display = 'flex';
   }
 
-  function init(getArticlesFn) {
-    _getArticles = getArticlesFn;
+  function init(getArticlesFn, getTrendVPMapFn) {
+    _getArticles   = getArticlesFn;
+    _getTrendVPMap = getTrendVPMapFn || null;
 
     document.getElementById('btn-morning-brief')?.addEventListener('click', show);
     document.getElementById('mb-close')?.addEventListener('click', _close);

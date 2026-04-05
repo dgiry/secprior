@@ -3856,9 +3856,16 @@ body.modal-open { overflow: hidden; }
   cursor: default;
 }
 
-/* Popup — caché par défaut, révélé au hover */
+/* Popup — always rendered (visibility:hidden) so getBoundingClientRect() works for
+   JS viewport-aware positioning; revealed at hover via opacity/visibility transition */
 .score-tip-popup {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  visibility: hidden;
+  opacity: 0;
+  /* Instant hide, fast reveal — avoids flicker on quick mouse passes */
+  transition: opacity .12s ease, visibility 0s .12s;
   position: absolute;
   top: calc(100% + 7px);
   left: 0;
@@ -3871,11 +3878,9 @@ body.modal-open { overflow: hidden; }
   padding: 8px 10px;
   box-shadow: 0 6px 20px rgba(0,0,0,.55);
   pointer-events: none;
-  flex-direction: column;
-  gap: 3px;
 }
 
-/* Petite flèche */
+/* Petite flèche — default: points up (tooltip is below chip) */
 .score-tip-popup::before {
   content: '';
   position: absolute;
@@ -3888,7 +3893,22 @@ body.modal-open { overflow: hidden; }
 }
 
 .sig-chip-level.has-score-tip:hover .score-tip-popup {
-  display: flex;
+  visibility: visible;
+  opacity: 1;
+  transition: opacity .12s ease, visibility 0s 0s;
+}
+
+/* JS-applied modifier: tooltip opens above the chip */
+.score-tip-popup.tip-above::before {
+  top: auto;
+  bottom: -5px;
+  transform: rotate(225deg); /* flipped: now points down */
+}
+
+/* JS-applied modifier: tooltip is right-aligned to chip edge */
+.score-tip-popup.tip-right::before {
+  left: auto;
+  right: 12px;
 }
 
 /* Ligne d'en-tête */
@@ -4774,20 +4794,25 @@ body.modal-open { overflow: hidden; }
 /* ── Overlay ─────────────────────────────────────────────────────────────── */
 .exec-modal-overlay {
   position: fixed; inset: 0; z-index: 2000;
-  background: rgba(0,0,0,.82);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  /* Stronger recession: higher opacity + blur + desaturation of background content */
+  background: rgba(0,0,0,.92);
+  backdrop-filter: blur(8px) saturate(40%);
+  -webkit-backdrop-filter: blur(8px) saturate(40%);
   display: flex; align-items: flex-start; justify-content: center;
   padding: 2rem 1rem; overflow-y: auto;
 }
 
 .exec-modal-box {
-  background: var(--surface1);
-  border: 1px solid var(--border);
+  /* Fix: --surface1 was undefined (transparent); use --surface (#161b22) for solid base */
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,.09);
   border-radius: 12px;
-  box-shadow: 0 8px 48px rgba(0,0,0,.55);
+  /* Layered shadow: deep ambient + tight contact shadow for "lifted" feel */
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04),
+    0 24px 64px rgba(0,0,0,.85),
+    0 8px 20px  rgba(0,0,0,.5);
   width: 100%; max-width: 860px;
-  box-shadow: 0 16px 48px rgba(0,0,0,.6);
   display: flex; flex-direction: column;
 }
 
@@ -5534,3 +5559,127 @@ body.modal-open { overflow: hidden; }
   .exec-modal-sub { display: none; }
   .ev-act-hint { display: none; }
 }
+
+/* ── CVE Timeline / Age Tracker ─────────────────────────────────────────── */
+
+/* Age badge on article cards (inside nvd-row) */
+.nvd-age {
+  display: inline-block;
+  font-size: .67rem;
+  font-weight: 600;
+  padding: .1rem .45rem;
+  border-radius: 4px;
+  margin-left: .35rem;
+  vertical-align: middle;
+  letter-spacing: .01em;
+}
+.nvd-age-fresh { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
+.nvd-age-med   { background: #271e08; color: #d29922; border: 1px solid #9e6a03; }
+.nvd-age-old   { background: #2d1515; color: #f85149; border: 1px solid #6e2020; }
+
+/* Age badge in CVE panel table (under CVE ID) */
+.cp-cve-age {
+  display: inline-block;
+  font-size: .62rem;
+  font-weight: 700;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  margin-left: .3rem;
+  vertical-align: middle;
+  letter-spacing: .02em;
+}
+.cp-age-fresh { background: #0d2818; color: #3fb950; }
+.cp-age-med   { background: #271e08; color: #d29922; }
+.cp-age-old   { background: #2d1515; color: #f85149; }
+
+/* Timeline row in CVE detail */
+.cp-timeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem .2rem;
+  margin: .5rem 0 .75rem 0;
+  padding: .55rem .75rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border, #30363d);
+  border-radius: 6px;
+  font-size: .72rem;
+}
+
+.cp-tl-node {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.cp-tl-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cp-tl-disclose .cp-tl-dot { background: #58a6ff; }
+.cp-tl-feed     .cp-tl-dot { background: #8b949e; }
+.cp-tl-patch    .cp-tl-dot { background: #3fb950; }
+
+.cp-tl-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.cp-tl-label {
+  font-weight: 600;
+  color: var(--text, #e6edf3);
+  font-size: .68rem;
+  white-space: nowrap;
+}
+.cp-tl-date {
+  color: #8b949e;
+  font-size: .66rem;
+  white-space: nowrap;
+}
+.cp-tl-age {
+  color: #58a6ff;
+  font-size: .63rem;
+  font-weight: 600;
+}
+
+.cp-tl-arrow {
+  color: #484f58;
+  font-size: .8rem;
+  margin: 0 .1rem;
+  align-self: center;
+}
+
+/* Exposure window pill */
+.cp-tl-exposure {
+  margin-left: auto;
+  padding: .15rem .5rem;
+  border-radius: 10px;
+  font-size: .67rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.cp-exposure-high { background: #2d1515; color: #f85149; border: 1px solid #6e2020; }
+.cp-exposure-med  { background: #271e08; color: #d29922; border: 1px solid #9e6a03; }
+.cp-exposure-low  { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
+
+/* Trend VP timeline node */
+.cp-tl-vp .cp-tl-dot    { background: #a371f7; }   /* purple — distinct from other nodes */
+.cp-tl-vp .cp-tl-label  { color: #a371f7; }
+
+/* "No virtual patch yet" note — muted, below timeline */
+.cp-tl-vp-none {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin-left: auto;
+  font-size: .67rem;
+  color: #6e7681;
+  font-style: italic;
+}
+
+/* Exec View VP actionability row */
+.ev-act-row-active.ev-act-vp { border-left: 3px solid #a371f7; }
+.ev-act-c-vp                 { color: #a371f7; }

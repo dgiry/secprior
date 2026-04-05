@@ -8,8 +8,9 @@
 const ExecView = (function () {
   'use strict';
 
-  let _articles  = [];
-  let _scopeDays = 7;   // Default scope: last 7 days
+  let _articles    = [];
+  let _trendVPMap  = {};  // { "CVE-2025-XXXX": vpData } — Trend virtual patch status
+  let _scopeDays   = 7;   // Default scope: last 7 days
 
   // ── Scope filter ──────────────────────────────────────────────────────────
   // Returns articles within the chosen time window.
@@ -44,8 +45,9 @@ const ExecView = (function () {
     });
   }
 
-  function update(articles) {
+  function update(articles, trendVPMap) {
     _articles = articles || [];
+    if (trendVPMap) _trendVPMap = trendVPMap;
     // Re-render live if modal is already open
     const modal = document.getElementById('modal-exec-view');
     if (modal && modal.style.display !== 'none') _render();
@@ -196,7 +198,14 @@ const ExecView = (function () {
       !_isZeroDay(a)
     ).length;
 
-    return { kev, withIOC, cveLinking, zeroDays, noSignal };
+    // Trend virtual patch available — only counted when feature is enabled
+    const vpAvailable = CONFIG.TREND_V1_ENABLED
+      ? arts.filter(a =>
+          (a.cves || []).some(c => _trendVPMap[c.toUpperCase()]?.status === 'available')
+        ).length
+      : null; // null = row hidden in UI
+
+    return { kev, withIOC, cveLinking, zeroDays, noSignal, vpAvailable };
   }
 
   // ── Actionability HTML builder ─────────────────────────────────────────────
@@ -221,7 +230,8 @@ const ExecView = (function () {
           ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
           ${row('📋', 'CVE-linked',                act.cveLinking,  'cve',  'Apply vendor advisory')}
           ${row('⏳', 'Zero-day',                  act.zeroDays,    'zero', 'No patch yet — monitor')}
-          ${row('📰', 'No direct signal',              act.noSignal,    'none', 'Strategic watch')}
+          ${act.vpAvailable !== null ? row('🛡️', 'Trend virtual patch', act.vpAvailable, 'vp', 'Filter available to deploy') : ''}
+          ${row('📰', 'No direct signal',          act.noSignal,    'none', 'Strategic watch')}
         </div>
       </div>`;
   }
@@ -441,6 +451,8 @@ const ExecView = (function () {
         ipRow.click();
         // Scroll into view for visibility
         ipRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (typeof UI !== 'undefined') {
+        UI.showToast('Incident not visible with current filters', 'info');
       }
     }, 100);
 

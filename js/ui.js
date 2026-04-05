@@ -828,6 +828,16 @@ const UI = (() => {
     const cweTag  = cveData.cwe     ? `<span class="badge badge-cwe">${cveData.cwe}</span>` : "";
     const nvdLink = `https://nvd.nist.gov/vuln/detail/${cveData.cveId}`;
 
+    // Age badge — "📅 Xd ago" (disclosed date from NVD)
+    let ageHTML = "";
+    if (cveData.published) {
+      try {
+        const days  = Math.max(0, Math.floor((Date.now() - new Date(cveData.published).getTime()) / 86_400_000));
+        const ageCls = days > 30 ? "nvd-age-old" : days > 7 ? "nvd-age-med" : "nvd-age-fresh";
+        ageHTML = `<span class="nvd-age ${ageCls}" title="Disclosed ${new Date(cveData.published).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}">📅 ${days}d ago</span>`;
+      } catch {}
+    }
+
     slot.innerHTML = `
       <div class="nvd-row">
         <span class="badge ${cls}" ${vector}>${label}</span>
@@ -836,6 +846,7 @@ const UI = (() => {
         <a class="nvd-link" href="${nvdLink}" target="_blank" rel="noopener">
           NVD ↗
         </a>
+        ${ageHTML}
       </div>`.trim();
   }
 
@@ -878,6 +889,58 @@ const UI = (() => {
         `<option value="${f.id}">${f.icon} ${f.name}</option>`
       ).join("");
   }
+
+  // ── Score-tip viewport positioning ────────────────────────────────────────
+  // Runs once at module load. Delegated on document so it survives card
+  // re-renders without needing re-attachment after each renderCards() call.
+  //
+  // Strategy: the popup uses visibility:hidden (not display:none) so it is
+  // always in the render tree and measurable. On mouseover the chip we read
+  // its bounding rect, compare against viewport, and inject inline-style
+  // overrides + CSS modifier classes before the hover opacity transition fires.
+  // On mouseout we reset everything so the next hover starts from defaults.
+  (function _initScoreTipPositioning() {
+    const MARGIN = 10; // min clearance from any viewport edge (px)
+
+    document.addEventListener('mouseover', e => {
+      const chip = e.target.closest('.has-score-tip');
+      if (!chip) return;
+      const popup = chip.querySelector('.score-tip-popup');
+      if (!popup) return;
+
+      // Reset overrides from any previous hover so we measure from default position
+      popup.style.cssText = '';
+      popup.classList.remove('tip-above', 'tip-right');
+
+      const chipR  = chip.getBoundingClientRect();
+      const popupR = popup.getBoundingClientRect(); // accurate: always display:flex
+      const vw     = window.innerWidth;
+      const vh     = window.innerHeight;
+
+      // ── Vertical: open above if not enough room below ──────────────────────
+      if (vh - chipR.bottom < popupR.height + MARGIN) {
+        popup.style.top    = 'auto';
+        popup.style.bottom = 'calc(100% + 7px)';
+        popup.classList.add('tip-above');
+      }
+
+      // ── Horizontal: right-align when tooltip would overflow right edge ──────
+      if (chipR.left + popupR.width > vw - MARGIN) {
+        popup.style.left  = 'auto';
+        popup.style.right = '0';
+        popup.classList.add('tip-right');
+      }
+    });
+
+    document.addEventListener('mouseout', e => {
+      const chip = e.target.closest('.has-score-tip');
+      if (!chip || chip.contains(e.relatedTarget)) return; // still inside chip
+      const popup = chip.querySelector('.score-tip-popup');
+      if (!popup) return;
+      popup.style.cssText = '';
+      popup.classList.remove('tip-above', 'tip-right');
+    });
+  })();
 
   return {
     renderCards,
