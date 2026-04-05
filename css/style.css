@@ -308,6 +308,27 @@ a:hover { text-decoration: underline; }
 }
 .select-filter:focus { outline: none; border-color: var(--accent); }
 
+/* ── Filtres secondaires (ligne collapsible sous la navbar) ──────────────── */
+.secondary-filters-row {
+  display: none;
+  width: 100%;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  padding: .45rem 1rem;
+  gap: .5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  order: 99; /* toujours en dernier dans le flex navbar */
+}
+.secondary-filters-row.sf-open { display: flex; }
+
+.btn-secondary-filters { position: relative; }
+.sf-active-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface2);
+}
+
 /* ── Status bar ─────────────────────────────────────────────────────────── */
 .statusbar {
   background: var(--surface);
@@ -3377,6 +3398,19 @@ body.modal-open { overflow: hidden; }
 .sf-profile-hint     { display:flex; align-items:center; gap:.4rem; padding:.3rem 0 .1rem;
                        font-size:.74rem; color:var(--text2); }
 .sf-profile-hint-text strong { color:var(--text); }
+
+/* ── Bouton statut inline dans les cartes ────────────────────────────────── */
+.card-status-btn {
+  font-size: .68rem; font-weight: 600;
+  padding: .1rem .4rem; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.08);
+  cursor: pointer; white-space: nowrap;
+  transition: opacity .15s, transform .1s;
+  line-height: 1.4;
+}
+.card-status-btn:hover { opacity: .8; transform: scale(1.04); }
+.card-status-new { border-color: transparent; opacity: .5; }
+.card-status-new:hover { opacity: .75; }
 
 /* ── États analyste — entity-status.js ──────────────────────────────────── */
 .es-badge-slot  { display:inline; }

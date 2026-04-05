@@ -192,6 +192,24 @@ const UI = (() => {
       ? `<span class="badge badge-new" title="Published since your last visit">🆕 New</span>`
       : "";
 
+    // ── Badge de statut analyste (inline, cycle au clic) ─────────────────────
+    const _STATUS_CYCLE = ['new', 'acknowledged', 'investigating', 'mitigated'];
+    const _STATUS_DISPLAY = {
+      new:          { label: '· New',           color: '#8b949e', bg: 'transparent' },
+      acknowledged: { label: '📥 ACK',          color: '#f0883e', bg: '#2d1a00' },
+      investigating:{ label: '🔍 Investigating', color: '#79c0ff', bg: '#0d1b2e' },
+      mitigated:    { label: '✅ Mitigated',     color: '#3fb950', bg: '#0d2818' },
+      ignored:      { label: '🚫 Ignored',       color: '#484f58', bg: '#161b22' }
+    };
+    const curStatus = (typeof EntityStatus !== 'undefined')
+      ? EntityStatus.getEffectiveStatus('article', article.id)
+      : 'new';
+    const sd = _STATUS_DISPLAY[curStatus] || _STATUS_DISPLAY.new;
+    const statusBadge = `<button class="card-status-btn card-status-${curStatus}"
+      style="color:${sd.color};background:${sd.bg}"
+      onclick="event.stopPropagation();UI.cycleStatus('${article.id}')"
+      title="Status: ${curStatus} — click to advance">${sd.label}</button>`;
+
     const isRead = (typeof Storage !== 'undefined') ? Storage.isRead(article.id) : false;
     return `
       <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}" data-id="${article.id}"
@@ -201,6 +219,7 @@ const UI = (() => {
           ${newBadge}
           <span class="badge badge-source">${article.sourceIcon} ${article.sourceName}</span>
           <time class="card-time" data-pubdate="${article.pubDate.toISOString()}" title="${article.pubDate.toLocaleString()}">${age}</time>
+          ${statusBadge}
           <button class="btn-star ${starred ? 'starred' : ''}"
                   onclick="UI.toggleFav('${article.id}')"
                   title="${starred ? 'Remove from favorites' : 'Add to favorites'}">
@@ -621,6 +640,39 @@ const UI = (() => {
     });
   }
 
+  // ─── Cycle statut analyste depuis les cartes ─────────────────────────────
+  function cycleStatus(id) {
+    if (typeof EntityStatus === 'undefined') return;
+    const CYCLE = ['new', 'acknowledged', 'investigating', 'mitigated'];
+    const STATUS_DISPLAY = {
+      new:          { label: '· New',           color: '#8b949e', bg: 'transparent' },
+      acknowledged: { label: '📥 ACK',          color: '#f0883e', bg: '#2d1a00' },
+      investigating:{ label: '🔍 Investigating', color: '#79c0ff', bg: '#0d1b2e' },
+      mitigated:    { label: '✅ Mitigated',     color: '#3fb950', bg: '#0d2818' },
+      ignored:      { label: '🚫 Ignored',       color: '#484f58', bg: '#161b22' }
+    };
+    const cur  = EntityStatus.getEffectiveStatus('article', id);
+    const idx  = CYCLE.indexOf(cur);
+    const next = CYCLE[(idx + 1) % CYCLE.length];
+    EntityStatus.setStatus('article', id, next);
+
+    // Mettre à jour le badge dans la carte sans re-render complet
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (card) {
+      const btn = card.querySelector('.card-status-btn');
+      if (btn) {
+        const sd = STATUS_DISPLAY[next] || STATUS_DISPLAY.new;
+        btn.textContent = sd.label;
+        btn.style.color = sd.color;
+        btn.style.background = sd.bg;
+        btn.className = `card-status-btn card-status-${next}`;
+        btn.title = `Status: ${next} — click to advance`;
+        // Refléter le statut sur la carte (pour filtre par statut)
+        card.setAttribute('data-status', next);
+      }
+    }
+  }
+
   // ─── Toggle favori depuis les cartes ───────────────────────────────────────
   function toggleFav(id) {
     const isNowStarred = Storage.toggleFavorite(id);
@@ -716,6 +768,7 @@ const UI = (() => {
     requestNotificationPermission,
     notifyCritical,
     toggleFav,
+    cycleStatus,
     initSourceFilter,
     timeAgo
   };

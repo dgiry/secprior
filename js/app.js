@@ -198,6 +198,17 @@ const App = (() => {
     btn.title = `Force feed update · Last fresh: ${ago_str} (${status})`;
   }
 
+  // ─── Badge actif sur le bouton "Filters ▾" si un filtre secondaire est actif ─
+  function _updateSecondaryFiltersBadge() {
+    const badge = document.getElementById('secondary-filters-badge');
+    if (!badge) return;
+    const active = state.criticality !== 'all'
+                || state.source      !== 'all'
+                || state.sortBy      !== 'default'
+                || state.statusFilter !== 'all';
+    badge.style.display = active ? 'block' : 'none';
+  }
+
   // ─── Collecter la santé des flux prioritaires pour l'Ops Panel ──────────────
   function _getPriorityFeedHealth() {
     const priorityIds = ['securityweek', 'cyber-centre', 'certeu', 'cisa-ics'];
@@ -276,6 +287,7 @@ const App = (() => {
     }
     _updateRecentSearches();                  // mettre à jour l'historique UI
     _updateRefreshButtonStatus();             // mettre à jour l'indicateur de fraîcheur
+    _updateSecondaryFiltersBadge();           // point bleu si filtre secondaire actif
   }
 
   // ─── Badge "New since last visit" ─────────────────────────────────────────
@@ -560,11 +572,13 @@ const App = (() => {
     document.getElementById("filter-criticality")?.addEventListener("change", e => {
       state.criticality = e.target.value;
       render();
+      _updateSecondaryFiltersBadge();
     });
 
     document.getElementById("filter-source")?.addEventListener("change", e => {
       state.source = e.target.value;
       render();
+      _updateSecondaryFiltersBadge();
     });
 
     document.getElementById("filter-date")?.addEventListener("change", e => {
@@ -580,11 +594,13 @@ const App = (() => {
     document.getElementById("sort-by")?.addEventListener("change", e => {
       state.sortBy = e.target.value;
       render();
+      _updateSecondaryFiltersBadge();
     });
 
     document.getElementById("filter-status")?.addEventListener("change", e => {
       state.statusFilter = e.target.value;
       render();
+      _updateSecondaryFiltersBadge();
     });
 
     // ── Raccourcis clavier pour power users ──────────────────────────────────

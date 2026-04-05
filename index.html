@@ -112,7 +112,7 @@
       </div>
     </div>
 
-    <!-- ── G2 : Filtres — recherche · criticité · source · date · priorité · tri · statut ── -->
+    <!-- ── G2 : Filtres primaires (toujours visibles) + secondaires (sous "Filters ▾") ── -->
     <span class="nav-sep" aria-hidden="true"></span>
 
     <div class="search-input-wrapper">
@@ -120,7 +120,7 @@
         type="search"
         id="search-input"
         class="search-input"
-        placeholder="🔍 Search... (ransomware, source:cisa, vendor:microsoft, status:new, kev)"
+        placeholder="🔍 Search..."
         autocomplete="off"
         title="Search supports: plain text, source:, vendor:, cve:, status:, priority:, kev, trending, -keyword"
       >
@@ -128,15 +128,13 @@
       <div id="recent-searches-panel" class="recent-searches-panel" style="display:none"></div>
     </div>
 
-    <select id="filter-criticality" class="select-filter" title="Filter by severity">
-      <option value="all">🎯 All severities</option>
-      <option value="high">🔴 High</option>
-      <option value="medium">🟠 Medium</option>
-      <option value="low">🟢 Low</option>
-    </select>
-
-    <select id="filter-source" class="select-filter" title="Filter by source">
-      <!-- Peuplé dynamiquement par ui.js -->
+    <!-- Filtres primaires : Priorité + Période -->
+    <select id="filter-priority-level" class="select-filter" title="Filter by priority level">
+      <option value="all">🔺 All priorities</option>
+      <option value="critical_now">🚨 Critical</option>
+      <option value="investigate">🔍 Investigate</option>
+      <option value="watch">👁 Watch</option>
+      <option value="low">⬇ Low</option>
     </select>
 
     <select id="filter-date" class="select-filter" title="Filter by time period">
@@ -147,31 +145,44 @@
       <option value="30d">🗓 Last 30 days</option>
     </select>
 
-    <select id="filter-priority-level" class="select-filter" title="Filter by priority level">
-      <option value="all">🔺 All priorities</option>
-      <option value="critical_now">🚨 Critical</option>
-      <option value="investigate">🔍 Investigate</option>
-      <option value="watch">👁 Watch</option>
-      <option value="low">⬇ Low</option>
-    </select>
-
-    <select id="sort-by" class="select-filter" title="Article sort order">
-      <option value="default">📅 Sort: Date</option>
-      <option value="priority">🔺 Sort: Priority</option>
-    </select>
-
-    <select id="filter-status" class="select-filter" title="Filter by analyst status">
-      <option value="all">📋 All statuses</option>
-      <option value="new">· New</option>
-      <option value="acknowledged">📥 Acknowledged</option>
-      <option value="investigating">🔍 Investigating</option>
-      <option value="mitigated">✅ Mitigated</option>
-      <option value="ignored">🚫 Ignored</option>
-    </select>
-
     <button id="btn-risk-filter" class="btn" title="Operational threat filters (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
       🎯 Real risk<span id="risk-nav-badge"></span>
     </button>
+
+    <!-- Bouton "Filters ▾" — révèle les filtres secondaires -->
+    <button id="btn-secondary-filters" class="btn btn-secondary-filters"
+            title="Additional filters: severity, source, sort, status"
+            onclick="document.getElementById('secondary-filters-row').classList.toggle('sf-open');this.classList.toggle('active')">
+      Filters ▾<span id="secondary-filters-badge" class="sf-active-badge" style="display:none"></span>
+    </button>
+
+    <!-- Filtres secondaires (masqués par défaut) -->
+    <div id="secondary-filters-row" class="secondary-filters-row">
+      <select id="filter-criticality" class="select-filter" title="Filter by severity">
+        <option value="all">🎯 All severities</option>
+        <option value="high">🔴 High</option>
+        <option value="medium">🟠 Medium</option>
+        <option value="low">🟢 Low</option>
+      </select>
+
+      <select id="filter-source" class="select-filter" title="Filter by source">
+        <!-- Peuplé dynamiquement par ui.js -->
+      </select>
+
+      <select id="sort-by" class="select-filter" title="Article sort order">
+        <option value="default">📅 Sort: Date</option>
+        <option value="priority">🔺 Sort: Priority</option>
+      </select>
+
+      <select id="filter-status" class="select-filter" title="Filter by analyst status">
+        <option value="all">📋 All statuses</option>
+        <option value="new">· New</option>
+        <option value="acknowledged">📥 Acknowledged</option>
+        <option value="investigating">🔍 Investigating</option>
+        <option value="mitigated">✅ Mitigated</option>
+        <option value="ignored">🚫 Ignored</option>
+      </select>
+    </div>
 
     <!-- ── G3 : Utilitaires — watchlist · vues sauvegardées · favoris · actualiser ─── -->
     <span class="nav-sep" aria-hidden="true"></span>

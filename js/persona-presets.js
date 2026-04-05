@@ -298,7 +298,15 @@ const PersonaPresets = (() => {
   function silentRestoreFilters() {
     let id;
     try { id = localStorage.getItem(PERSONA_KEY); } catch {}
-    if (!id) return;
+
+    // Premier lancement (aucun persona stocké) → défaut SecOps : Critical Now 24h
+    if (!id) {
+      _activeId = 'today';
+      _setAppFilters(PERSONA_FILTERS['today'] || {});
+      _render(); // highlight la pill "Top priorities"
+      return;
+    }
+
     const persona = PERSONAS.find(p => p.id === id);
     if (!persona) return;
     _activeId = id;
