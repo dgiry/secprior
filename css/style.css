@@ -349,6 +349,17 @@ a:hover { text-decoration: underline; }
 .statusbar .dot { display: inline-block; width: 8px; height: 8px;
   border-radius: 50%; background: var(--ok); margin-right: .3rem; }
 
+/* ── New since last visit — bouton navbar ────────────────────────────────── */
+.btn-nsv {
+  color: #2dce89;
+  border-color: rgba(45,206,137,.4);
+  font-weight: 600;
+}
+.btn-nsv:hover {
+  background: rgba(45,206,137,.12);
+  border-color: rgba(45,206,137,.7);
+}
+
 /* ── New since last visit — badge statusbar ──────────────────────────────── */
 .nsv-badge {
   display: inline-flex; align-items: center; gap: .35rem;

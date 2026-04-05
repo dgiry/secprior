@@ -299,15 +299,29 @@ const App = (() => {
     const count = state.articles.filter(a =>
       a.pubDate instanceof Date && a.pubDate.getTime() > state.lastVisitTs
     ).length;
+
+    // ── Statusbar badge (dismissible) ──────────────────────────────────────
     const badge   = document.getElementById("nsv-badge");
     const countEl = document.getElementById("nsv-count");
-    if (!badge || !countEl) return;
-    // Masquer le badge quand la vue NSV est active (la context bar prend le relais)
-    if (count > 0 && !state._nsvDismissed && state.date !== "lastvisit") {
-      badge.style.display = "inline-flex";
-      countEl.textContent = count;
-    } else {
-      badge.style.display = "none";
+    if (badge && countEl) {
+      if (count > 0 && !state._nsvDismissed && state.date !== "lastvisit") {
+        badge.style.display = "inline-flex";
+        countEl.textContent = count;
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    // ── Navbar button (persistent — not dismissible) ───────────────────────
+    const navBtn      = document.getElementById("btn-nsv");
+    const navCountEl  = document.getElementById("nsv-nav-count");
+    if (navBtn && navCountEl) {
+      if (count > 0 && state.date !== "lastvisit") {
+        navBtn.style.display = "inline-flex";
+        navCountEl.textContent = count;
+      } else {
+        navBtn.style.display = "none";
+      }
     }
   }
 
