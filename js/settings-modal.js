@@ -893,25 +893,30 @@ const SettingsModal = (() => {
     // ── Badge de connexion ──
     const badge = document.getElementById('tv1-vp-badge');
     if (badge) {
-      const r = tv1.vpTestResult;
+      const r      = tv1.vpTestResult;
+      const detail = tv1.vpTestReason ? ` (${tv1.vpTestReason})` : '';
       if (!r || r === 'untested') {
         badge.textContent = '⚪ Not tested';
+        badge.title       = 'Click "Test connection" to verify the VP API';
         badge.className   = 'tv1-vp-badge tv1-vp-badge-idle';
       } else if (r === 'ok') {
         const ago = tv1.vpTestAt
           ? Math.round((Date.now() - tv1.vpTestAt) / 60_000) : null;
         badge.textContent = `🟢 Connected${ago !== null ? ` · ${ago < 1 ? '<1' : ago} min ago` : ''}`;
+        badge.title       = 'IPS catalog reachable and API key valid';
         badge.className   = 'tv1-vp-badge tv1-vp-badge-ok';
       } else {
         const labels = {
           error_nokey:   '🔴 No API key',
-          error_auth:    '🔴 Invalid API key',
-          error_scope:   '🔴 Insufficient scope',
+          error_auth:    '🔴 Invalid API key (401)',
+          error_scope:   '🔴 Insufficient scope (403)',
+          error_404:     '🟡 Endpoint not found (404)',
           error_timeout: '🟡 Timeout',
           error_network: '🟡 Unreachable',
         };
         badge.textContent = labels[r] || '🔴 Error';
-        badge.className   = r.startsWith('error_timeout') || r.startsWith('error_network')
+        badge.title       = detail || r;
+        badge.className   = r === 'error_timeout' || r === 'error_network' || r === 'error_404'
           ? 'tv1-vp-badge tv1-vp-badge-warn'
           : 'tv1-vp-badge tv1-vp-badge-error';
       }
@@ -961,23 +966,27 @@ const SettingsModal = (() => {
     const url = `/api/tv1-sync?mode=vp&cveId=CVE-2024-21413&region=${encodeURIComponent(region)}`;
 
     let testResult = 'error_network';
+    let testReason = '';
     try {
       const res  = await fetch(url, { signal: AbortSignal.timeout(12_000) });
       const data = await res.json();
       const reason = data.reason || '';
-      if (reason === 'not_configured')       testResult = 'error_nokey';
-      else if (reason.includes('401'))       testResult = 'error_auth';
-      else if (reason.includes('403'))       testResult = 'error_scope';
-      else if (reason === 'timeout')         testResult = 'error_timeout';
-      else if (data.status === 'unknown')    testResult = 'error_network';
-      else                                   testResult = 'ok'; // available or not_available both = API works
+      testReason = reason || (data.status === 'unknown' ? 'unknown' : 'ok');
+      if (reason === 'not_configured')        testResult = 'error_nokey';
+      else if (reason.includes('401'))        testResult = 'error_auth';
+      else if (reason.includes('403'))        testResult = 'error_scope';
+      else if (reason.includes('404'))        testResult = 'error_404';
+      else if (reason === 'timeout')          testResult = 'error_timeout';
+      else if (data.status === 'unknown')     testResult = 'error_network';
+      else                                    testResult = 'ok';
     } catch (err) {
       testResult = err.name === 'AbortError' ? 'error_timeout' : 'error_network';
+      testReason = err.message || testResult;
     }
 
-    // Sauvegarder le résultat du test dans la config
+    // Sauvegarder le résultat + raison brute dans la config
     const cfg = TV1Sync.loadConfig();
-    TV1Sync.saveConfig({ ...cfg, vpTestResult: testResult, vpTestAt: Date.now() });
+    TV1Sync.saveConfig({ ...cfg, vpTestResult: testResult, vpTestReason: testReason, vpTestAt: Date.now() });
 
     if (btn) { btn.disabled = false; btn.textContent = '🔵 Test connection'; }
     _renderVPStatus();

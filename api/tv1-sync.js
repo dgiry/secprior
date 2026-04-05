@@ -308,9 +308,11 @@ async function _handleVP(req, res) {
       return res.status(429).json({ error: "Rate limited", retryAfter: ra });
     }
     if (!tv1Res.ok) {
+      console.warn(`[tv1-vp] HTTP ${tv1Res.status} for ${cveId} on ${base}`);
       return res.status(200).json({
         cveId: cveId.toUpperCase(), status: "unknown",
-        reason: `tv1_http_${tv1Res.status}`, source: "trend_v1", cachedAt: Date.now()
+        reason: `tv1_http_${tv1Res.status}`, httpStatus: tv1Res.status,
+        source: "trend_v1", cachedAt: Date.now()
       });
     }
 
