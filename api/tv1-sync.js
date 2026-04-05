@@ -295,7 +295,7 @@ async function _handleVP(req, res) {
   try {
     const tv1Res = await fetch(url, {
       headers: {
-        "TMV1-Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json",
         "User-Agent": "CyberVeille-Pro/2.0"
       },
