@@ -4948,9 +4948,70 @@ body.modal-open { overflow: hidden; }
   min-width: 100px;
 }
 
+/* ── Exec View — Actionability Section ───────────────────────────────────── */
+.ev-act-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ev-act-row {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr auto auto;
+  align-items: center;
+  gap: 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--surface-alt, rgba(255,255,255,0.03));
+  transition: background 0.15s ease;
+}
+
+.ev-act-row-active {
+  border-color: var(--border);
+}
+
+.ev-act-row-active.ev-act-kev  { border-left: 3px solid #f85149; }
+.ev-act-row-active.ev-act-ioc  { border-left: 3px solid #58a6ff; }
+.ev-act-row-active.ev-act-cve  { border-left: 3px solid #3fb950; }
+.ev-act-row-active.ev-act-zero { border-left: 3px solid #f0883e; }
+
+.ev-act-icon {
+  font-size: 1rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.ev-act-label {
+  font-size: 0.88rem;
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.ev-act-count {
+  font-size: 1.05rem;
+  font-weight: 700;
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+.ev-act-c-kev  { color: #f85149; }
+.ev-act-c-ioc  { color: #58a6ff; }
+.ev-act-c-cve  { color: #3fb950; }
+.ev-act-c-zero { color: #f0883e; }
+.ev-act-c-none { color: var(--text3, #6e7681); }
+
+.ev-act-hint {
+  font-size: 0.72rem;
+  color: var(--text3, #6e7681);
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .ev-kpis { grid-template-columns: repeat(2, 1fr); }
   .ev-cols  { grid-template-columns: 1fr; }
   .exec-modal-sub { display: none; }
+  .ev-act-hint { display: none; }
 }

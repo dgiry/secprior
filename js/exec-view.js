@@ -112,6 +112,69 @@ const ExecView = (function () {
     } catch (_) { return []; }
   }
 
+  // ── Actionability ──────────────────────────────────────────────────────────
+  // Computes independent signal counts for what the team can act on today.
+  // Counts are OVERLAPPING by design — a single article can carry multiple
+  // actionable signals (e.g., KEV + IOC + CVE-linked).
+
+  function _isZeroDay(a) {
+    return !!(
+      a.prioritySignals?.isZeroDay ||
+      (a.attackTags || []).some(t => t.label === '0-Day') ||
+      /zero.?day|0day/i.test(a.title || '')
+    );
+  }
+
+  function _computeActionability(arts) {
+    // KEV: CISA confirmed — must patch immediately
+    const kev      = arts.filter(a => a.isKEV).length;
+
+    // With IOC: concrete indicators — can write SIEM/EDR detection rules now
+    const withIOC  = arts.filter(a => (a.iocCount || 0) > 0).length;
+
+    // CVE-linked: published CVE ID — vendor advisory/patch likely exists
+    const cveLinking = arts.filter(a => (a.cves || []).length > 0).length;
+
+    // Zero-day: no patch released yet — monitor, apply mitigations if any
+    const zeroDays = arts.filter(_isZeroDay).length;
+
+    // No direct action: none of the above — awareness / track only
+    const noSignal = arts.filter(a =>
+      !a.isKEV &&
+      !(a.iocCount > 0) &&
+      !(a.cves || []).length &&
+      !_isZeroDay(a)
+    ).length;
+
+    return { kev, withIOC, cveLinking, zeroDays, noSignal };
+  }
+
+  // ── Actionability HTML builder ─────────────────────────────────────────────
+
+  function _actionabilitySection(act) {
+    const row = (icon, label, count, cls, hint) => {
+      const active = count > 0 && cls !== 'none';
+      return `<div class="ev-act-row${active ? ' ev-act-row-active' : ''} ev-act-${cls}">
+        <span class="ev-act-icon">${icon}</span>
+        <span class="ev-act-label">${label}</span>
+        <span class="ev-act-count ev-act-c-${cls}">${count}</span>
+        <span class="ev-act-hint">${hint}</span>
+      </div>`;
+    };
+
+    return `
+      <div class="ev-section">
+        <h3 class="ev-section-title">⚙️ Actionability</h3>
+        <div class="ev-act-list">
+          ${row('🔑', 'KEV / Actively exploited',  act.kev,         'kev',  'Patch immediately')}
+          ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
+          ${row('📋', 'CVE-linked',                act.cveLinking,  'cve',  'Apply vendor advisory')}
+          ${row('⏳', 'Zero-day',                  act.zeroDays,    'zero', 'No patch yet — monitor')}
+          ${row('📊', 'No direct action',           act.noSignal,    'none', 'Awareness only')}
+        </div>
+      </div>`;
+  }
+
   // ── Executive summary heuristic ────────────────────────────────────────────
 
   function _buildSummary(posture, wlHits, vendors) {
@@ -214,6 +277,7 @@ const ExecView = (function () {
     const cves     = _topCVEs(arts, 5);
     const incidents= _topIncidents(arts, 3);
     const summary  = _buildSummary(posture, wlHits, vendors);
+    const act      = _computeActionability(arts);
 
     const now      = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const period   = arts.length
@@ -255,7 +319,10 @@ const ExecView = (function () {
         </div>
       </div>
 
-      <!-- ④ Incidents + Vendors/CVEs (two columns) -->
+      <!-- ④ Actionability — what the team can act on today -->
+      ${_actionabilitySection(act)}
+
+      <!-- ⑤ Incidents + Vendors/CVEs (two columns) -->
       <div class="ev-cols">
 
         <div class="ev-col">
