@@ -1,32 +1,22 @@
-// api/tv1-sync.js — Trend Vision One Watchlist Sync endpoint (v2 — hardened)
+// api/tv1-sync.js — Trend Vision One unified endpoint (v3)
 //
-// GET /api/tv1-sync?region=us|eu|au|in|sg|jp[&demo=1]
+// MODE 1 — Watchlist Sync (default)
+//   GET /api/tv1-sync?region=us|eu|au|in|sg|jp[&demo=1]
+//   • demo=1 OR TV1_API_KEY not set → curated demo dataset
+//   • TV1_API_KEY configured        → calls TV1 V3.0 endpoint inventory API
+//   Returns: { items, source, count, fetchedAt, note?, errorCode? }
 //
-// Behaviour:
-//   • demo=1 OR TV1_API_KEY not set → curated demo dataset (always works)
-//   • TV1_API_KEY configured          → calls TV1 V3.0 endpoint inventory API
-//
-// Returns (success): { items, source, count, fetchedAt, note?, errorCode? }
-//   item: { type: 'vendor'|'product'|'technology', label: string, value: string }
-//   errorCode (on demo fallback after auth failure):
-//     AUTH_INVALID  — 401, bad API key
-//     AUTH_SCOPE    — 403, insufficient scope (need endpoint-security:read)
-//
-// Returns (error): HTTP 4xx/5xx — { error, errorCode, ... }
-//   errorCode:
-//     RATE_LIMITED  — HTTP 429 from TV1; retryAfterSeconds included
-//     TIMEOUT       — TV1 did not respond within 14s
-//     NETWORK_ERROR — could not reach TV1 API
-//     TV1_ERROR     — other non-2xx from TV1
+// MODE 2 — Virtual Patch lookup
+//   GET /api/tv1-sync?mode=vp&cveId=CVE-YYYY-NNNNN[&region=us]
+//   • TV1_API_KEY not set → { status: "unknown", reason: "not_configured" }
+//   • TV1_API_KEY set     → queries IPS filter catalog
+//   Returns: { cveId, status, filterId?, filterName?, publishedAt?, source, cachedAt }
+//     status: "available" | "not_available" | "unknown"
 //
 // Security:
-//   • TV1 response body is NEVER forwarded to the client (could leak internal details)
-//   • TV1_API_KEY is never logged
-//   • Region is validated via allowlist (TV1_BASE), not used in string interpolation
-//
-// Architecture note:
-//   All normalization logic lives in _normalizeEndpoints().
-//   Extend it when TV1 exposes software inventory or asset-tag APIs.
+//   • TV1_API_KEY never logged or forwarded to client
+//   • Region validated against allowlist
+//   • cveId validated by regex
 
 "use strict";
 
@@ -60,6 +50,9 @@ module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET")     return res.status(405).json({ error: "Method not allowed" });
+
+  // ── Route to Virtual Patch mode ───────────────────────────────────────────
+  if (req.query.mode === "vp") return _handleVP(req, res);
 
   const forceDemo = req.query.demo === "1";
   const apiKey    = process.env.TV1_API_KEY;
@@ -182,6 +175,76 @@ module.exports = async (req, res) => {
     fetchedAt: new Date().toISOString()
   });
 };
+
+// ── Virtual Patch handler ─────────────────────────────────────────────────────
+// GET /api/tv1-sync?mode=vp&cveId=CVE-YYYY-NNNNN[&region=us]
+
+async function _handleVP(req, res) {
+  const { cveId, region = "us" } = req.query;
+
+  if (!cveId) return res.status(400).json({ error: "Parameter 'cveId' required" });
+  if (!/^CVE-\d{4}-\d{4,}$/i.test(cveId))
+    return res.status(400).json({ error: "Invalid CVE format (expected: CVE-YYYY-NNNNN)" });
+
+  const apiKey = process.env.TV1_API_KEY || "";
+  if (!apiKey) {
+    return res.status(200).json({
+      cveId: cveId.toUpperCase(), status: "unknown",
+      reason: "not_configured", source: "trend_v1", cachedAt: Date.now()
+    });
+  }
+
+  const base = TV1_BASE[region] || TV1_BASE.us;
+  const url  = `${base}/v3.0/ips/filters?cveId=${encodeURIComponent(cveId.toUpperCase())}`;
+
+  try {
+    const tv1Res = await fetch(url, {
+      headers: {
+        "TMV1-Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+        "User-Agent": "CyberVeille-Pro/2.0"
+      },
+      signal: AbortSignal.timeout(12_000)
+    });
+
+    if (tv1Res.status === 429) {
+      const ra = tv1Res.headers.get("Retry-After") || "60";
+      res.setHeader("Retry-After", ra);
+      return res.status(429).json({ error: "Rate limited", retryAfter: ra });
+    }
+    if (!tv1Res.ok) {
+      return res.status(200).json({
+        cveId: cveId.toUpperCase(), status: "unknown",
+        reason: `tv1_http_${tv1Res.status}`, source: "trend_v1", cachedAt: Date.now()
+      });
+    }
+
+    const json  = await tv1Res.json();
+    const items = json?.items || [];
+    const upper = cveId.toUpperCase();
+    const hit   = items.find(f => (f.cveIds || []).some(c => c.toUpperCase() === upper));
+
+    res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=3600");
+
+    if (!hit) {
+      return res.status(200).json({
+        cveId: upper, status: "not_available", source: "trend_v1", cachedAt: Date.now()
+      });
+    }
+    return res.status(200).json({
+      cveId: upper, status: "available",
+      filterId: String(hit.id || ""), filterName: hit.name || "",
+      publishedAt: hit.publishedAt || null, source: "trend_v1", cachedAt: Date.now()
+    });
+
+  } catch (err) {
+    return res.status(200).json({
+      cveId: cveId.toUpperCase(), status: "unknown",
+      reason: err.name === "TimeoutError" ? "timeout" : "network_error",
+      source: "trend_v1", cachedAt: Date.now()
+    });
+  }
+}
 
 // ── Normalize TV1 endpoint inventory → watchlist items ───────────────────────
 //

@@ -42,7 +42,6 @@
     { "source": "/api/send-alert",        "destination": "/api/send-alert" },
     { "source": "/api/scheduled-digest", "destination": "/api/scheduled-digest" },
     { "source": "/api/status",           "destination": "/api/status" },
-    { "source": "/api/tv1-sync",         "destination": "/api/tv1-sync" },
-    { "source": "/api/trend-vp",         "destination": "/api/trend-vp" }
+    { "source": "/api/tv1-sync",         "destination": "/api/tv1-sync" }
   ]
 }

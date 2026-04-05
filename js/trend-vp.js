@@ -101,7 +101,7 @@ const TrendVP = (() => {
     // Endpoint routing: always /api/trend-vp (key stays server-side on Vercel).
     // Region comes from the existing TV1Sync config (Integrations tab).
     const region  = (typeof TV1Sync !== 'undefined' ? TV1Sync.loadConfig()?.region : null) || 'us';
-    const url     = `/api/trend-vp?cveId=${encodeURIComponent(cveId)}&region=${encodeURIComponent(region)}`;
+    const url     = `/api/tv1-sync?mode=vp&cveId=${encodeURIComponent(cveId)}&region=${encodeURIComponent(region)}`;
     const headers = {};
 
     try {
