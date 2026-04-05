@@ -623,6 +623,37 @@ const App = (() => {
       _updateSecondaryFiltersBadge();
     });
 
+    // ── Clear all filters (appelé par raccourci C) ────────────────────────────
+    function _clearAllFilters() {
+      state.query          = '';
+      state.date           = 'all';
+      state.priorityLevel  = 'all';
+      state.criticality    = 'all';
+      state.source         = 'all';
+      state.sortBy         = 'default';
+      state.statusFilter   = 'all';
+      state.showFavOnly    = false;
+      state.showUnreadOnly = false;
+      state._nsvDismissed  = false;
+
+      // Sync DOM inputs
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+      set('search-input',        '');
+      set('filter-date',         'all');
+      set('filter-priority-level','all');
+      set('filter-criticality',  'all');
+      set('filter-source',       'all');
+      set('sort-by',             'default');
+      set('filter-status',       'all');
+
+      const favBtn = document.getElementById('btn-favs');
+      if (favBtn) { favBtn.classList.remove('active'); favBtn.title = 'My favorites only'; }
+      const unreadBtn = document.getElementById('btn-unread');
+      if (unreadBtn) { unreadBtn.classList.remove('active'); unreadBtn.title = 'Unread only'; }
+
+      render();
+    }
+
     // ── Raccourcis clavier pour power users ──────────────────────────────────
     document.addEventListener("keydown", e => {
       const target = e.target;
@@ -644,6 +675,18 @@ const App = (() => {
         // "N" activate "Since last visit" view
         e.preventDefault();
         filterNewSinceVisit();
+      } else if (e.key.toUpperCase() === "E" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "E" open Exec / CISO view
+        e.preventDefault();
+        document.getElementById('btn-exec-view')?.click();
+      } else if (e.key.toUpperCase() === "F" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "F" toggle Favorites filter
+        e.preventDefault();
+        document.getElementById('btn-favs')?.click();
+      } else if (e.key.toUpperCase() === "C" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "C" clear all active filters
+        e.preventDefault();
+        _clearAllFilters();
       } else if (e.key === "?" && !isInput) {
         // "?" show keyboard shortcuts cheatsheet
         e.preventDefault();
