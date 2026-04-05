@@ -44,6 +44,23 @@ const WatchlistModal = (() => {
     }
   }
 
+  // ── Détection des termes sans correspondance dans le feed actuel ────────────
+
+  function _buildMatchedIds() {
+    const matched = new Set();
+    try {
+      const articles = Storage.getArticles();
+      for (const a of articles) {
+        if (Array.isArray(a.watchlistMatchItems)) {
+          for (const m of a.watchlistMatchItems) {
+            if (m.id) matched.add(m.id);
+          }
+        }
+      }
+    } catch { /* Storage non disponible — pas de marquage */ }
+    return matched;
+  }
+
   // ── Rendu principal ─────────────────────────────────────────────────────────
 
   function _render() {
@@ -83,6 +100,9 @@ const WatchlistModal = (() => {
         html += `<div class="wl-demo-note">🔵 Les items TV1 affichés proviennent du jeu de données de démonstration, pas d'un inventaire réel. Ajoutez <code>TV1_API_KEY</code> dans Vercel pour activer la sync live.</div>`;
       }
     }
+
+    // ── Termes avec au moins un hit dans le feed courant ──────────────────
+    const matchedIds = _buildMatchedIds();
 
     // ── Appliquer le filtre ────────────────────────────────────────────────
     const list = _applyFilter(allItems, _currentFilter);
@@ -127,7 +147,7 @@ const WatchlistModal = (() => {
       return `
         <div class="wl-group">
           <div class="wl-group-label ${meta.css}">${meta.label}</div>
-          ${items.map(_itemHTML).join('')}
+          ${items.map(i => _itemHTML(i, matchedIds)).join('')}
         </div>`;
     }).join('');
 
@@ -159,12 +179,16 @@ const WatchlistModal = (() => {
     } catch { return ''; }
   }
 
-  function _itemHTML(item) {
+  function _itemHTML(item, matchedIds = new Set()) {
     const pMeta  = Contextualizer.WL_PRIORITIES[item.priority] || Contextualizer.WL_PRIORITIES.medium;
     const tMeta  = Contextualizer.WL_TYPES[item.type]          || Contextualizer.WL_TYPES.keyword;
     const idEsc  = item.id.replace(/'/g, "\\'");
     const lblEsc = (item.label || item.value || '').replace(/</g, '&lt;');
-    const cls    = item.enabled ? 'wl-item' : 'wl-item wl-item-disabled';
+    const noMatch = item.enabled && matchedIds.size > 0 && !matchedIds.has(item.id);
+    const cls    = [
+      item.enabled ? 'wl-item' : 'wl-item wl-item-disabled',
+      noMatch ? 'wl-item-quiet' : ''
+    ].join(' ').trim();
 
     // TV1 badge — tooltip enrichi de la date d'obsolescence si disponible
     const staleDateFull = (item.source === 'tv1' && item.staleAt)
@@ -187,10 +211,15 @@ const WatchlistModal = (() => {
       }
     }
 
+    const noMatchBadge = noMatch
+      ? `<span class="wl-no-match" title="No matches in current feed">—</span>`
+      : '';
+
     return `
       <div class="${cls}" data-id="${item.id}">
         <span class="wl-prio-dot" title="Priority: ${pMeta.label}">${pMeta.dot}</span>
         <span class="wl-item-label" title="${item.value}">${lblEsc}</span>
+        ${noMatchBadge}
         ${tv1Badge}
         ${staleHint}
         <span class="wl-item-type ${tMeta.css}">${tMeta.label}</span>

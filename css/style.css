@@ -3983,6 +3983,17 @@ body.modal-open { overflow: hidden; }
 }
 .wl-item:hover            { background: var(--surface); }
 .wl-item-disabled         { opacity: .45; }
+.wl-item-quiet            { opacity: .6; }
+.wl-no-match {
+  font-size: 0.7rem;
+  color: var(--text3, #6e7681);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  flex-shrink: 0;
+  cursor: default;
+}
 .wl-prio-dot              { font-size: .7rem; flex-shrink:0; }
 .wl-item-label            { flex:1; color:var(--text); font-weight:500;
                              overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
