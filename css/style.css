@@ -4494,6 +4494,20 @@ body.modal-open { overflow: hidden; }
 .ts-badge-unknown { color: #8b949e; font-style: italic; }
 .ts-badge-loading { color: #58a6ff; animation: ts-spin .8s linear infinite; display: inline-block; }
 
+/* ── VP connection badge (Integrations tab) ─────────────────────────────────── */
+.tv1-vp-badge {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .15rem .5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tv1-vp-badge-idle  { background: rgba(139,148,158,.12); color: #8b949e; }
+.tv1-vp-badge-ok    { background: rgba(63,185,80,.12);   color: #3fb950; }
+.tv1-vp-badge-warn  { background: rgba(210,153,34,.12);  color: #d29922; }
+.tv1-vp-badge-error { background: rgba(248,81,73,.12);   color: #f85149; }
+
 @keyframes ts-spin { to { transform: rotate(360deg); } }
 
 /* Bouton "✦ AI Brief" dans les quick-actions dropdowns */

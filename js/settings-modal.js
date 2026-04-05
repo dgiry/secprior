@@ -61,28 +61,7 @@ const SettingsModal = (() => {
       if (sel && tv1.region) sel.value = tv1.region;
       const vpCb = document.getElementById('tv1-vp-enabled');
       if (vpCb) vpCb.checked = !!tv1.vpEnabled;
-
-      // Afficher le statut du cache Virtual Patch
-      const vpStatusEl = document.getElementById('tv1-vp-status');
-      if (vpStatusEl && typeof TrendVP !== 'undefined') {
-        const st = TrendVP.getStats();
-        if (!tv1.vpEnabled) {
-          vpStatusEl.textContent = st.total > 0
-            ? `⏸ VP disabled · ${st.total} CVE in cache (stale)`
-            : '⏸ VP disabled — enable above to activate enrichment.';
-        } else if (st.total === 0) {
-          vpStatusEl.textContent = '⏳ No VP data cached yet — will enrich on next feed refresh.';
-        } else {
-          const agoMs  = st.newestAt ? Date.now() - st.newestAt : null;
-          const agoStr = agoMs === null ? '' : agoMs < 60_000
-            ? ' · updated just now'
-            : agoMs < 3_600_000
-              ? ` · updated ${Math.round(agoMs / 60_000)} min ago`
-              : ` · updated ${Math.round(agoMs / 3_600_000)} h ago`;
-          vpStatusEl.textContent =
-            `🛡️ VP cache: ${st.total} CVE enriched · ${st.available} with patch · ${st.notAvailable} without${agoStr}`;
-        }
-      }
+      _renderVPStatus();
 
       // Afficher le statut de la dernière sync
       const lastSyncEl = document.getElementById('tv1-last-sync');
@@ -905,15 +884,103 @@ const SettingsModal = (() => {
     });
   }
 
+  // ── VP status renderer (appelé à l'ouverture du modal ET au toggle) ──────────
+
+  function _renderVPStatus() {
+    if (typeof TV1Sync === 'undefined') return;
+    const tv1 = TV1Sync.loadConfig();
+
+    // ── Badge de connexion ──
+    const badge = document.getElementById('tv1-vp-badge');
+    if (badge) {
+      const r = tv1.vpTestResult;
+      if (!r || r === 'untested') {
+        badge.textContent = '⚪ Not tested';
+        badge.className   = 'tv1-vp-badge tv1-vp-badge-idle';
+      } else if (r === 'ok') {
+        const ago = tv1.vpTestAt
+          ? Math.round((Date.now() - tv1.vpTestAt) / 60_000) : null;
+        badge.textContent = `🟢 Connected${ago !== null ? ` · ${ago < 1 ? '<1' : ago} min ago` : ''}`;
+        badge.className   = 'tv1-vp-badge tv1-vp-badge-ok';
+      } else {
+        const labels = {
+          error_nokey:   '🔴 No API key',
+          error_auth:    '🔴 Invalid API key',
+          error_scope:   '🔴 Insufficient scope',
+          error_timeout: '🟡 Timeout',
+          error_network: '🟡 Unreachable',
+        };
+        badge.textContent = labels[r] || '🔴 Error';
+        badge.className   = r.startsWith('error_timeout') || r.startsWith('error_network')
+          ? 'tv1-vp-badge tv1-vp-badge-warn'
+          : 'tv1-vp-badge tv1-vp-badge-error';
+      }
+    }
+
+    // ── Statut cache VP ──
+    const vpStatusEl = document.getElementById('tv1-vp-status');
+    if (vpStatusEl && typeof TrendVP !== 'undefined') {
+      const st = TrendVP.getStats();
+      if (!tv1.vpEnabled) {
+        vpStatusEl.textContent = st.total > 0
+          ? `⏸ VP disabled · ${st.total} CVE in cache (stale)`
+          : '⏸ VP disabled — enable above to activate enrichment.';
+      } else if (st.total === 0) {
+        vpStatusEl.textContent = '⏳ No VP data cached yet — will enrich on next feed refresh.';
+      } else {
+        const agoMs  = st.newestAt ? Date.now() - st.newestAt : null;
+        const agoStr = agoMs === null ? ''
+          : agoMs < 60_000        ? ' · updated just now'
+          : agoMs < 3_600_000     ? ` · updated ${Math.round(agoMs / 60_000)} min ago`
+          :                         ` · updated ${Math.round(agoMs / 3_600_000)} h ago`;
+        vpStatusEl.textContent =
+          `🛡️ VP cache: ${st.total} CVE enriched · ${st.available} with patch · ${st.notAvailable} without${agoStr}`;
+      }
+    }
+  }
+
   // ── VP toggle ──────────────────────────────────────────────────────────────
 
   function toggleVP(checked) {
     if (typeof TV1Sync === 'undefined') return;
     const cfg = TV1Sync.loadConfig();
-    TV1Sync.saveConfig({ ...cfg, vpEnabled: !!checked });
-    // Persist region from current select value if set
-    const region = document.getElementById('tv1-region')?.value;
-    if (region) TV1Sync.saveConfig({ ...TV1Sync.loadConfig(), region });
+    const region = document.getElementById('tv1-region')?.value || cfg.region;
+    TV1Sync.saveConfig({ ...cfg, vpEnabled: !!checked, region: region || cfg.region });
+    _renderVPStatus();
+  }
+
+  // ── VP test de connexion ───────────────────────────────────────────────────
+
+  async function testVPConnection() {
+    if (typeof TV1Sync === 'undefined') return;
+    const btn = document.getElementById('btn-tv1-vp-test');
+    if (btn) { btn.disabled = true; btn.textContent = '⟳ Testing…'; }
+
+    const region = TV1Sync.loadConfig()?.region || 'us';
+    // CVE connue, présente dans le catalogue IPS Trend (peu importe le résultat available/not)
+    const url = `/api/tv1-sync?mode=vp&cveId=CVE-2024-21413&region=${encodeURIComponent(region)}`;
+
+    let testResult = 'error_network';
+    try {
+      const res  = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+      const data = await res.json();
+      const reason = data.reason || '';
+      if (reason === 'not_configured')       testResult = 'error_nokey';
+      else if (reason.includes('401'))       testResult = 'error_auth';
+      else if (reason.includes('403'))       testResult = 'error_scope';
+      else if (reason === 'timeout')         testResult = 'error_timeout';
+      else if (data.status === 'unknown')    testResult = 'error_network';
+      else                                   testResult = 'ok'; // available or not_available both = API works
+    } catch (err) {
+      testResult = err.name === 'AbortError' ? 'error_timeout' : 'error_network';
+    }
+
+    // Sauvegarder le résultat du test dans la config
+    const cfg = TV1Sync.loadConfig();
+    TV1Sync.saveConfig({ ...cfg, vpTestResult: testResult, vpTestAt: Date.now() });
+
+    if (btn) { btn.disabled = false; btn.textContent = '🔵 Test connection'; }
+    _renderVPStatus();
   }
 
   // ── API publique ────────────────────────────────────────────────────────────
@@ -933,7 +1000,7 @@ const SettingsModal = (() => {
     saveIntegrations,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
-    // TV1 Virtual Patch toggle
-    toggleVP
+    // TV1 Virtual Patch toggle + test
+    toggleVP, testVPConnection
   };
 })();

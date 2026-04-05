@@ -18,7 +18,7 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <meta name="msapplication-TileImage" content="icons/icon.svg">
 
-  <link rel="stylesheet" href="css/style.css?v=44">
+  <link rel="stylesheet" href="css/style.css?v=45">
 </head>
 <body>
 
@@ -940,21 +940,27 @@
           <!-- Statut dernière sync -->
           <div id="tv1-last-sync" class="settings-hint" style="margin-top:.4rem;min-height:1.2em"></div>
 
-          <!-- Virtual Patch toggle -->
-          <div style="display:flex;align-items:center;gap:.6rem;margin-top:.75rem">
+          <!-- Virtual Patch toggle + badge de connexion -->
+          <div style="display:flex;align-items:center;gap:.6rem;margin-top:.75rem;flex-wrap:wrap">
             <input type="checkbox" id="tv1-vp-enabled"
                    onchange="SettingsModal.toggleVP(this.checked)"
-                   style="width:1rem;height:1rem;cursor:pointer">
-            <label for="tv1-vp-enabled" style="cursor:pointer;font-size:.9rem">
+                   style="width:1rem;height:1rem;cursor:pointer;flex-shrink:0">
+            <label for="tv1-vp-enabled" style="cursor:pointer;font-size:.9rem;flex:1">
               🛡️ Enable Virtual Patch signal (IPS filter availability per CVE)
             </label>
+            <span id="tv1-vp-badge" class="tv1-vp-badge tv1-vp-badge-idle">⚪ Not tested</span>
           </div>
-          <p class="settings-hint" style="margin-top:.3rem;margin-left:1.6rem">
-            Queries the Trend Vision One IPS catalog to show whether a virtual patch
-            exists for each CVE — read-only, no deployment. Requires <code>TV1_API_KEY</code>.
-          </p>
-          <!-- VP cache status — populated by SettingsModal on open -->
-          <div id="tv1-vp-status" class="settings-hint" style="margin-top:.3rem;margin-left:1.6rem;min-height:1.2em"></div>
+          <div style="display:flex;align-items:center;gap:.75rem;margin-top:.4rem;margin-left:1.6rem;flex-wrap:wrap">
+            <button class="btn" id="btn-tv1-vp-test" style="font-size:.8rem;padding:.2rem .7rem"
+                    onclick="SettingsModal.testVPConnection()">
+              🔵 Test connection
+            </button>
+            <p class="settings-hint" style="margin:0">
+              Queries the Trend Vision One IPS catalog — read-only, no deployment. Requires <code>TV1_API_KEY</code>.
+            </p>
+          </div>
+          <!-- VP cache status — mis à jour au toggle et à l'ouverture -->
+          <div id="tv1-vp-status" class="settings-hint" style="margin-top:.4rem;margin-left:1.6rem;min-height:1.2em"></div>
 
           <!-- Preview area — populated dynamically by JS -->
           <div id="tv1-preview" style="display:none;margin-top:.75rem"></div>
@@ -1280,7 +1286,7 @@
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=22"></script>
+  <script src="js/settings-modal.js?v=23"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=18"></script>
   <script src="js/pdf-report.js?v=18"></script>
