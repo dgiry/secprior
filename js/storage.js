@@ -4,6 +4,7 @@
 const CACHE_KEY         = "cv_cache";
 const FAV_KEY           = "cv_favorites";
 const READ_KEY          = "cv_read_articles";
+const REVIEWED_KEY      = "cv_reviewed_articles";
 const RECENT_SEARCHES_KEY = "cv_recent_searches";
 const RECENT_SEARCHES_MAX = 5;
 
@@ -76,6 +77,38 @@ const Storage = {
 
   getFavoriteCount() {
     return this.getFavorites().size;
+  },
+
+  // ─── Articles revus (triage léger) ────────────────────────────────────────
+
+  getReviewed() {
+    try {
+      const raw = localStorage.getItem(REVIEWED_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  },
+
+  toggleReviewed(id) {
+    const reviewed = this.getReviewed();
+    if (reviewed.has(id)) {
+      reviewed.delete(id);
+    } else {
+      reviewed.add(id);
+    }
+    try {
+      localStorage.setItem(REVIEWED_KEY, JSON.stringify([...reviewed]));
+    } catch (e) {
+      console.warn("[Storage] Reviewed write failed:", e.message);
+    }
+    return reviewed.has(id);
+  },
+
+  isReviewed(id) {
+    return this.getReviewed().has(id);
+  },
+
+  getReviewedCount() {
+    return this.getReviewed().size;
   },
 
   clearCache() {

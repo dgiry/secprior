@@ -1335,7 +1335,9 @@ const QuickActions = (() => {
   // Sprint 23 — Dropdown ⚡ Actions (remplace les 4+ boutons plats du footer)
   // opts.showIoc : true → inclut le bouton IOC dans le dropdown
   function _articleButtonsHTML(opts) {
-    const showIoc = opts && opts.showIoc;
+    const showIoc     = opts && opts.showIoc;
+    const articleId   = opts && opts.articleId;
+    const isReviewed  = articleId && (typeof Storage !== 'undefined') ? Storage.isReviewed(articleId) : false;
     return `
       <div class="qa-actions-menu" id="art-qa-menu">
         <button class="btn qa-btn qa-actions-trigger" id="art-qa-trigger"
@@ -1343,6 +1345,12 @@ const QuickActions = (() => {
           ⚡ Actions ▾
         </button>
         <div class="qa-actions-popover" id="art-qa-popover" style="display:none" role="menu">
+          <button class="qa-actions-item qa-actions-item-reviewed${isReviewed ? ' qa-reviewed-active' : ''}"
+                  id="art-modal-toggle-reviewed"
+                  title="${isReviewed ? 'Reviewed — click to unmark' : 'Mark as reviewed (triage done)'}">
+            ${isReviewed ? '✓ Reviewed' : '○ Mark as reviewed'}
+          </button>
+          <div class="qa-actions-sep" role="separator"></div>
           <button class="qa-actions-item" id="art-modal-copy-summary"
                   title="Compact headline + signals + link — paste into Slack, Teams or tickets">
             🔗 Copy summary
@@ -1457,6 +1465,20 @@ const QuickActions = (() => {
     }
 
     // ── Actions dans le dropdown ─────────────────────────────────────────────
+
+    // Toggle Reviewed
+    document.getElementById('art-modal-toggle-reviewed')?.addEventListener('click', () => {
+      if (typeof UI !== 'undefined') {
+        const isNowReviewed = UI.toggleReviewed(article.id);
+        const btn = document.getElementById('art-modal-toggle-reviewed');
+        if (btn) {
+          btn.classList.toggle('qa-reviewed-active', isNowReviewed);
+          btn.textContent = isNowReviewed ? '✓ Reviewed' : '○ Mark as reviewed';
+          btn.title = isNowReviewed ? 'Reviewed — click to unmark' : 'Mark as reviewed (triage done)';
+        }
+      }
+    });
+
     document.getElementById('art-modal-copy-summary')
       ?.addEventListener('click', () =>
         _copy(_shareShortArticle(article), 'Summary'));

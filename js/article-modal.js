@@ -209,7 +209,7 @@ const ArticleModal = (() => {
           ${isFav ? '★ Favorite' : '☆ Favorite'}
         </button>
         ${typeof QuickActions !== 'undefined'
-          ? QuickActions.articleButtonsHTML({ showIoc: (article.iocCount || 0) > 0 })
+          ? QuickActions.articleButtonsHTML({ showIoc: (article.iocCount || 0) > 0, articleId: article.id })
           : ''}
         <a href="${article.link}" target="_blank" rel="noopener noreferrer"
            class="btn btn-primary art-modal-open-btn">

@@ -295,9 +295,10 @@ const UI = (() => {
       onclick="event.stopPropagation();UI.cycleStatus('${article.id}')"
       title="Status: ${curStatus} — click to advance">${sd.label}</button>`;
 
-    const isRead = (typeof Storage !== 'undefined') ? Storage.isRead(article.id) : false;
+    const isRead     = (typeof Storage !== 'undefined') ? Storage.isRead(article.id)     : false;
+    const isReviewed = (typeof Storage !== 'undefined') ? Storage.isReviewed(article.id) : false;
     return `
-      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}" data-id="${article.id}"
+      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}${isReviewed ? " card-reviewed" : ""}" data-id="${article.id}"
                title="Click to see full details">
         <header class="card-header">
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
@@ -305,6 +306,11 @@ const UI = (() => {
           <span class="badge badge-source">${article.sourceIcon} ${article.sourceName}</span>
           <time class="card-time" data-pubdate="${article.pubDate.toISOString()}" title="${article.pubDate.toLocaleString()}">${age}</time>
           ${statusBadge}
+          <button class="btn-reviewed ${isReviewed ? 'reviewed' : ''}"
+                  onclick="event.stopPropagation();UI.toggleReviewed('${article.id}')"
+                  title="${isReviewed ? 'Reviewed — click to unmark' : 'Mark as reviewed'}">
+            ${isReviewed ? '✓' : '○'}
+          </button>
           <button class="btn-star ${starred ? 'starred' : ''}"
                   onclick="UI.toggleFav('${article.id}')"
                   title="${starred ? 'Remove from favorites' : 'Add to favorites'}">
@@ -497,6 +503,12 @@ const UI = (() => {
     if (state.showUnreadOnly) {
       const read = Storage.getRead();
       filtered = filtered.filter(a => !read.has(a.id));
+    }
+
+    // Masquer les articles revus (triage)
+    if (state.hideReviewed) {
+      const reviewed = Storage.getReviewed();
+      filtered = filtered.filter(a => !reviewed.has(a.id));
     }
 
     // Recherche avancée (plain text + operators: source:, vendor:, cve:, status:, priority:, kev, trending, -keyword)
@@ -783,6 +795,25 @@ const UI = (() => {
     return isNowStarred;
   }
 
+  // ─── Toggle "Reviewed" depuis les cartes ──────────────────────────────────
+  function toggleReviewed(id) {
+    const isNowReviewed = Storage.toggleReviewed(id);
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (card) {
+      card.classList.toggle('card-reviewed', isNowReviewed);
+      const btn = card.querySelector('.btn-reviewed');
+      if (btn) {
+        btn.classList.toggle('reviewed', isNowReviewed);
+        btn.textContent = isNowReviewed ? '✓' : '○';
+        btn.title = isNowReviewed ? 'Reviewed — click to unmark' : 'Mark as reviewed';
+      }
+    }
+    // Mettre à jour le compteur dans le bouton navbar
+    const reviewedCount = document.getElementById('reviewed-count');
+    if (reviewedCount) reviewedCount.textContent = Storage.getReviewedCount();
+    return isNowReviewed;
+  }
+
   // ─── Injecter les données NVD dans une carte existante ────────────────────
   // Appelé par le callback NVD.enrichArticles() — pas de re-render complet
   function updateCardCVSS(articleId, cveData) {
@@ -860,6 +891,7 @@ const UI = (() => {
     requestNotificationPermission,
     notifyCritical,
     toggleFav,
+    toggleReviewed,
     cycleStatus,
     initSourceFilter,
     timeAgo

@@ -14,6 +14,7 @@ const App = (() => {
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
     showFavOnly: false,
     showUnreadOnly: false,
+    hideReviewed: false,
     lastSavedQuery: null,  // Track last saved search (avoid duplicates in history)
     timerId: null,
     _cveLinkId:   null,   // CVE unique (clic sur une ligne) — priorité haute
@@ -275,6 +276,7 @@ const App = (() => {
       sortBy:        state.sortBy,
       statusFilter:  state.statusFilter,
       showFavOnly:   state.showFavOnly,
+      hideReviewed:  state.hideReviewed,
       riskFilters:   RiskFilter.getFilters()   // { active: Set, epssThreshold }
     });
     UI.renderCards(filtered);
@@ -356,6 +358,7 @@ const App = (() => {
         sortBy:        state.sortBy,
         statusFilter:  state.statusFilter,
         showFavOnly:   state.showFavOnly,
+        hideReviewed:  state.hideReviewed,
         riskFilters:   RiskFilter.getFilters()
       });
       const n = filtered.length;
@@ -634,6 +637,7 @@ const App = (() => {
       state.statusFilter   = 'all';
       state.showFavOnly    = false;
       state.showUnreadOnly = false;
+      state.hideReviewed   = false;
       state._nsvDismissed  = false;
 
       // Sync DOM inputs
@@ -650,6 +654,8 @@ const App = (() => {
       if (favBtn) { favBtn.classList.remove('active'); favBtn.title = 'My favorites only'; }
       const unreadBtn = document.getElementById('btn-unread');
       if (unreadBtn) { unreadBtn.classList.remove('active'); unreadBtn.title = 'Unread only'; }
+      const hideRevBtn = document.getElementById('btn-hide-reviewed');
+      if (hideRevBtn) { hideRevBtn.classList.remove('active'); hideRevBtn.title = 'Hide reviewed'; }
 
       render();
     }
@@ -730,6 +736,7 @@ const App = (() => {
         sortBy:        state.sortBy,
         statusFilter:  state.statusFilter,
         showFavOnly:   state.showFavOnly,
+        hideReviewed:  state.hideReviewed,
         riskFilters:   RiskFilter.getFilters()
       });
       UI.exportCSVEnriched(filtered, state.nvdMap);
@@ -750,6 +757,15 @@ const App = (() => {
       const btn = document.getElementById("btn-unread");
       btn.classList.toggle("active", state.showUnreadOnly);
       btn.title = state.showUnreadOnly ? "Show all articles" : "Unread only";
+      render();
+    });
+
+    // ── Toggle masquer les articles revus ─────────────────────────────────────
+    document.getElementById("btn-hide-reviewed")?.addEventListener("click", () => {
+      state.hideReviewed = !state.hideReviewed;
+      const btn = document.getElementById("btn-hide-reviewed");
+      btn.classList.toggle("active", state.hideReviewed);
+      btn.title = state.hideReviewed ? "Show reviewed articles" : "Hide reviewed";
       render();
     });
 

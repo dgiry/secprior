@@ -461,6 +461,32 @@ a:hover { text-decoration: underline; }
   opacity: 0.68;
 }
 
+/* ── Articles revus (triage) ───────────────────────────────────────────── */
+.card-reviewed {
+  opacity: 0.55;
+  border-left: 3px solid rgba(63,185,80,.4) !important;
+}
+.card-reviewed .card-title a {
+  text-decoration: line-through;
+  text-decoration-color: rgba(63,185,80,.5);
+}
+.card-reviewed:hover {
+  opacity: 0.8;
+}
+
+/* Bouton ✓ reviewed sur la carte */
+.btn-reviewed {
+  background: none; border: none; cursor: pointer;
+  color: var(--text2); font-size: 1rem; padding: 0 .2rem;
+  line-height: 1; transition: color .15s, transform .1s;
+}
+.btn-reviewed:hover { color: var(--ok); transform: scale(1.2); }
+.btn-reviewed.reviewed { color: #3fb950; }
+
+/* Bouton "Mark as reviewed" dans le dropdown Actions */
+.qa-actions-item-reviewed { color: var(--text2); }
+.qa-actions-item-reviewed.qa-reviewed-active { color: #3fb950; font-weight: 600; }
+
 /* ── CVE Link badge (status bar) ────────────────────────────────────────── */
 .cve-link-badge {
   display: inline-flex; align-items: center; gap: .3rem;
