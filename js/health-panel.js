@@ -34,7 +34,54 @@ const HealthPanel = (() => {
     if (_isVisible()) await _load();
   }
 
-  function init() { /* lazy — rien à faire */ }
+  // ── Statusbar health dot ────────────────────────────────────────────────────
+  function _updateStatusbarDot(d) {
+    const wrap  = document.getElementById('sb-health');
+    const label = document.getElementById('sb-health-label');
+    if (!wrap || !label) return;
+    const errCount = Array.isArray(d.feedErrors) ? d.feedErrors.length : 0;
+    const globalOk = d.status === 'ok';
+    if (errCount > 0) {
+      wrap.className = 'sb-health sb-health-warn';
+      wrap.title = `${errCount} feed${errCount !== 1 ? 's' : ''} with errors — click for details`;
+      label.textContent = `${errCount} feed error${errCount !== 1 ? 's' : ''}`;
+    } else if (!globalOk) {
+      wrap.className = 'sb-health sb-health-error';
+      wrap.title = 'System degraded — click for details';
+      label.textContent = 'System degraded';
+    } else {
+      wrap.className = 'sb-health sb-health-ok';
+      wrap.title = 'All feeds operational — click for details';
+      label.textContent = 'Feeds OK';
+    }
+  }
+
+  function _updateStatusbarDotError() {
+    const wrap  = document.getElementById('sb-health');
+    const label = document.getElementById('sb-health-label');
+    if (!wrap || !label) return;
+    wrap.className = 'sb-health sb-health-error';
+    wrap.title = 'Health check unavailable — click to retry';
+    label.textContent = 'Health ?';
+  }
+
+  function init() {
+    // Silent background fetch — populates statusbar dot without opening the panel
+    setTimeout(async () => {
+      if (_cache || _loading) return;
+      try {
+        _loading = true;
+        const res = await fetch('/api/status', { signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        _cache = await res.json();
+        _updateStatusbarDot(_cache);
+      } catch {
+        _updateStatusbarDotError();
+      } finally {
+        _loading = false;
+      }
+    }, 4000);
+  }
 
   // ── Fetch /api/status ───────────────────────────────────────────────────────
   async function _load() {
@@ -63,6 +110,7 @@ const HealthPanel = (() => {
   function _renderError(msg) {
     const el = document.getElementById("health-list");
     if (el) el.innerHTML = `<div class="hp-state hp-error">❌ ${msg}</div>`;
+    _updateStatusbarDotError();
   }
 
   /** Formate un timestamp ISO en date/heure locale FR, ou "—" si null. */
@@ -315,6 +363,7 @@ const HealthPanel = (() => {
 
   // ── Rendu principal ─────────────────────────────────────────────────────────
   function _render(d) {
+    _updateStatusbarDot(d);
     const el = document.getElementById("health-list");
     if (!el) return;
 

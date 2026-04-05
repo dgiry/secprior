@@ -349,6 +349,31 @@ a:hover { text-decoration: underline; }
 .statusbar .dot { display: inline-block; width: 8px; height: 8px;
   border-radius: 50%; background: var(--ok); margin-right: .3rem; }
 
+/* ── Statusbar — feed health dot ─────────────────────────────────────────── */
+.sb-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+.sb-health:hover { opacity: 1; }
+
+.sb-health-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text3, #6e7681);
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+.sb-health-ok   .sb-health-dot { background: var(--ok, #2dce89); }
+.sb-health-warn .sb-health-dot { background: #f0883e; }
+.sb-health-error .sb-health-dot { background: #f85149; }
+
 /* ── New since last visit — bouton navbar ────────────────────────────────── */
 .btn-nsv {
   color: #2dce89;

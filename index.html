@@ -442,6 +442,11 @@
   <div class="statusbar">
     <span><span class="dot"></span>Live</span>
     <span>Sources: <span id="statusbar-feed-count">…</span> active feeds</span>
+    <span id="sb-health" class="sb-health"
+          onclick="HealthPanel.toggle()"
+          title="Feed health — click to open">
+      <span class="sb-health-dot"></span><span id="sb-health-label">—</span>
+    </span>
     <span>Auto-refresh: 10 min</span>
     <span>Last update: <strong id="last-update">—</strong></span>
     <span style="margin-left:auto"><strong id="article-count">0</strong> articles displayed</span>
