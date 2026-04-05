@@ -4765,10 +4765,21 @@ body.modal-open { overflow: hidden; }
   border-left: 3px solid var(--border);
   border-radius: 6px; padding: .6rem .75rem;
   margin-bottom: .45rem; display: flex; flex-direction: column; gap: .3rem;
+  cursor: pointer; transition: all .15s;
+}
+.ev-incident-card:hover {
+  border-color: rgba(255,255,255,.16);
+  background: rgba(255,255,255,.03);
+  transform: translateX(2px);
+}
+.ev-incident-card:focus {
+  outline: 2px solid rgba(88,166,255,.5);
+  outline-offset: -1px;
 }
 .ev-inc-critical_now { border-left-color: #f85149; }
 .ev-inc-investigate  { border-left-color: #f0883e; }
 .ev-inc-watch        { border-left-color: #79c0ff; }
+.ev-incident-card:hover .ev-inc-title { text-decoration: underline; text-decoration-color: rgba(255,255,255,.3); }
 
 .ev-inc-header { display: flex; align-items: flex-start; gap: .4rem; }
 .ev-inc-icon   { font-size: .9rem; flex-shrink: 0; margin-top: .05rem; }

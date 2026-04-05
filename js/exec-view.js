@@ -166,8 +166,10 @@ const ExecView = (function () {
         ? `<span class="ev-chip ev-chip-epss">📊 EPSS ${Math.round(inc.maxEpss * 100)}%</span>` : '',
     ].filter(Boolean).join('');
     const vendors = (inc.vendors || []).slice(0, 3).join(', ');
+    // Sanitize incident ID for HTML attribute (same logic as IncidentPanel)
+    const safeId = (inc.incidentId || '').replace(/[^a-z0-9\-_]/g, '-').toLowerCase();
 
-    return `<div class="ev-incident-card ev-inc-${lvl}">
+    return `<div class="ev-incident-card ev-inc-${lvl}" data-inc-id="${safeId}" role="button" tabindex="0" title="Click to view incident details">
       <div class="ev-inc-header">
         <span class="ev-inc-icon">${pm.icon}</span>
         <span class="ev-inc-title">${inc.title}</span>
@@ -279,6 +281,48 @@ const ExecView = (function () {
 
       </div>`}
     `;
+
+    // ── Attach incident card click handlers ─────────────────────────────────
+    // Clicking an incident card triggers navigation to the corresponding incident
+    // in the IncidentPanel view.
+    (function() {
+      container.querySelectorAll('.ev-incident-card[data-inc-id]').forEach(card => {
+        const incId = card.dataset.incId;
+        const clickHandler = () => _navigateToIncident(incId);
+        card.addEventListener('click', clickHandler);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            clickHandler();
+          }
+        });
+      });
+    })();
+  }
+
+  // ── Navigate to incident in IncidentPanel ───────────────────────────────────
+
+  function _navigateToIncident(safeId) {
+    // 1. Open the IncidentPanel if it's not already visible
+    if (typeof IncidentPanel !== 'undefined') {
+      const panel = document.getElementById('incident-panel');
+      if (!panel || panel.style.display === 'none') {
+        IncidentPanel.toggle();
+      }
+    }
+
+    // 2. Find and click the corresponding row in the IncidentPanel to expand it
+    setTimeout(() => {
+      const ipRow = document.querySelector(`.ip-row[data-iid="${safeId}"]`);
+      if (ipRow) {
+        ipRow.click();
+        // Scroll into view for visibility
+        ipRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 100);
+
+    // 3. Close the Exec View modal to show the IncidentPanel
+    close();
   }
 
   return { init, update, open, close };
