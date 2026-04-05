@@ -165,7 +165,7 @@ const ExecView = (function () {
     // Zero-day: no patch released yet — monitor, apply mitigations if any
     const zeroDays = arts.filter(_isZeroDay).length;
 
-    // No direct action: none of the above — awareness / track only
+    // No direct signal: none of the above — awareness / track only
     const noSignal = arts.filter(a =>
       !a.isKEV &&
       !(a.iocCount > 0) &&
@@ -198,7 +198,7 @@ const ExecView = (function () {
           ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
           ${row('📋', 'CVE-linked',                act.cveLinking,  'cve',  'Apply vendor advisory')}
           ${row('⏳', 'Zero-day',                  act.zeroDays,    'zero', 'No patch yet — monitor')}
-          ${row('📰', 'Awareness / No direct signal', act.noSignal,    'none', 'Strategic watch')}
+          ${row('📰', 'No direct signal',              act.noSignal,    'none', 'Strategic watch')}
         </div>
       </div>`;
   }
