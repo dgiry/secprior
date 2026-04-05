@@ -1343,6 +1343,11 @@ const QuickActions = (() => {
           ⚡ Actions ▾
         </button>
         <div class="qa-actions-popover" id="art-qa-popover" style="display:none" role="menu">
+          <button class="qa-actions-item" id="art-modal-copy-summary"
+                  title="Compact headline + signals + link — paste into Slack, Teams or tickets">
+            🔗 Copy summary
+          </button>
+          <div class="qa-actions-sep" role="separator"></div>
           <button class="qa-actions-item" id="art-modal-copy-analyst"
                   title="Detailed operational format — copied in one click">
             📋 Analyst summary
@@ -1452,6 +1457,10 @@ const QuickActions = (() => {
     }
 
     // ── Actions dans le dropdown ─────────────────────────────────────────────
+    document.getElementById('art-modal-copy-summary')
+      ?.addEventListener('click', () =>
+        _copy(_shareShortArticle(article), 'Summary'));
+
     document.getElementById('art-modal-copy-analyst')
       ?.addEventListener('click', () =>
         _copy(_analystSummaryArticle(article, nvdData || {}), 'Analyst summary'));
