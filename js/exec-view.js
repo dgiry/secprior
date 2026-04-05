@@ -41,19 +41,28 @@ const ExecView = (function () {
   }
 
   function _print() {
-    // Stamp current date/time for the print header
-    const stamp = document.getElementById('ev-print-date');
-    if (stamp) {
-      stamp.textContent = new Date().toLocaleString([], {
-        dateStyle: 'medium', timeStyle: 'short'
-      });
-    }
-    // Scope print CSS to exec view only
+    const box = document.querySelector('#modal-exec-view .exec-modal-box');
+    if (!box) return;
+
+    // Stamp date on the clone header
+    const date = new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+    // Clone the modal box into <body> — avoids position:fixed print rendering issues
+    const clone = box.cloneNode(true);
+    clone.id = 'ev-print-clone';
+    // Inject print date into the cloned header span
+    const cloneStamp = clone.querySelector('.exec-modal-print-date');
+    if (cloneStamp) cloneStamp.textContent = date;
+    document.body.appendChild(clone);
+
+    // Hide everything else during print
     document.body.classList.add('ev-printing');
+
     window.addEventListener('afterprint', () => {
       document.body.classList.remove('ev-printing');
-      if (stamp) stamp.textContent = '';
+      clone.remove();
     }, { once: true });
+
     window.print();
   }
 

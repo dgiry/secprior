@@ -5036,24 +5036,13 @@ body.modal-open { overflow: hidden; }
 
 /* ── Print / PDF ─────────────────────────────────────────────────────────── */
 @media print {
-  /* Hide everything except the exec view */
-  body.ev-printing > *:not(#modal-exec-view) { display: none !important; }
+  /* Hide everything — the clone (#ev-print-clone) is the only exception */
+  body.ev-printing > *:not(#ev-print-clone) { display: none !important; }
 
-  /* Reset overlay — remove fixed positioning and backdrop */
-  body.ev-printing .exec-modal-overlay {
-    position: static !important;
+  /* Clone sits naturally in document flow — no position:fixed to fight */
+  #ev-print-clone {
     display: block !important;
-    background: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* Full-width modal box */
-  body.ev-printing .exec-modal-box {
     max-width: 100% !important;
-    min-height: auto !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -5062,9 +5051,9 @@ body.modal-open { overflow: hidden; }
   }
 
   /* Reveal print date, hide interactive controls */
-  .exec-modal-print-date { display: inline !important; }
-  .exec-modal-close,
-  .ev-btn-print { display: none !important; }
+  #ev-print-clone .exec-modal-print-date { display: inline !important; }
+  #ev-print-clone .exec-modal-close,
+  #ev-print-clone .ev-btn-print { display: none !important; }
 
   /* Page-break guards */
   .ev-kpis,
