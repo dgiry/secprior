@@ -322,6 +322,15 @@ a:hover { text-decoration: underline; }
 }
 .secondary-filters-row.sf-open { display: flex; }
 
+/* Séparateur vertical dans la ligne secondaire */
+.sf-sep {
+  width: 1px; height: 1.4rem;
+  background: var(--border); align-self: center; flex-shrink: 0;
+}
+
+/* Bouton Real risk dans la ligne secondaire */
+.sf-risk-btn { flex-shrink: 0; }
+
 .btn-secondary-filters { position: relative; }
 .sf-active-badge {
   position: absolute; top: -4px; right: -4px;
@@ -3402,15 +3411,20 @@ body.modal-open { overflow: hidden; }
 /* ── Bouton statut inline dans les cartes ────────────────────────────────── */
 .card-status-btn {
   font-size: .68rem; font-weight: 600;
-  padding: .1rem .4rem; border-radius: 4px;
-  border: 1px solid rgba(255,255,255,.08);
+  padding: .15rem .5rem; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.12);
   cursor: pointer; white-space: nowrap;
   transition: opacity .15s, transform .1s;
-  line-height: 1.4;
+  line-height: 1.4; letter-spacing: .02em;
 }
 .card-status-btn:hover { opacity: .8; transform: scale(1.04); }
-.card-status-new { border-color: transparent; opacity: .5; }
-.card-status-new:hover { opacity: .75; }
+.card-status-new {
+  color: #8b949e !important;
+  background: rgba(139,148,158,.1) !important;
+  border-color: rgba(139,148,158,.25) !important;
+  opacity: 1;
+}
+.card-status-new:hover { opacity: .8; }
 
 /* ── États analyste — entity-status.js ──────────────────────────────────── */
 .es-badge-slot  { display:inline; }
@@ -3688,6 +3702,59 @@ body.modal-open { overflow: hidden; }
   border-left-color: #79c0ff;
   background: rgba(121,192,255,.07);
 }
+
+/* ── Signal chips — explainability visuelle sur les cartes ──────────────── */
+.card-signal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 10px 2px;
+}
+
+.sig-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: .15rem .45rem;
+  border-radius: 10px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: default;
+  line-height: 1.3;
+  transition: opacity .12s;
+}
+.sig-chip:hover { opacity: .8; }
+
+/* Niveau de priorité */
+.sig-chip-critical-now { color:#f85149; background:rgba(248,81,73,.15); border-color:rgba(248,81,73,.35); }
+.sig-chip-investigate  { color:#f0883e; background:rgba(240,136,62,.13); border-color:rgba(240,136,62,.32); }
+.sig-chip-watch        { color:#79c0ff; background:rgba(121,192,255,.11); border-color:rgba(121,192,255,.28); }
+
+/* KEV */
+.sig-chip-kev          { color:#ff6b35; background:rgba(255,107,53,.14); border-color:rgba(255,107,53,.4); }
+
+/* EPSS */
+.sig-chip-epss-high    { color:#f85149; background:rgba(248,81,73,.13); border-color:rgba(248,81,73,.3); }
+.sig-chip-epss-med     { color:#d29922; background:rgba(210,153,34,.13); border-color:rgba(210,153,34,.3); }
+.sig-chip-epss-low     { color:#8b949e; background:rgba(139,148,158,.1); border-color:rgba(139,148,158,.2); }
+
+/* 0-Day */
+.sig-chip-zeroday      { color:#ff4040; background:rgba(255,64,64,.14); border-color:rgba(255,64,64,.35); }
+
+/* Watchlist */
+.sig-chip-watchlist    { color:#58a6ff; background:rgba(88,166,255,.12); border-color:rgba(88,166,255,.3); }
+
+/* ATT&CK */
+.sig-chip-attack       { color:#bc8cff; background:rgba(188,140,255,.11); border-color:rgba(188,140,255,.28); }
+
+/* Sources */
+.sig-chip-sources      { color:#3fb950; background:rgba(63,185,80,.11); border-color:rgba(63,185,80,.28); }
+.sig-chip-sources-dim  { color:#8b949e; background:rgba(139,148,158,.08); border-color:rgba(139,148,158,.18); }
+
+/* IOC */
+.sig-chip-ioc          { color:#e3b341; background:rgba(227,179,65,.11); border-color:rgba(227,179,65,.28); }
 
 /* ── Bloc "Pourquoi cette priorité ?" dans le modal article ──────────────── */
 .art-priority-block {

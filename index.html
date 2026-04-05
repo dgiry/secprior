@@ -145,19 +145,21 @@
       <option value="30d">🗓 Last 30 days</option>
     </select>
 
-    <button id="btn-risk-filter" class="btn" title="Operational threat filters (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
-      🎯 Real risk<span id="risk-nav-badge"></span>
-    </button>
-
     <!-- Bouton "Filters ▾" — révèle les filtres secondaires -->
     <button id="btn-secondary-filters" class="btn btn-secondary-filters"
-            title="Additional filters: severity, source, sort, status"
+            title="Additional filters: real risk, severity, source, sort, status"
             onclick="document.getElementById('secondary-filters-row').classList.toggle('sf-open');this.classList.toggle('active')">
       Filters ▾<span id="secondary-filters-badge" class="sf-active-badge" style="display:none"></span>
     </button>
 
     <!-- Filtres secondaires (masqués par défaut) -->
     <div id="secondary-filters-row" class="secondary-filters-row">
+      <button id="btn-risk-filter" class="btn sf-risk-btn" title="Operational threat filters (KEV, EPSS, Watchlist, Trending, IOCs, 0-Day)">
+        🎯 Real risk<span id="risk-nav-badge"></span>
+      </button>
+
+      <span class="sf-sep" aria-hidden="true"></span>
+
       <select id="filter-criticality" class="select-filter" title="Filter by severity">
         <option value="all">🎯 All severities</option>
         <option value="high">🔴 High</option>

@@ -159,21 +159,62 @@ const UI = (() => {
          </div>`
       : "";
 
-    // ── Ligne de priorité explicable ─────────────────────────────────────────
-    // Affiche le niveau + jusqu'à 3 raisons (critical_now) ou 2 (autres niveaux)
-    // directement dans la carte — plus de tooltip masqué.
-    // Tolère l'absence de priorityLevel (articles chargés depuis cache ancien).
+    // ── Signal chips — explainability visuelle sur la carte ─────────────────
+    // Remplace la priorityLine texte par des chips colorés scannables.
+    // Affichés dès qu'il y a au moins un signal, même pour les articles "low".
     let priorityLine = "";
-    if (article.priorityLevel && article.priorityLevel !== "low") {
-      const pm      = getPriorityMeta(article.priorityLevel);
-      const reasons = article.priorityReasons || [];
-      const maxR    = article.priorityLevel === "critical_now" ? 3 : 2;
-      const shown   = reasons.slice(0, maxR);
-      const reasonsHTML = shown.map((r, idx) =>
-        `<span class="card-why-sep" aria-hidden="true">·</span><span class="card-why-reason${idx > 0 ? " card-why-dim" : ""}">${r}</span>`
-      ).join("");
-      priorityLine = `<div class="card-priority-line prio-${pm.css}">${pm.icon} <strong>${pm.label}</strong>${reasonsHTML}</div>`;
-    }
+    (function() {
+      const sig  = article.prioritySignals || {};
+      const lvl  = article.priorityLevel;
+      const chips = [];
+
+      // ① Niveau de priorité (toujours en premier si non-low)
+      if (lvl && lvl !== "low") {
+        const pm = (typeof getPriorityMeta === 'function') ? getPriorityMeta(lvl) : null;
+        if (pm) chips.push(`<span class="sig-chip sig-chip-level sig-chip-${pm.css}" title="Priority level">${pm.icon} ${pm.label}</span>`);
+      }
+
+      // ② KEV — exploitation confirmée CISA
+      if (sig.kev)
+        chips.push(`<span class="sig-chip sig-chip-kev" title="CISA KEV: active exploitation confirmed">🔑 KEV</span>`);
+
+      // ③ EPSS — probabilité d'exploitation
+      if (sig.epss !== null && sig.epss !== undefined && sig.epss > 0) {
+        const cls = sig.epssHigh ? 'sig-chip-epss-high' : sig.epssMed ? 'sig-chip-epss-med' : 'sig-chip-epss-low';
+        chips.push(`<span class="sig-chip ${cls}" title="EPSS: ${sig.epss}% probability of exploitation in 30 days">📊 EPSS ${sig.epss}%</span>`);
+      }
+
+      // ④ 0-Day
+      if (sig.isZeroDay)
+        chips.push(`<span class="sig-chip sig-chip-zeroday" title="Zero-day: no patch available">⚡ 0-Day</span>`);
+
+      // ⑤ Watchlist
+      if (sig.watchlist > 0) {
+        const wlLabel = sig.watchlistItems?.length
+          ? sig.watchlistItems[0].label || 'Watchlist'
+          : 'Watchlist';
+        chips.push(`<span class="sig-chip sig-chip-watchlist" title="Watchlist match: ${wlLabel}">👁 ${wlLabel}</span>`);
+      }
+
+      // ⑥ ATT&CK tactics (max 2)
+      const tactics = (article.attackTags || []).slice(0, 2);
+      tactics.forEach(t =>
+        chips.push(`<span class="sig-chip sig-chip-attack" title="ATT&CK tactic: ${t.label}">🎯 ${t.label}</span>`)
+      );
+
+      // ⑦ Multi-source / Trending
+      if (sig.trending)
+        chips.push(`<span class="sig-chip sig-chip-sources" title="${sig.sources} concurrent sources">📡 ${sig.sources} src</span>`);
+      else if (sig.sources > 1)
+        chips.push(`<span class="sig-chip sig-chip-sources sig-chip-sources-dim" title="${sig.sources} sources">📡 ${sig.sources} src</span>`);
+
+      // ⑧ IOCs — indicateurs concrets
+      if (sig.iocCount > 0)
+        chips.push(`<span class="sig-chip sig-chip-ioc" title="${sig.iocCount} IOC(s): IPs, domains, hashes">🔗 ${sig.iocCount} IOC</span>`);
+
+      if (chips.length > 0)
+        priorityLine = `<div class="card-signal-chips">${chips.join('')}</div>`;
+    })();
 
     // Badge résumé IOC — compteur rapide dans la rangée principale des signaux
     const iocSummaryBadge = (article.iocCount || 0) > 0

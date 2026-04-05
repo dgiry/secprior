@@ -202,7 +202,9 @@ const App = (() => {
   function _updateSecondaryFiltersBadge() {
     const badge = document.getElementById('secondary-filters-badge');
     if (!badge) return;
-    const active = state.criticality !== 'all'
+    const riskActive = (typeof RiskFilter !== 'undefined') && RiskFilter.getFilters().active.size > 0;
+    const active = riskActive
+                || state.criticality !== 'all'
                 || state.source      !== 'all'
                 || state.sortBy      !== 'default'
                 || state.statusFilter !== 'all';
