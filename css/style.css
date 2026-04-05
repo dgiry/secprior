@@ -4938,6 +4938,152 @@ body.modal-open { overflow: hidden; }
 }
 .ev-empty { font-size: .78rem; color: var(--text3); font-style: italic; margin: 0; }
 
+/* ── IOC Export Modal ─────────────────────────────────────────────────────── */
+.iocexp-modal-box {
+  max-width: 600px;
+  width: 95vw;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.iocexp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.iocexp-header-icon { font-size: 1.2rem; line-height: 1; }
+.iocexp-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin: 0; flex: 1; }
+
+/* Summary tiles */
+.iocexp-summary {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.2rem 0.5rem;
+  flex-wrap: wrap;
+}
+.iocexp-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  min-width: 72px;
+  gap: 0.15rem;
+}
+.iocexp-tile-total {
+  border-color: var(--accent);
+  background: rgba(88,166,255,.08);
+}
+.iocexp-tile-val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.iocexp-tile-total .iocexp-tile-val { color: var(--accent); }
+.iocexp-tile-lbl {
+  font-size: 0.65rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.iocexp-sub {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin: 0.1rem 1.2rem 0.6rem;
+  font-style: italic;
+}
+
+/* Controls section */
+.iocexp-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem 1.2rem 0.8rem;
+  border-top: 1px solid var(--border);
+}
+.iocexp-ctrl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.iocexp-ctrl-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  min-width: 54px;
+  padding-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* Scope pills (same pattern as Exec View / Morning Brief) */
+.iocexp-scope-pills { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+.iocexp-scope-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.18rem 0.45rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.iocexp-scope-pill:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
+.iocexp-scope-pill.iocexp-scope-active {
+  background: rgba(88,166,255,.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Type checkboxes */
+.iocexp-type-filters { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+.iocexp-type-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.iocexp-type-item input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+/* Format radio group */
+.iocexp-fmt-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.iocexp-fmt-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.iocexp-fmt-item input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
+.iocexp-fmt-hint { font-size: 0.68rem; color: var(--text3); }
+
+/* Footer */
+.iocexp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.75rem 1.2rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.iocexp-footer-hint { font-size: 0.68rem; color: var(--text3); font-style: italic; flex: 1; }
+.iocexp-footer-btns { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
 /* ── Morning Brief Modal ──────────────────────────────────────────────────── */
 .mb-modal-box {
   max-width: 660px;
