@@ -4938,6 +4938,111 @@ body.modal-open { overflow: hidden; }
 }
 .ev-empty { font-size: .78rem; color: var(--text3); font-style: italic; margin: 0; }
 
+/* ── Morning Brief Modal ──────────────────────────────────────────────────── */
+.mb-modal-box {
+  max-width: 660px;
+  width: 95vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.mb-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.mb-header-icon { font-size: 1.2rem; line-height: 1; }
+
+.mb-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Scope pills — same visual language as Exec View */
+.mb-scope-pills {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  margin-right: 0.5rem;
+}
+
+.mb-scope-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.18rem 0.45rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.mb-scope-pill:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.mb-scope-pill.mb-scope-active {
+  background: rgba(88,166,255,.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mb-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.8rem 1.2rem;
+  min-height: 0;
+}
+
+.mb-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 380px;
+  max-height: calc(88vh - 140px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  padding: 0.9rem 1rem;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  tab-size: 4;
+}
+.mb-textarea:focus { outline: none; border-color: var(--accent); }
+
+.mb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.2rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.mb-hint {
+  font-size: 0.71rem;
+  color: var(--text3);
+  font-style: italic;
+}
+
 /* ── How It Works Modal ───────────────────────────────────────────────────── */
 .how-modal-box {
   max-width: 540px;

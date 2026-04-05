@@ -806,6 +806,9 @@ const App = (() => {
     // ── Vue Exec / CISO ───────────────────────────────────────────────────────
     if (typeof ExecView !== 'undefined') ExecView.init();
 
+    // ── Morning Brief generator ────────────────────────────────────────────────
+    if (typeof MorningBrief !== 'undefined') MorningBrief.init(() => state.articles);
+
     // ── How It Works / Lightweight Product Guide ───────────────────────────────
     if (typeof HowItWorks !== 'undefined') HowItWorks.init();
 
