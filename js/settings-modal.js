@@ -835,7 +835,9 @@ const SettingsModal = (() => {
     _set("⏳", "Contacting URLhaus…", "#8b949e");
 
     try {
-      const res = await fetch("/api/fetch-feeds?urlhaus=1", {
+      // ?_t= busts the Vercel CDN cache for the test — avoids a stale "skipped"
+      // response from a previous unauthenticated request polluting the result.
+      const res = await fetch(`/api/fetch-feeds?urlhaus=1&_t=${Date.now()}`, {
         headers: { "X-URLhaus-Key": key },
         signal:  AbortSignal.timeout(25_000)
       });

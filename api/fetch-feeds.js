@@ -99,6 +99,10 @@ async function _handleURLhaus(req, res) {
   // This lets open-source users self-configure without touching Vercel env vars.
   const authKey = req.headers["x-urlhaus-key"] || process.env.URLHAUS_AUTH_KEY || "";
 
+  // Vary: tells the Vercel CDN to cache separately for each unique key value,
+  // so a cached "skipped" response (no key) never shadows a keyed request.
+  res.setHeader("Vary", "X-URLhaus-Key");
+
   // Fail gracefully when key is not configured
   if (!authKey) {
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=60");
