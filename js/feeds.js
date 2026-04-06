@@ -268,6 +268,38 @@ async function fetchAllFeeds(forceRefresh = false) {
     console.warn("[Feeds] Error sources:", errors.join(", "));
   }
 
+  // ── URLhaus backend feed (authenticated CSV, separate from RSS pipeline) ──
+  // Only available on Vercel (requires URLHAUS_AUTH_KEY server-side env var).
+  // In static mode (USE_API=false) this block is skipped — no key, no fetch.
+  if (CONFIG.USE_API) {
+    try {
+      const uhRes = await fetch("/api/urlhaus", { signal: AbortSignal.timeout(25_000) });
+      if (uhRes.ok) {
+        const uhData = await uhRes.json();
+        if (Array.isArray(uhData.articles) && uhData.articles.length > 0) {
+          const uhArticles = uhData.articles.map(a => ({
+            ...a,
+            pubDate: new Date(a.pubDate)
+          }));
+          allArticles.push(...uhArticles);
+          if (typeof FeedManager !== "undefined") {
+            FeedManager.recordFetchResult(
+              { id: "urlhaus", name: "URLhaus (abuse.ch)" },
+              true, uhArticles.length, ""
+            );
+          }
+          console.log("[Feeds] ✓ URLhaus (backend CSV): %d articles", uhArticles.length);
+        } else if (uhData.skipped) {
+          console.log("[Feeds] URLhaus skipped: %s", uhData.reason || "key not configured");
+        }
+      } else {
+        console.warn("[Feeds] URLhaus backend returned HTTP %d", uhRes.status);
+      }
+    } catch (uhErr) {
+      console.warn("[Feeds] URLhaus backend fetch failed:", uhErr.message);
+    }
+  }
+
   // Si tous les feeds ont échoué → utiliser les données de démo
   if (allArticles.length === 0 && typeof DEMO_ARTICLES !== "undefined") {
     console.info("[Feeds] No article retrieved. Demo mode activated.");

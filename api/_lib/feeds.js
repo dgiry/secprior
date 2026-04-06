@@ -37,10 +37,14 @@ const FEEDS = [
   { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" },
 
   // ── IOC Feeds: Native threat indicator feeds ────────────────────────────────
-  // URLhaus (abuse.ch) — Live malicious URL feed, RSS 2.0 compatible
-  // Each entry contains a confirmed malicious URL submitted by the community.
-  // MalwareBazaar & Feodo Tracker use JSON/CSV APIs — require dedicated handlers.
-  { id: "urlhaus",          name: "URLhaus (abuse.ch)",     url: "https://urlhaus.abuse.ch/feeds/recent/",                         lang: "en", icon: "☣️" }
+  // URLhaus (abuse.ch) — REMOVED from RSS pipeline (2026-04).
+  // The RSS feed at https://urlhaus.abuse.ch/feeds/recent/ is no longer a
+  // reliable ingestion path. URLhaus is now handled by the dedicated backend
+  // handler api/urlhaus.js using the authenticated CSV bulk export.
+  // Requires env var: URLHAUS_AUTH_KEY. Integrated separately in js/feeds.js
+  // fetchAllFeeds() — not part of the standard RSS batch.
+  //
+  // { id: "urlhaus", url: "https://urlhaus.abuse.ch/feeds/recent/", ... } ← DISABLED
 ];
 
 module.exports = { FEEDS };

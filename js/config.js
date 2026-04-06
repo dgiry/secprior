@@ -73,8 +73,8 @@ const CONFIG = {
     "welivesecurity":    "cti_campaigns",
     // Strategic : analyses stratégiques, renseignement plus large
     "zataz":             "strategic",
-    // IOC feeds : indicateurs de compromission natifs (classifiés operational)
-    "urlhaus":           "operational"
+    // IOC feeds : URLhaus géré par api/urlhaus.js (backend CSV, hors pipeline RSS)
+    "urlhaus":           "operational"  // kept for FeedManager health tracking
   },
 
   // ── Feeds — FALLBACK STATIQUE ─────────────────────────────────────────────
@@ -105,8 +105,9 @@ const CONFIG = {
     { id: "welivesecurity",   name: "WeLiveSecurity (ESET)",  url: "https://www.welivesecurity.com/feed/",                           lang: "en", icon: "🧨" },
     // ── Strategic: Broader intelligence & analysis
     { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" },
-    // ── IOC Feeds: Native threat indicator feeds
-    { id: "urlhaus",          name: "URLhaus (abuse.ch)",     url: "https://urlhaus.abuse.ch/feeds/recent/",                         lang: "en", icon: "☣️" }
+    // ── IOC Feeds: URLhaus removed from RSS fallback (see api/urlhaus.js)
+    // URLhaus is now fetched via authenticated CSV backend — not via RSS proxy.
+    // In static mode (USE_API=false) URLhaus is skipped entirely (no key available).
   ],
 
   // Mots-clés pour le scoring de criticité
