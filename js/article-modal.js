@@ -1039,5 +1039,5 @@ const ArticleModal = (() => {
     _bindIOCButtons(article);
   }
 
-  return { open, openById, close, setArticles, refreshIOCSection };
+  return { init, open, openById, close, setArticles, refreshIOCSection };
 })();
