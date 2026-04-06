@@ -20,11 +20,31 @@ const IOCExtractor = (() => {
   const LEGIT_DOMAINS = new Set([
     // Infrastructure
     'google.com','googleapis.com','gstatic.com','googlesyndication.com',
+    // Microsoft — domaines produits fréquemment cités dans des CVEs
     'microsoft.com','microsoftonline.com','windows.com','azure.com',
+    'outlook.com','office.com','office365.com','office.net',
+    'live.com','hotmail.com','msn.com','bing.com',
+    'onedrive.com','sharepoint.com','onenote.com','teams.live.com',
+    'skype.com','xbox.com','visualstudio.com','nuget.org',
+    'azureedge.net','azurewebsites.net','msftconnecttest.com','windowsupdate.com',
     'apple.com','icloud.com','amazon.com','amazonaws.com','cloudfront.net',
     'github.com','githubusercontent.com','gitlab.com','bitbucket.org',
     'cloudflare.com','cloudflare-dns.com','fastly.com','akamai.com','akamaized.net',
     'twitter.com','x.com','linkedin.com','youtube.com','facebook.com','instagram.com',
+    // Éditeurs fréquemment cités dans des CVEs (domaines produits, pas IOCs)
+    'adobe.com','acrobat.com',
+    'oracle.com','java.com','sun.com',
+    'cisco.com','webex.com','duo.com',
+    'vmware.com','broadcom.com','bmc.com',
+    'fortinet.com','fortigate.com','forticlient.com',
+    'juniper.net','pulsesecure.net','ivanti.com',
+    'citrix.com','netscaler.com',
+    'sap.com','servicenow.com','salesforce.com',
+    'atlassian.com','jira.com','confluence.atlassian.com',
+    'zoom.us','dropbox.com','box.com','slack.com',
+    'redhat.com','centos.org','fedoraproject.org','debian.org','ubuntu.com','suse.com',
+    'kernel.org','gnu.org','apache.org','nginx.org','openssl.org','openssh.com',
+    'nodejs.org','python.org','php.net','ruby-lang.org','golang.org',
     // Agences / Organismes sécu
     'nist.gov','cisa.gov','nvd.nist.gov','us-cert.gov','first.org','mitre.org',
     'sans.org','cert.ssi.gouv.fr','ncsc.gov.uk','bsi.bund.de','enisa.europa.eu',
