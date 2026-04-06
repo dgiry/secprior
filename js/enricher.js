@@ -187,18 +187,19 @@ const Enricher = (() => {
 
   // ── NVD keyword search (async, background) ────────────────────────────────
   // Appelé après le pipeline principal pour enrichir les articles sans CVE.
-  // Utilise /api/nvd-search (Vercel) ou NVD direct si USE_API est false.
+  // Utilise /api/nvd?q= (Vercel) ou NVD direct si USE_API est false.
+  // Note: nvd-search.js merged into nvd.js — both endpoints share api/nvd.js
   async function _nvdKeywordSearch(query) {
     try {
       const url = CONFIG.USE_API
-        ? `/api/nvd-search?q=${encodeURIComponent(query)}`
+        ? `/api/nvd?q=${encodeURIComponent(query)}`
         : `https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(query)}&resultsPerPage=5`;
 
       const res  = await fetch(url, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return [];
       const json = await res.json();
 
-      // /api/nvd-search renvoie { cves: [{id, ...}] }
+      // /api/nvd?q= renvoie { cves: [{id, ...}] }
       // NVD direct renvoie { vulnerabilities: [{cve: {id, ...}}] }
       if (json.cves) return json.cves.map(c => c.id);
       return (json.vulnerabilities || []).map(v => v.cve.id);

@@ -547,7 +547,7 @@ const ArticleModal = (() => {
     btn.textContent = '⏳ Scanning…';
 
     try {
-      const resp = await fetch(`/api/article-body?url=${encodeURIComponent(article.link)}`, {
+      const resp = await fetch(`/api/ioc?action=body&url=${encodeURIComponent(article.link)}`, {
         signal: AbortSignal.timeout(15_000)
       });
       if (!resp.ok) {
@@ -617,7 +617,7 @@ const ArticleModal = (() => {
       const { type, value } = tasks[i];
       try {
         const resp = await fetch(
-          `/api/ioc-reputation?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
+          `/api/ioc?action=reputation&type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
           { signal: AbortSignal.timeout(10_000) }
         );
         if (resp.ok) {
