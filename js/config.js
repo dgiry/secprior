@@ -72,7 +72,9 @@ const CONFIG = {
     "securelist":        "cti_campaigns",
     "welivesecurity":    "cti_campaigns",
     // Strategic : analyses stratégiques, renseignement plus large
-    "zataz":             "strategic"
+    "zataz":             "strategic",
+    // IOC feeds : indicateurs de compromission natifs (classifiés operational)
+    "urlhaus":           "operational"
   },
 
   // ── Feeds — FALLBACK STATIQUE ─────────────────────────────────────────────
@@ -102,7 +104,9 @@ const CONFIG = {
     { id: "securelist",       name: "Securelist (Kaspersky)", url: "https://securelist.com/feed/",                                   lang: "en", icon: "🕵️" },
     { id: "welivesecurity",   name: "WeLiveSecurity (ESET)",  url: "https://www.welivesecurity.com/feed/",                           lang: "en", icon: "🧨" },
     // ── Strategic: Broader intelligence & analysis
-    { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" }
+    { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" },
+    // ── IOC Feeds: Native threat indicator feeds
+    { id: "urlhaus",          name: "URLhaus (abuse.ch)",     url: "https://urlhaus.abuse.ch/feeds/recent/",                         lang: "en", icon: "☣️" }
   ],
 
   // Mots-clés pour le scoring de criticité

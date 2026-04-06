@@ -40,7 +40,10 @@ const IOCExtractor = (() => {
     'allorigins.win','api.first.org','services.nvd.nist.gov','feedburner.com',
     // Web commun
     'w3.org','schema.org','jquery.com','bootstrapcdn.com','cdnjs.com',
-    'mozilla.org','firefox.com','chromium.org','webkit.org'
+    'mozilla.org','firefox.com','chromium.org','webkit.org',
+    // IOC feed infrastructure (abuse.ch) — self-referential links, not IOCs
+    'abuse.ch','urlhaus.abuse.ch','bazaar.abuse.ch','feodotracker.abuse.ch',
+    'threatfox.abuse.ch','sslbl.abuse.ch'
   ]);
 
   // ── Plages IP privées / locales à exclure ─────────────────────────────────

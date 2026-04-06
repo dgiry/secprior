@@ -34,7 +34,13 @@ const FEEDS = [
   { id: "welivesecurity",   name: "WeLiveSecurity (ESET)",  url: "https://www.welivesecurity.com/feed/",                           lang: "en", icon: "🧨" },
 
   // ── Strategic: Broader intelligence & analysis ──────────────────────────────
-  { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" }
+  { id: "zataz",            name: "Zataz",                  url: "https://www.zataz.com/feed/",                                     lang: "fr", icon: "🟠" },
+
+  // ── IOC Feeds: Native threat indicator feeds ────────────────────────────────
+  // URLhaus (abuse.ch) — Live malicious URL feed, RSS 2.0 compatible
+  // Each entry contains a confirmed malicious URL submitted by the community.
+  // MalwareBazaar & Feodo Tracker use JSON/CSV APIs — require dedicated handlers.
+  { id: "urlhaus",          name: "URLhaus (abuse.ch)",     url: "https://urlhaus.abuse.ch/feeds/recent/",                         lang: "en", icon: "☣️" }
 ];
 
 module.exports = { FEEDS };
