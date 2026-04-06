@@ -22,6 +22,7 @@ const App = (() => {
     _cveLinkIds:  null,   // Tableau de CVEs (filtre panneau) — priorité basse
     lastVisitTs:  null,   // Timestamp début session précédente (New since last visit)
     _nsvDismissed: false, // Badge NSV masqué par l'utilisateur pour cette session
+    _attackFilter: null,  // ATT&CK tactic drill-down from StatsPanel (label string | null)
     // ─── Freshness tracking ──────────────────────────────────────────────────
     lastFreshFetchAt: null,   // Timestamp of last live (non-cache) fetch
     lastRefreshMode: null,    // 'restore' | 'cache' | 'live' | 'degraded'
@@ -212,10 +213,11 @@ const App = (() => {
     if (!badge) return;
     const riskActive = (typeof RiskFilter !== 'undefined') && RiskFilter.getFilters().active.size > 0;
     const active = riskActive
-                || state.criticality !== 'all'
-                || state.source      !== 'all'
-                || state.sortBy      !== 'default'
-                || state.statusFilter !== 'all';
+                || state.criticality  !== 'all'
+                || state.source       !== 'all'
+                || state.sortBy       !== 'default'
+                || state.statusFilter !== 'all'
+                || !!state._attackFilter;
     badge.style.display = active ? 'block' : 'none';
   }
 
@@ -286,6 +288,14 @@ const App = (() => {
       );
     }
 
+    // Pré-filtre ATT&CK tactic (drill-down depuis StatsPanel)
+    if (state._attackFilter) {
+      const _atk = state._attackFilter;
+      articlesToFilter = articlesToFilter.filter(a =>
+        (a.attackTags || []).some(t => t.label === _atk)
+      );
+    }
+
     // Marquer les articles "nouveaux depuis la dernière visite"
     const ts = state.lastVisitTs;
     articlesToFilter.forEach(a => {
@@ -310,6 +320,7 @@ const App = (() => {
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
     _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
     _updateContextBar();                      // bandeau contextuel sous la statusbar
+    _updateAttackFilterBadge();               // badge tactic ATT&CK actif
 
     // Sauvegarder la recherche si elle a changé (éviter les doublons)
     if (state.query !== state.lastSavedQuery) {
@@ -486,6 +497,41 @@ const App = (() => {
     state._cveLinkIds = null;
     _updateCVELinkBadge();
     render();
+  }
+
+  // ─── ATT&CK tactic drill-down (StatsPanel → feed pivot) ──────────────────
+
+  function _updateAttackFilterBadge() {
+    const badge = document.getElementById('attack-filter-badge');
+    if (!badge) return;
+    const labelEl = badge.querySelector('.attack-filter-badge-label');
+    if (state._attackFilter) {
+      badge.style.display = 'inline-flex';
+      if (labelEl) labelEl.textContent = state._attackFilter;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  /** Select (or clear) an ATT&CK tactic filter; called by StatsPanel rows */
+  function filterByAttack(label) {
+    state._attackFilter = label || null;
+    _updateAttackFilterBadge();
+    // Refresh StatsPanel active-row highlight without waiting for next data load
+    if (typeof StatsPanel !== 'undefined' && StatsPanel.refreshAttackList) {
+      StatsPanel.refreshAttackList();
+    }
+    render();
+  }
+
+  /** Clear the ATT&CK filter — wired to the badge ✕ button */
+  function clearAttackFilter() {
+    filterByAttack(null);
+  }
+
+  /** Read-only getter used by StatsPanel to mark the active row on re-render */
+  function getAttackFilter() {
+    return state._attackFilter;
   }
 
   // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
@@ -1081,7 +1127,8 @@ const App = (() => {
 
   return { init, refreshForced: () => refresh(true), getFilters, setFilters, getActivePanel,
            filterByCVE, filterByCVEs, clearRowCVEFilter, clearCVEFilter,
-           filterNewSinceVisit, exitNewSinceVisit, dismissNewBadge, applyRecentSearch, clearRecentSearchHistory, removeRecentSearch };
+           filterNewSinceVisit, exitNewSinceVisit, dismissNewBadge, applyRecentSearch, clearRecentSearchHistory, removeRecentSearch,
+           filterByAttack, clearAttackFilter, getAttackFilter };
 })();
 
 // Démarrer quand le DOM est prêt

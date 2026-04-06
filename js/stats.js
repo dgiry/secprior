@@ -469,15 +469,39 @@ const StatsPanel = (() => {
       return;
     }
 
-    const max = sorted[0][1];
-    el.innerHTML = sorted.map(([label, count]) => `
-      <div class="attack-row">
+    const max         = sorted[0][1];
+    const activeLabel = (typeof App !== 'undefined') ? App.getAttackFilter() : null;
+
+    el.innerHTML = sorted.map(([label, count]) => {
+      const isActive = label === activeLabel;
+      const tip      = isActive ? 'Click to clear this filter' : 'Click to filter feed by this tactic';
+      return `
+      <div class="attack-row${isActive ? ' attack-row--active' : ''}"
+           data-tactic="${label.replace(/"/g, '&quot;')}" title="${tip}">
         <span class="attack-label">${label}</span>
         <div class="attack-bar-track">
           <div class="attack-bar" style="width:${Math.round(count / max * 100)}%"></div>
         </div>
         <span class="attack-count">${count}</span>
-      </div>`).join("");
+      </div>`;
+    }).join("");
+
+    // Click handler — toggle: select tactic or clear if already active
+    if (typeof App !== 'undefined') {
+      el.querySelectorAll('.attack-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const tactic = row.dataset.tactic;
+          App.filterByAttack(tactic === App.getAttackFilter() ? null : tactic);
+        });
+      });
+    }
+  }
+
+  /** Re-render only the ATT&CK tactic list to sync active-row state.
+   *  Called by App.filterByAttack() so the highlight updates immediately
+   *  without waiting for the next full StatsPanel.update(). */
+  function refreshAttackList() {
+    _renderAttackList(window._statsLastArticles || []);
   }
 
   // ── Top CVEs ──────────────────────────────────────────────────────────────
@@ -536,5 +560,5 @@ const StatsPanel = (() => {
     });
   }
 
-  return { init, toggle, update };
+  return { init, toggle, update, refreshAttackList };
 })();

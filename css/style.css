@@ -1019,6 +1019,18 @@ a:hover { text-decoration: underline; }
 }
 .attack-count { font-size: .7rem; color: var(--text2); text-align: right; }
 
+/* ATT&CK drill-down — interactive rows */
+.attack-row         { cursor: pointer; border-radius: 4px; padding: .15rem .3rem; margin: -.15rem -.3rem; transition: background .15s; }
+.attack-row:hover   { background: var(--hover-bg, rgba(255,255,255,.06)); }
+.attack-row--active .attack-label { color: #e3b341; font-weight: 600; }
+.attack-row--active .attack-bar   { background: #f0883e; }
+.attack-row--active .attack-count { color: #e3b341; font-weight: 600; }
+
+/* ATT&CK active-filter badge (mirrors .cve-link-badge layout) */
+.attack-filter-badge       { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .55rem; border-radius: 12px; background: rgba(227,179,65,.12); border: 1px solid rgba(227,179,65,.3); font-size: .72rem; color: #e3b341; vertical-align: middle; }
+.attack-filter-badge-close { background: none; border: none; cursor: pointer; color: #8b949e; font-size: .75rem; padding: 0 .1rem; line-height: 1; }
+.attack-filter-badge-close:hover { color: var(--text, #e6edf3); }
+
 /* Top CVEs */
 .cve-list { display: flex; flex-direction: column; gap: .4rem; }
 .cve-row { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
