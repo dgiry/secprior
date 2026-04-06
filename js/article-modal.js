@@ -415,11 +415,12 @@ const ArticleModal = (() => {
 
   // ─── Panneau IOCs complet (modal) ─────────────────────────────────────────
   //
-  // @param {object} iocs       - { ips, hashes, domains, urls }
-  // @param {object} reputation - map of IOC value → { verdict, pulses, labels }
-  //                              populated by _checkReputation() (Option C)
+  // @param {object} iocs          - { ips, hashes, domains, urls }
+  // @param {object} reputation    - map IOC value → OTX result (populated by _checkReputation)
+  // @param {object} urlhausMatches - map IOC value → URLhaus entry (from enrichArticle)
+  // @param {object} vtResults     - map IOC value → VT result (populated by _checkVirusTotal)
 
-  function _renderIOCPanel(iocs, reputation = {}, urlhausMatches = {}) {
+  function _renderIOCPanel(iocs, reputation = {}, urlhausMatches = {}, vtResults = {}) {
     if (!iocs) return '<p class="art-metric-na">No IOC detected.</p>';
 
     const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
@@ -430,11 +431,12 @@ const ArticleModal = (() => {
       const shortDisplay = displayVal || value;
       const repBadge     = _reputationBadge(value, reputation);
       const uhBadge      = _urlhausBadge(value, urlhausMatches);
+      const vtBadge      = _vtBadge(value, vtResults);
       return `
         <div class="art-ioc-row">
           <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
-          ${repBadge}${uhBadge}
+          ${repBadge}${uhBadge}${vtBadge}
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
                   title="Copy">📋</button>
@@ -525,23 +527,53 @@ const ArticleModal = (() => {
     return `<span class="badge uh-confirmed"${linkAttr}>☣️ URLhaus: ${_esc(match.threat)}${_esc(tagStr)}</span>`;
   }
 
+  // ─── VirusTotal badge pour une valeur IOC ────────────────────────────────────
+
+  function _vtBadge(value, vtResults) {
+    const vt = vtResults?.[value];
+    if (!vt) return '';
+
+    if (vt.vtUnavailable)
+      return `<span class="badge vt-unknown" title="VT key not configured">⚪ VT unavailable</span>`;
+    if (vt.error) return '';
+
+    const mal   = vt.malicious  || 0;
+    const sus   = vt.suspicious || 0;
+    const total = vt.total      || 0;
+
+    if (total === 0)
+      return `<span class="badge vt-unknown" title="No VT analysis data">⚪ VT: no data</span>`;
+
+    const tip = `${mal} malicious · ${sus} suspicious · ${vt.harmless || 0} harmless / ${total} engines`
+              + (vt.country  ? ` · ${vt.country}`  : '')
+              + (vt.asOwner  ? ` · ${vt.asOwner}`  : '');
+
+    if (mal > 0)
+      return `<span class="badge vt-malicious" title="${_esc(tip)}">🛡 VT: ${mal}/${total}</span>`;
+    if (sus > 0)
+      return `<span class="badge vt-suspicious" title="${_esc(tip)}">⚠️ VT: ${sus}/${total}</span>`;
+    return `<span class="badge vt-clean" title="${_esc(tip)}">✓ VT clean</span>`;
+  }
+
   // ─── Section IOC centralisée (re-utilisée par open, deepScan, reputation) ──
   //
   // Seul point d'entrée pour le rendu de la section IOC complète.
-  // Lit article.iocs, article.iocReputation, article._deepChars, article._deepScanned.
+  // Lit article.iocs, article.iocReputation, article.iocVT, article._deepChars, article._deepScanned.
 
   function _renderIOCSection(article) {
     const rep     = article.iocReputation || {};
+    const vt      = article.iocVT        || {};
     const hasAPI  = typeof CONFIG !== 'undefined' && CONFIG.USE_API;
     const repDone = Object.keys(rep).length > 0;
+    const vtDone  = Object.keys(vt).length  > 0;
 
     // Source de vérité : toujours les arrays réels, pas article.iocCount (peut dériver)
     const realCount = IOCExtractor.getRealIOCCount(article);
     const hasIOCs   = realCount > 0;
 
     const countPart  = hasIOCs ? ` (${realCount})` : '';
-    const stateBadge = repDone
-      ? ' <span class="badge badge-new">Rep ✓</span>'
+    const stateBadge = (repDone || vtDone)
+      ? ` <span class="badge badge-new">${[repDone && 'OTX ✓', vtDone && 'VT ✓'].filter(Boolean).join(' · ')}</span>`
       : article._deepScanned
         ? ' <span class="badge badge-new">Full scan</span>'
         : '';
@@ -549,7 +581,7 @@ const ArticleModal = (() => {
     return `
       <h4 class="art-modal-section-title">🔬 Extracted IOCs${countPart}${stateBadge}</h4>
       ${hasIOCs
-        ? _renderIOCPanel(article.iocs, rep, article.urlhausMatches || {})
+        ? _renderIOCPanel(article.iocs, rep, article.urlhausMatches || {}, vt)
         : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
       ${article._deepChars
         ? `<p class="art-ioc-deep-note">📄 ${article._deepChars.toLocaleString()} chars scanned from full article</p>`
@@ -562,6 +594,10 @@ const ArticleModal = (() => {
         ${hasIOCs ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
                 title="Query AlienVault OTX for each extracted IOC">
           🦠 Check OTX
+        </button>` : ''}
+        ${hasIOCs ? `<button id="art-ioc-vt-btn" class="btn art-ioc-deep-btn"
+                title="Query VirusTotal for each extracted IOC">
+          🛡 Check VT
         </button>` : ''}
       </div>` : ''}`;
   }
@@ -584,6 +620,8 @@ const ArticleModal = (() => {
       ?.addEventListener('click', () => _fetchDeepIOCs(article));
     document.getElementById('art-ioc-rep-btn')
       ?.addEventListener('click', () => _checkReputation(article));
+    document.getElementById('art-ioc-vt-btn')
+      ?.addEventListener('click', () => _checkVirusTotal(article));
   }
 
   // ─── Deep IOC scan (Option B — fetch corps complet via backend) ───────────
@@ -723,6 +761,79 @@ const ArticleModal = (() => {
       ? `☣️ ${seenCount} IOC${seenCount !== 1 ? 's' : ''} referenced in OTX`
       : `✓ No OTX matches found for these IOCs`;
     if (window.UI) UI.showToast(msg, seenCount > 0 ? 'warn' : 'info');
+  }
+
+  // ─── Check VirusTotal (Option D) ─────────────────────────────────────────
+  //
+  // Pour chaque IOC extrait, interroge /api/ioc?action=vt (VT API v3 backend).
+  // Met à jour article.iocVT puis re-rend la section IOC avec les badges VT.
+  // Délai de 300 ms entre requêtes — VT free tier: 4 req/min.
+
+  async function _checkVirusTotal(article) {
+    const vtBtn = document.getElementById('art-ioc-vt-btn');
+    if (!vtBtn) return;
+
+    vtBtn.disabled    = true;
+    vtBtn.textContent = '⏳ Checking…';
+
+    const iocs  = article.iocs || {};
+    const tasks = [];
+
+    // Cap per type: VT free tier is 4 req/min (500/day)
+    (iocs.ips     || []).slice(0, 3).forEach(v => tasks.push({ type: 'ip',     value: v }));
+    (iocs.domains || []).slice(0, 3).forEach(v => tasks.push({ type: 'domain', value: v }));
+    (iocs.hashes  || []).slice(0, 3).forEach(h => tasks.push({ type: 'hash',   value: h.value }));
+    (iocs.urls    || []).slice(0, 2).forEach(v => tasks.push({ type: 'url',    value: v }));
+
+    if (!tasks.length) {
+      vtBtn.disabled    = false;
+      vtBtn.textContent = '🛡 Check VT';
+      return;
+    }
+
+    const vtKey     = localStorage.getItem('cv_vt_api_key') || '';
+    const vtHeaders = vtKey ? { 'X-VT-Key': vtKey } : {};
+    const vtResults = { ...(article.iocVT || {}) };
+
+    for (let i = 0; i < tasks.length; i++) {
+      const { type, value } = tasks[i];
+      try {
+        const resp = await fetch(
+          `/api/ioc?action=vt&type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
+          { headers: vtHeaders, signal: AbortSignal.timeout(12_000) }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          // VT key missing — surface once and abort
+          if (data.vtUnavailable) {
+            if (window.UI) UI.showToast('⚙ VirusTotal API key not configured — add it in Settings → Integrations', 'warn');
+            const liveVtBtn = document.getElementById('art-ioc-vt-btn');
+            if (liveVtBtn) { liveVtBtn.disabled = false; liveVtBtn.textContent = '🛡 Check VT'; }
+            return;
+          }
+          if (!data.error) vtResults[value] = data;
+        }
+      } catch { /* network error — skip IOC silently */ }
+
+      // 300 ms between calls — stays within VT free tier (4 req/min)
+      if (i < tasks.length - 1) await new Promise(r => setTimeout(r, 300));
+    }
+
+    article.iocVT = vtResults;
+
+    const modal = document.getElementById('modal-article');
+    if (modal?.dataset.currentArticleId === String(article.id)) {
+      const livePanel = document.getElementById('art-ioc-section');
+      if (livePanel) livePanel.innerHTML = _renderIOCSection(article);
+      _bindIOCButtons(article);
+    }
+
+    // Summary toast
+    const malCount = Object.values(vtResults).filter(r => (r.malicious || 0) > 0).length;
+    const msg = malCount > 0
+      ? `🛡 VT: ${malCount} IOC${malCount !== 1 ? 's' : ''} flagged as malicious`
+      : `✓ VT: No malicious IOCs found`;
+    if (window.UI) UI.showToast(msg, malCount > 0 ? 'warn' : 'info');
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────

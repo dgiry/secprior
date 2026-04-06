@@ -1411,6 +1411,44 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 
+/* IOC VirusTotal badges (Option D — VT API v3 lookup) */
+.vt-malicious {
+  background: rgba(239,68,68,.18);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,.35);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+.vt-suspicious {
+  background: rgba(245,158,11,.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,.35);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+.vt-clean {
+  background: rgba(63,185,80,.15);
+  color: #4ade80;
+  border: 1px solid rgba(63,185,80,.3);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+}
+.vt-unknown {
+  background: var(--bg3, var(--bg2));
+  color: var(--text2);
+  border: 1px solid var(--border);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+}
+
 /* ── Modal Détail Article ────────────────────────────────────────────────── */
 
 /* Curseur pointer sur les cartes (hors liens/boutons) */

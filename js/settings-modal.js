@@ -64,6 +64,8 @@ const SettingsModal = (() => {
     }
     // ── Onglet Integrations — OTX API Key ───────────────────────────────────
     _val('otx-api-key', localStorage.getItem('cv_otx_api_key') || '');
+    // ── Onglet Integrations — VirusTotal API Key ─────────────────────────────
+    _val('vt-api-key', localStorage.getItem('cv_vt_api_key') || '');
     // ── Onglet Integrations — URLhaus Auth-Key ──────────────────────────────
     _val('urlhaus-auth-key', localStorage.getItem('cv_urlhaus_auth_key') || '');
     // ── Onglet Integrations — Slack/Teams share webhook ─────────────────────
@@ -791,6 +793,12 @@ const SettingsModal = (() => {
       if (otxKey) localStorage.setItem('cv_otx_api_key', otxKey);
       else        localStorage.removeItem('cv_otx_api_key');
     } catch { /* quota exceeded */ }
+    // VirusTotal API Key
+    const vtKey = (_val('vt-api-key') || '').trim();
+    try {
+      if (vtKey) localStorage.setItem('cv_vt_api_key', vtKey);
+      else       localStorage.removeItem('cv_vt_api_key');
+    } catch { /* quota exceeded */ }
     // URLhaus Auth-Key
     const urlhausKey = (_val('urlhaus-auth-key') || '').trim();
     try {
@@ -913,6 +921,59 @@ const SettingsModal = (() => {
     } catch (err) {
       _set('❌', `Connection error: ${err.message}`, '#f85149');
       UI.showToast('❌ OTX: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🧪 Test connection'; }
+    }
+  }
+
+  async function testVT() {
+    const key    = (_val('vt-api-key') || '').trim();
+    const btn    = document.getElementById('btn-vt-test');
+    const status = document.getElementById('vt-key-status');
+
+    const _set = (icon, msg, color) => {
+      if (status) status.innerHTML =
+        `<span style="color:${color};font-weight:600">${icon} ${msg}</span>`;
+    };
+
+    if (!key) { _set('⚠️', 'Enter a key first', '#e3a008'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+    _set('⏳', 'Querying VirusTotal…', '#8b949e');
+
+    try {
+      // Query a well-known benign IP to verify the key works
+      const res = await fetch(
+        '/api/ioc?action=vt&type=ip&value=8.8.8.8',
+        { headers: { 'X-VT-Key': key }, signal: AbortSignal.timeout(12_000) }
+      );
+
+      if (!res.ok) {
+        _set('❌', `HTTP ${res.status}`, '#f85149');
+        UI.showToast(`❌ VT: HTTP ${res.status}`, 'error');
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.vtUnavailable) {
+        const isBadKey = (data.reason || '').toLowerCase().includes('invalid');
+        _set('❌', isBadKey ? 'Invalid API key' : 'Key not forwarded — retry', isBadKey ? '#f85149' : '#e3a008');
+        if (isBadKey) UI.showToast('❌ VT: Invalid API key', 'error');
+        return;
+      }
+      if (data.error) {
+        _set('❌', data.error, '#f85149');
+        UI.showToast('❌ VT: ' + data.error, 'error');
+        return;
+      }
+
+      _set('✅', `Active — VirusTotal reachable`, '#3fb950');
+      UI.showToast('✅ VirusTotal API key is valid', 'success');
+
+    } catch (err) {
+      _set('❌', `Connection error: ${err.message}`, '#f85149');
+      UI.showToast('❌ VT: ' + err.message, 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🧪 Test connection'; }
     }
@@ -1187,7 +1248,7 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations, testOTX, testURLhaus, testShareWebhook,
+    saveIntegrations, testOTX, testVT, testURLhaus, testShareWebhook,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

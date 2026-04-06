@@ -23,7 +23,9 @@ const CONFIG = {
     if (host.endsWith(".vercel.app")) return true;
     // Domaines custom explicitement déclarés dans VERCEL_CUSTOM_DOMAINS
     if (this.VERCEL_CUSTOM_DOMAINS.includes(host)) return true;
-    // Tout autre domaine (local, Hostinger, GitHub Pages…) → mode statique
+    // Dev local avec serveur (ex: npx serve, live-server) — active les boutons IOC
+    if (host === "localhost" || host === "127.0.0.1") return true;
+    // Tout autre domaine (Hostinger, GitHub Pages…) → mode statique
     return false;
   },
 
