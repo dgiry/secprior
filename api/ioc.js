@@ -21,9 +21,18 @@
 
 "use strict";
 
+const ssrfGuard = require("./_lib/ssrf-guard");
+
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin",  "*");
+  // ── CORS — restricted to same-origin Vercel deployments ────────────────
+  const origin = req.headers.origin || "";
+  const allowed = origin.endsWith(".vercel.app")
+    || origin === "http://localhost:3000"
+    || origin === "http://127.0.0.1:3000";
+  if (allowed) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "X-OTX-Key, X-TF-Key");
+  res.setHeader("Vary", "Origin");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET")
     return res.status(405).json({ error: "Method not allowed" });
@@ -54,6 +63,11 @@ async function _handleBody(req, res) {
   } catch {
     return res.status(400).json({ error: "Invalid URL" });
   }
+
+  // ── SSRF guard — block private/internal networks + cloud metadata ───────
+  const ssrf = await ssrfGuard.checkURL(decoded);
+  if (ssrf.blocked)
+    return res.status(403).json({ error: "Blocked: " + ssrf.reason });
 
   try {
     const controller = new AbortController();

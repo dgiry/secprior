@@ -58,10 +58,15 @@ const SIGNAL_FIELDS = new Set([
 ]);
 
 module.exports = async (req, res) => {
-  // ── CORS ─────────────────────────────────────────────────────────────────
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // ── CORS — restricted to same-origin Vercel deployments ─────────────────
+  const origin = req.headers.origin || "";
+  const corsAllowed = origin.endsWith(".vercel.app")
+    || origin === "http://localhost:3000"
+    || origin === "http://127.0.0.1:3000";
+  if (corsAllowed) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Vary", "Origin");
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {

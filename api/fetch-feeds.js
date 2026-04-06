@@ -19,6 +19,7 @@
 const zlib = require("node:zlib");
 const { promisify } = require("node:util");
 const inflateRaw = promisify(zlib.inflateRaw);
+const ssrfGuard = require("./_lib/ssrf-guard");
 
 module.exports = async (req, res) => {
   // CORS
@@ -46,6 +47,11 @@ async function _handleRSSProxy(req, res, url) {
   } catch {
     return res.status(400).json({ error: "URL invalide" });
   }
+
+  // ── SSRF guard — block private/internal networks + cloud metadata ───────
+  const ssrf = await ssrfGuard.checkURL(url);
+  if (ssrf.blocked)
+    return res.status(403).json({ error: "Blocked: " + ssrf.reason });
 
   try {
     const response = await fetch(url, {

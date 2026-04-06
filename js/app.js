@@ -289,14 +289,7 @@ const App = (() => {
     return m;
   }
 
-  // ─── Extraction des CVE IDs uniques depuis les articles ───────────────────
-  function _buildCveIdList(articles) {
-    return [...new Set(
-      articles.flatMap(a => (a.cves || []).map(c => c.toUpperCase()))
-    )];
-  }
-
-  // enrichWithTrendVP removed — per-CVE VP signal unsupported by TV1 API (2026-04)
+  // enrichWithTrendVP + _buildCveIdList removed — per-CVE VP signal unsupported by TV1 API (2026-04)
 
   // ─── Rendu avec filtres ────────────────────────────────────────────────────
   function render() {
@@ -636,8 +629,69 @@ const App = (() => {
     }
   }
 
+  // ─── Global Escape key handler — layered modal management ────────────────
+  //
+  // Runs in capture phase (before any bubble-phase handler).
+  // Finds the topmost visible overlay and closes only that one,
+  // preventing the previous bug where ESC closed ALL modals at once.
+
+  function _initGlobalEscape() {
+    const OVERLAY_SEL = [
+      '.ob-overlay',           // z:9999
+      '.modal-overlay',        // z:2000
+      '.exec-modal-overlay',   // z:2000
+      '.qa-share-modal',       // z:1250
+      '.qa-ticket-modal',      // z:1200
+      '.cex-overlay',          // z:1100
+      '.ai-brief-overlay',     // z:1100
+      '.art-modal-overlay',    // z:500
+    ].join(',');
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+
+      // Don't intercept if user is in an input/textarea — blur instead
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        document.activeElement.blur();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // Find all visible overlays
+      const all = document.querySelectorAll(OVERLAY_SEL);
+      const visible = [];
+      for (const el of all) {
+        if (el.style.display === 'none') continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        visible.push(el);
+      }
+
+      if (!visible.length) return;  // no modal open — let nav/panel handlers run
+
+      // Sort by z-index descending — close only the topmost
+      visible.sort((a, b) =>
+        (parseInt(getComputedStyle(b).zIndex) || 0) -
+        (parseInt(getComputedStyle(a).zIndex) || 0)
+      );
+
+      const top = visible[0];
+
+      // Click the close button (triggers the module's proper close logic)
+      const closeBtn = top.querySelector('.modal-close, [class*="-close-btn"], .ob-close');
+      if (closeBtn) closeBtn.click();
+      else          top.style.display = 'none';  // fallback
+
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);  // capture phase — runs before all bubble-phase handlers
+  }
+
   // ─── Initialisation ────────────────────────────────────────────────────────
   async function init() {
+    _initGlobalEscape();
+
     // ── New since last visit — initialisation ─────────────────────────────
     // Pattern sessionStorage : stable sur F5, reset sur fermeture d'onglet.
     // state.lastVisitTs = début de la session PRÉCÉDENTE (référence de comparaison).
