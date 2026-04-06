@@ -82,14 +82,14 @@ async function _handleRSSProxy(req, res, url) {
 
 // ── GET /api/fetch-feeds?urlhaus=1 — URLhaus CSV backend ─────────────────────
 //
-// URLhaus CSV bulk export — authenticated, ZIP-compressed.
-// Format: CSV (not RSS, not JSON)
+// URLhaus CSV bulk export — authenticated.
+// Format auto-detected from magic bytes: ZIP, gzip, or plain CSV.
 //   The URLhaus API (/v1/) is a lookup API only — no "list recent" endpoint.
-//   The canonical bulk ingestion path is the ZIP-compressed CSV export:
-//   https://urlhaus.abuse.ch/downloads/csv_recent/
+//   The canonical bulk path is https://urlhaus.abuse.ch/downloads/csv_recent/
+//   URLhaus may serve it as ZIP, gzip or plain CSV depending on the request.
 //   Fields: id, dateadded, url, url_status, last_online, threat, tags,
 //           urlhaus_link, reporter
-//   ZIP extracted using node:zlib inflateRaw (no npm deps).
+//   Decompression uses node:zlib only (no npm deps).
 
 const URLHAUS_CSV_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/";
 const URLHAUS_MAX     = 50; // Keep N most recent rows
@@ -111,12 +111,12 @@ async function _handleURLhaus(req, res) {
   }
 
   try {
-    // 1. Fetch ZIP-compressed CSV
+    // 1. Fetch CSV from URLhaus (format varies: ZIP, gzip, or plain text)
     const response = await fetch(URLHAUS_CSV_URL, {
       headers: {
         "Auth-Key":   authKey,
         "User-Agent": "CyberVeille-Pro/2.0 (+https://github.com/dgiry/cyberveille-pro)",
-        "Accept":     "application/zip, application/octet-stream, */*"
+        "Accept":     "application/zip, application/gzip, text/csv, text/plain, */*"
       },
       signal: AbortSignal.timeout(20_000)
     });
@@ -129,12 +129,42 @@ async function _handleURLhaus(req, res) {
       });
     }
 
-    // 2. Extract CSV from ZIP (built-in zlib, no npm deps)
-    const zipBuf  = Buffer.from(await response.arrayBuffer());
-    const csvBuf  = await _unzipFirst(zipBuf);
-    const csvText = csvBuf.toString("utf-8");
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    const buf = Buffer.from(await response.arrayBuffer());
 
-    // 3. Parse → ThreatLens articles
+    // 2. Auto-detect format from magic bytes and content-type
+    let csvText;
+
+    if (buf.length >= 4 && buf.readUInt32LE(0) === 0x04034b50) {
+      // Magic PK\x03\x04 → ZIP archive
+      const csvBuf = await _unzipFirst(buf);
+      csvText = csvBuf.toString("utf-8");
+
+    } else if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+      // Magic \x1f\x8b → gzip
+      const csvBuf = await promisify(zlib.gunzip)(buf);
+      csvText = csvBuf.toString("utf-8");
+
+    } else if (
+      contentType.includes("text") ||
+      contentType.includes("csv") ||
+      buf.slice(0, 1).toString() === "#"   // URLhaus CSV starts with # comments
+    ) {
+      // Plain text / CSV — no compression
+      csvText = buf.toString("utf-8");
+
+    } else {
+      // Unknown format — return debug hint instead of a cryptic error
+      const preview = buf.slice(0, 120).toString("utf-8").replace(/[^\x20-\x7e]/g, ".");
+      return res.status(502).json({
+        error:    `URLhaus: unexpected response format (Content-Type: ${contentType || "unknown"}). ` +
+                  `First bytes: ${preview}`,
+        articles: [],
+        total:    0
+      });
+    }
+
+    // 3. Parse CSV → ThreatLens articles
     const articles = _csvToArticles(csvText, URLHAUS_MAX);
 
     res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=600");
@@ -153,7 +183,7 @@ async function _handleURLhaus(req, res) {
 
 async function _unzipFirst(buf) {
   if (buf.length < 30 || buf.readUInt32LE(0) !== 0x04034b50) {
-    throw new Error("URLhaus response is not a valid ZIP file");
+    throw new Error("Not a valid ZIP file (unexpected magic bytes)");
   }
   const method         = buf.readUInt16LE(8);
   let   compressedSize = buf.readUInt32LE(18);
