@@ -419,7 +419,7 @@ const ArticleModal = (() => {
   // @param {object} reputation - map of IOC value → { verdict, pulses, labels }
   //                              populated by _checkReputation() (Option C)
 
-  function _renderIOCPanel(iocs, reputation = {}) {
+  function _renderIOCPanel(iocs, reputation = {}, urlhausMatches = {}) {
     if (!iocs) return '<p class="art-metric-na">No IOC detected.</p>';
 
     const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
@@ -429,11 +429,12 @@ const ArticleModal = (() => {
       const copyEsc      = (value || '').replace(/'/g, "\\'");
       const shortDisplay = displayVal || value;
       const repBadge     = _reputationBadge(value, reputation);
+      const uhBadge      = _urlhausBadge(value, urlhausMatches);
       return `
         <div class="art-ioc-row">
           <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
-          ${repBadge}
+          ${repBadge}${uhBadge}
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
                   title="Copy">📋</button>
@@ -492,6 +493,20 @@ const ArticleModal = (() => {
     return `<span class="badge rep-unknown">⚪ Unknown</span>`;
   }
 
+  // ─── URLhaus confirmation badge ───────────────────────────────────────────
+
+  function _urlhausBadge(value, urlhausMatches) {
+    const match = urlhausMatches?.[value];
+    if (!match) return '';
+    const tagStr = match.tags?.length
+      ? ` · ${match.tags.slice(0, 3).join(', ')}`
+      : '';
+    const linkAttr = match.link
+      ? ` onclick="window.open('${_esc(match.link)}','_blank')" style="cursor:pointer" title="View on URLhaus"`
+      : '';
+    return `<span class="badge uh-confirmed"${linkAttr}>☣️ URLhaus: ${_esc(match.threat)}${_esc(tagStr)}</span>`;
+  }
+
   // ─── Section IOC centralisée (re-utilisée par open, deepScan, reputation) ──
   //
   // Seul point d'entrée pour le rendu de la section IOC complète.
@@ -516,7 +531,7 @@ const ArticleModal = (() => {
     return `
       <h4 class="art-modal-section-title">🔬 Extracted IOCs${countPart}${stateBadge}</h4>
       ${hasIOCs
-        ? _renderIOCPanel(article.iocs, rep)
+        ? _renderIOCPanel(article.iocs, rep, article.urlhausMatches || {})
         : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
       ${article._deepChars
         ? `<p class="art-ioc-deep-note">📄 ${article._deepChars.toLocaleString()} chars scanned from full article</p>`

@@ -92,7 +92,7 @@ async function _handleRSSProxy(req, res, url) {
 //   Decompression uses node:zlib only (no npm deps).
 
 const URLHAUS_CSV_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/";
-const URLHAUS_MAX     = 50; // Keep N most recent rows
+const URLHAUS_MAX     = 500; // Entries in the IOC lookup map (domain + url → threat)
 
 async function _handleURLhaus(req, res) {
   // UI key (from localStorage via X-URLhaus-Key header) takes priority over env var.
@@ -164,11 +164,14 @@ async function _handleURLhaus(req, res) {
       });
     }
 
-    // 3. Parse CSV → ThreatLens articles
-    const articles = _csvToArticles(csvText, URLHAUS_MAX);
+    // 3. Build structured IOC lookup map (domain → entry, url → entry)
+    //    URLhaus is no longer injected as feed articles — it is used as a
+    //    background IOC confirmation layer by js/urlhaus-ioc.js.
+    const iocMap = _buildIOCMap(csvText, URLHAUS_MAX);
+    const total  = Object.keys(iocMap.urls).length;
 
     res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=600");
-    return res.status(200).json({ articles, total: articles.length });
+    return res.status(200).json({ iocMap, total, articles: [] });
 
   } catch (err) {
     return res.status(502).json({
@@ -215,8 +218,19 @@ function _bufLastIndexOf(buf, pattern) {
 
 // ── CSV parsing ───────────────────────────────────────────────────────────────
 
-function _csvToArticles(csvText, maxItems) {
-  const articles = [];
+/**
+ * Build a structured IOC lookup map from URLhaus CSV.
+ * Returns { domains: { hostname → entry }, urls: { url → entry } }
+ * where entry = { threat, tags, status, link }
+ *
+ * Used by js/urlhaus-ioc.js to cross-reference IOCs extracted from
+ * other feed articles — URLhaus is no longer injected as feed articles.
+ */
+function _buildIOCMap(csvText, maxItems) {
+  const domains = {};
+  const urls    = {};
+  let   count   = 0;
+
   for (const line of csvText.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
@@ -224,35 +238,26 @@ function _csvToArticles(csvText, maxItems) {
     const cols = _parseCSVRow(trimmed);
     if (cols.length < 8) continue;
 
-    const [id, dateadded, url, url_status, , threat, tags, urlhaus_link, reporter] = cols;
+    const [, , url, url_status, , threat, tags, urlhaus_link] = cols;
     if (!url || !url.startsWith("http")) continue;
 
-    const tagList     = _parseTags(tags);
-    const threatLabel = (threat    || "malware_download").trim();
-    const reporter_   = (reporter  || "community").trim();
-    const status_     = (url_status || "unknown").trim();
-    const pubDate     = dateadded
-      ? new Date(dateadded.replace(" ", "T") + "Z")
-      : new Date();
+    const entry = {
+      threat: (threat     || "malware_download").trim(),
+      tags:   _parseTags(tags),
+      status: (url_status || "unknown").trim(),
+      link:   urlhaus_link || ""
+    };
 
-    articles.push({
-      id:          `urlhaus-${id}`,
-      title:       `[URLhaus] ${threatLabel}: ${_truncate(url, 80)}`,
-      link:        urlhaus_link || "https://urlhaus.abuse.ch/browse/",
-      description: `Malicious URL (${status_}) reported by ${reporter_}. ` +
-                   `Threat: ${threatLabel}. ` +
-                   (tagList.length ? `Tags: ${tagList.join(", ")}. ` : "") +
-                   `IOC URL: ${url}`,
-      pubDate:     isNaN(pubDate.getTime()) ? new Date() : pubDate,
-      source:      "urlhaus",
-      sourceName:  "URLhaus (abuse.ch)",
-      sourceIcon:  "☣️",
-      lang:        "en"
-    });
+    urls[url] = entry;
+    try {
+      const { hostname } = new URL(url);
+      if (!domains[hostname]) domains[hostname] = entry; // first occurrence wins
+    } catch { /* skip malformed URLs */ }
 
-    if (articles.length >= maxItems) break;
+    if (++count >= maxItems) break;
   }
-  return articles;
+
+  return { domains, urls };
 }
 
 function _parseCSVRow(line) {
@@ -280,6 +285,3 @@ function _parseTags(raw) {
   return clean ? clean.split(",").map(t => t.trim()).filter(Boolean) : [];
 }
 
-function _truncate(str, max) {
-  return str.length <= max ? str : str.slice(0, max - 3) + "...";
-}

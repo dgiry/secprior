@@ -261,7 +261,27 @@ const IOCExtractor = (() => {
     // pour garantir la cohérence entre la valeur stockée et les données réelles.
     const iocCount = getRealIOCCount({ iocs });
 
-    return { ...article, iocs, iocCount };
+    // ── URLhaus cross-reference ───────────────────────────────────────────────
+    // If URLhausIOC is loaded and ready, check every extracted domain / URL / IP
+    // against the live URLhaus malicious-URL map.  Matches are stored in
+    // article.urlhausMatches and rendered as ☣️ badges in the IOC panel.
+    const urlhausMatches = {};
+    if (typeof URLhausIOC !== 'undefined' && URLhausIOC.isReady()) {
+      domains.forEach(d => {
+        const m = URLhausIOC.lookupDomain(d);
+        if (m) urlhausMatches[d] = m;
+      });
+      urls.forEach(u => {
+        const m = URLhausIOC.lookupUrl(u);
+        if (m) urlhausMatches[u] = m;
+      });
+      ips.forEach(ip => {
+        const m = URLhausIOC.lookupDomain(ip);
+        if (m) urlhausMatches[ip] = m;
+      });
+    }
+
+    return { ...article, iocs, iocCount, urlhausMatches };
   }
 
   function enrichAll(articles) {

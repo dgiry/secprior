@@ -1401,6 +1401,15 @@ a:hover { text-decoration: underline; }
   padding: .1rem .4rem;
   border-radius: 4px;
 }
+.uh-confirmed {
+  background: rgba(249,115,22,.15);
+  color: #fb923c;
+  border: 1px solid rgba(249,115,22,.35);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
 
 /* ── Modal Détail Article ────────────────────────────────────────────────── */
 
