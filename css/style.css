@@ -3343,6 +3343,12 @@ body.modal-open { overflow: hidden; }
 .cp-trend-unknown { font-style:italic; }
 .cp-vendors-cell  { max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+/* CVE detail — inline Search in Trend block */
+.cp-detail-trend        { display:flex; align-items:center; gap:.5rem; padding:.35rem 0 .2rem; }
+.cp-detail-trend-btn    { font-size:.75rem; padding:.18rem .55rem; border-radius:4px; border:1px solid var(--border,#30363d); background:transparent; color:var(--text,#e6edf3); cursor:pointer; }
+.cp-detail-trend-btn:hover { background:var(--hover-bg,rgba(255,255,255,.04)); }
+.cp-detail-trend-result { font-size:.8rem; }
+
 /* État vide */
 .cp-empty         { padding:1.5rem 1rem; color:var(--text2); font-size:.82rem; }
 
