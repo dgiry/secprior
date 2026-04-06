@@ -979,6 +979,43 @@
           </p>
         </div>
 
+        <!-- ── Slack / Teams — Incoming Webhook ────────────────────────── -->
+        <div class="settings-group">
+          <label class="settings-label">💬 Slack / Teams — Incoming Webhook</label>
+          <p class="settings-hint">
+            Paste your Incoming Webhook URL below. Once saved, a <strong>📤 Send</strong>
+            button appears in the Share modal — one click to post the alert to your channel.
+            No OAuth, no server-side config required.
+          </p>
+
+          <label class="settings-label" for="share-webhook-type">Platform</label>
+          <select id="share-webhook-type" class="select-filter"
+                  style="width:100%;margin-bottom:.75rem">
+            <option value="slack">💬 Slack</option>
+            <option value="teams">🟦 Microsoft Teams</option>
+          </select>
+
+          <label class="settings-label" for="share-webhook-url">Incoming Webhook URL</label>
+          <input type="url" id="share-webhook-url" class="settings-input"
+                 placeholder="https://hooks.slack.com/services/…  or  https://…webhook.office.com/…"
+                 autocomplete="off">
+          <p class="settings-hint">
+            Slack: <em>Apps → Incoming Webhooks → Add to Workspace</em><br>
+            Teams: <em>Channel → Connectors → Incoming Webhook → Configure</em>
+          </p>
+
+          <div class="settings-row" style="border:none;padding:.5rem 1.25rem 0;gap:.5rem;display:flex">
+            <button class="btn btn-primary"
+                    onclick="SettingsModal.saveIntegrations()">
+              💾 Save
+            </button>
+            <button class="btn btn-test"
+                    onclick="SettingsModal.testShareWebhook()">
+              🧪 Test webhook
+            </button>
+          </div>
+        </div>
+
       </div><!-- /settings-tab-integrations -->
 
     </div><!-- /modal-box -->

@@ -1223,6 +1223,46 @@ a:hover { text-decoration: underline; }
   cursor: default;
 }
 
+/* ── Threat actor badge — card-tags et bloc analyst status ──────────────── */
+.badge-actor {
+  background: rgba(255,163,72,.12);
+  color: #ffb347;
+  border: 1px solid rgba(255,163,72,.35);
+  cursor: default;
+  font-size: .75rem;
+}
+
+/* Rangée threat actor dans le bloc analyst status */
+.es-actor-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding-top: .25rem;
+}
+
+.es-actor-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  opacity: .75;
+}
+
+.es-actor-input {
+  flex: 1;
+  background: var(--bg-card, #161b22);
+  border: 1px solid var(--border, #30363d);
+  border-radius: 4px;
+  color: var(--text, #c9d1d9);
+  font-size: .85rem;
+  padding: .3rem .6rem;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.es-actor-input:focus {
+  border-color: #ffb347;
+  background: var(--bg-card-hover, #1c2128);
+}
+
 /* ── IOC Badges (cartes) ─────────────────────────────────────────────────── */
 .card-iocs {
   display: flex; flex-wrap: wrap; gap: .3rem;

@@ -558,6 +558,51 @@ const QuickActions = (() => {
     if (ta) ta.scrollTop = 0;
   }
 
+  // ── Gap 3 — Slack/Teams Incoming Webhook helpers ─────────────────────────
+
+  function _getShareWebhook() {
+    try {
+      const stored = JSON.parse(localStorage.getItem('cv_share_webhook') || '{}');
+      return { url: stored.url || '', type: stored.type || 'slack' };
+    } catch {
+      return { url: '', type: 'slack' };
+    }
+  }
+
+  async function _sendToWebhook(text, webhookCfg) {
+    const { url, type } = webhookCfg;
+    const payload = type === 'teams'
+      ? { "@type":    "MessageCard",
+          "@context": "http://schema.org/extensions",
+          "summary":  "ThreatLens Alert",
+          "themeColor": "e53e3e",
+          "text": text.replace(/\n/g, '<br>') }
+      : { text };  // Slack (and modern Teams Power Automate) accept plain { text }
+
+    const sendBtn = document.getElementById('qa-share-send');
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '⏳ Sending…'; }
+
+    try {
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+        signal:  AbortSignal.timeout(8000)
+      });
+      const platform = type === 'teams' ? 'Teams' : 'Slack';
+      if (res.ok) {
+        if (window.UI) UI.showToast(`✅ Sent to ${platform}!`, 'success');
+        _hideShareModal();
+      } else {
+        if (window.UI) UI.showToast(`⚠️ ${platform} responded HTTP ${res.status}`, 'warning');
+      }
+    } catch (e) {
+      if (window.UI) UI.showToast(`❌ Send failed: ${e.message}`, 'error');
+    } finally {
+      if (sendBtn) { sendBtn.disabled = false; }
+    }
+  }
+
   // ── Sprint 22 — Modal de partage (Slack/Teams · Email interne) ──────────
 
   function _injectShareModalDOM() {
@@ -582,6 +627,9 @@ const QuickActions = (() => {
         </div>
         <pre id="qa-share-preview" class="qa-share-preview"></pre>
         <div class="qa-share-footer">
+          <button id="qa-share-send" class="btn btn-primary qa-share-send"
+                  style="display:none" disabled
+                  title="Configure webhook in Settings → Integrations">📤 Send</button>
           <button id="qa-share-copy" class="btn btn-primary">📋 Copy</button>
           <button id="qa-share-close-btn" class="btn">Close</button>
         </div>
@@ -609,15 +657,31 @@ const QuickActions = (() => {
     const modal = document.getElementById('qa-share-modal');
     if (!modal) return;
 
-    const isInc   = sourceType === 'incident';
-    const slackTx = isInc ? _shareShortIncident(entity)   : _shareShortArticle(entity);
-    const emailTx = isInc ? _emailBriefIncident(entity)   : _emailBriefArticle(entity);
+    const isInc      = sourceType === 'incident';
+    const slackTx    = isInc ? _shareShortIncident(entity)   : _shareShortArticle(entity);
+    const emailTx    = isInc ? _emailBriefIncident(entity)   : _emailBriefArticle(entity);
+    const webhookCfg = _getShareWebhook();
 
     let _currentText = slackTx;
 
     // Aperçu initial
     const preview = document.getElementById('qa-share-preview');
     if (preview) preview.textContent = slackTx;
+
+    // Bouton Send — re-bind et configurer selon le webhook
+    const btnSend    = document.getElementById('qa-share-send');
+    const newBtnSend = btnSend.cloneNode(true);
+    btnSend.replaceWith(newBtnSend);
+    if (webhookCfg.url) {
+      const platform = webhookCfg.type === 'teams' ? 'Teams' : 'Slack';
+      newBtnSend.style.display = '';
+      newBtnSend.removeAttribute('disabled');
+      newBtnSend.title = `Send to ${platform}`;
+      newBtnSend.textContent = `📤 Send to ${platform}`;
+      newBtnSend.addEventListener('click', () => _sendToWebhook(_currentText, webhookCfg));
+    } else {
+      newBtnSend.style.display = 'none';
+    }
 
     // Onglets — re-bind via cloneNode pour éviter les doublons
     const tabSlack = document.getElementById('qa-share-tab-slack');
@@ -636,16 +700,20 @@ const QuickActions = (() => {
       if (preview) preview.textContent = slackTx;
       newTabSlack.classList.add('qa-share-tab-active');
       newTabEmail.classList.remove('qa-share-tab-active');
+      // Restore Send button on Slack/Teams tab
+      if (webhookCfg.url) newBtnSend.style.display = '';
     });
     newTabEmail.addEventListener('click', () => {
       _currentText = emailTx;
       if (preview) preview.textContent = emailTx;
       newTabEmail.classList.add('qa-share-tab-active');
       newTabSlack.classList.remove('qa-share-tab-active');
+      // Hide Send button on email tab — email is for clipboard only
+      newBtnSend.style.display = 'none';
     });
 
     // Bouton copier — re-bind
-    const btnCopy = document.getElementById('qa-share-copy');
+    const btnCopy    = document.getElementById('qa-share-copy');
     const newBtnCopy = btnCopy.cloneNode(true);
     btnCopy.replaceWith(newBtnCopy);
     newBtnCopy.addEventListener('click', () => _copy(_currentText, 'Message'));

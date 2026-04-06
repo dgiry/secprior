@@ -5,7 +5,7 @@
 //
 // Statuts : new · acknowledged · investigating · mitigated · ignored
 // État par défaut si absent : "new"
-// Champs : status, note, owner, updatedAt, updatedBy
+// Champs : status, note, owner, threatActor, updatedAt, updatedBy
 //
 // API publique :
 //   getStatus(type, id)                        → entry | null
@@ -13,12 +13,14 @@
 //   setStatus(type, id, status, note?)         → void
 //   updateNote(type, id, note)                 → void
 //   updateOwner(type, id, owner)               → void
+//   updateThreatActor(type, id, actor)         → void
+//   getThreatActor(type, id)                   → string  (vide si inconnu)
 //   filterByStatus(items, type, filter, idFn)  → items[]
 //   badgeHTML(type, id)                        → string HTML  (vide si "new")
-//   statusBlockHTML(type, id)                  → string HTML  (select + note + owner)
+//   statusBlockHTML(type, id)                  → string HTML  (select + note + owner + actor)
 //
 // Extensibilité Jira/ServiceNow :
-//   Chaque entrée conserve { entityType, entityId, status, note, owner, updatedAt, updatedBy }
+//   Chaque entrée conserve { entityType, entityId, status, note, owner, threatActor, updatedAt, updatedBy }
 //   Un connecteur externe peut lire/écrire ces mêmes champs via une API REST,
 //   en ajoutant { externalId, externalUrl, syncedAt } sans casser le contrat local.
 
@@ -105,10 +107,11 @@ const EntityStatus = (() => {
       entityType,
       entityId,
       status,
-      updatedAt: new Date().toISOString(),
-      note:      note !== undefined ? String(note) : (prev.note  || ""),
-      owner:     prev.owner || "",
-      updatedBy: "local"
+      updatedAt:   new Date().toISOString(),
+      note:        note !== undefined ? String(note) : (prev.note  || ""),
+      owner:       prev.owner       || "",
+      threatActor: prev.threatActor || "",
+      updatedBy:   "local"
       // Extensible : externalId, externalUrl, syncedAt (connecteur Jira/ServiceNow)
     };
     _save(map);
@@ -124,11 +127,12 @@ const EntityStatus = (() => {
     } else {
       map[key] = {
         entityType, entityId,
-        status:    "new",
-        updatedAt: new Date().toISOString(),
-        note:      String(note || ""),
-        owner:     "",
-        updatedBy: "local"
+        status:      "new",
+        updatedAt:   new Date().toISOString(),
+        note:        String(note || ""),
+        owner:       "",
+        threatActor: "",
+        updatedBy:   "local"
       };
     }
     _save(map);
@@ -144,14 +148,40 @@ const EntityStatus = (() => {
     } else {
       map[key] = {
         entityType, entityId,
-        status:    "new",
-        updatedAt: new Date().toISOString(),
-        note:      "",
-        owner:     String(owner || ""),
-        updatedBy: "local"
+        status:      "new",
+        updatedAt:   new Date().toISOString(),
+        note:        "",
+        owner:       String(owner || ""),
+        threatActor: "",
+        updatedBy:   "local"
       };
     }
     _save(map);
+  }
+
+  function updateThreatActor(entityType, entityId, actor) {
+    const map  = _load();
+    const key  = _key(entityType, entityId);
+    const prev = map[key];
+    if (prev) {
+      prev.threatActor = String(actor || "");
+      prev.updatedAt   = new Date().toISOString();
+    } else {
+      map[key] = {
+        entityType, entityId,
+        status:      "new",
+        updatedAt:   new Date().toISOString(),
+        note:        "",
+        owner:       "",
+        threatActor: String(actor || ""),
+        updatedBy:   "local"
+      };
+    }
+    _save(map);
+  }
+
+  function getThreatActor(entityType, entityId) {
+    return _load()[_key(entityType, entityId)]?.threatActor || "";
   }
 
   // ── Maintenance du store ──────────────────────────────────────────────────
@@ -227,11 +257,12 @@ const EntityStatus = (() => {
    * À insérer dans la section détail d'une ligne ou d'un modal.
    */
   function statusBlockHTML(entityType, entityId) {
-    const entry   = getStatus(entityType, entityId);
-    const status  = (entry?.status && VALID_STATUSES.includes(entry.status)) ? entry.status : "new";
-    const note    = entry?.note   || "";
-    const owner   = entry?.owner  || "";
-    const safeEid = _domSafeId(entityType, entityId);
+    const entry       = getStatus(entityType, entityId);
+    const status      = (entry?.status && VALID_STATUSES.includes(entry.status)) ? entry.status : "new";
+    const note        = entry?.note        || "";
+    const owner       = entry?.owner       || "";
+    const threatActor = entry?.threatActor || "";
+    const safeEid     = _domSafeId(entityType, entityId);
 
     const updatedLine = entry?.updatedAt
       ? `<span class="es-updated">Updated on ${new Date(entry.updatedAt).toLocaleString("en-US", {
@@ -265,6 +296,14 @@ const EntityStatus = (() => {
                  maxlength="80"
                  title="Responsible analyst or team — saved on field exit">
         </div>
+        <div class="es-row es-actor-row">
+          <span class="es-actor-icon" title="Suspected threat actor">🎭</span>
+          <input type="text" class="es-actor-input"
+                 placeholder="Threat actor (optional)…"
+                 value="${_escAttr(threatActor)}"
+                 maxlength="80"
+                 title="Suspected threat actor or group — saved on field exit. Searchable with actor:name">
+        </div>
       </div>`;
   }
 
@@ -276,6 +315,8 @@ const EntityStatus = (() => {
     setStatus,
     updateNote,
     updateOwner,
+    updateThreatActor,
+    getThreatActor,
     pruneStale,
     getStats,
     filterByStatus,

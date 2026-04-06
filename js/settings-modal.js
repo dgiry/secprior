@@ -62,6 +62,13 @@ const SettingsModal = (() => {
       _val('jira-base-url',    jira.baseUrl    || '');
       _val('jira-project-key', jira.projectKey || '');
     }
+    // ── Onglet Integrations — Slack/Teams share webhook ─────────────────────
+    try {
+      const sw   = JSON.parse(localStorage.getItem('cv_share_webhook') || '{}');
+      _val('share-webhook-url', sw.url || '');
+      const swSel = document.getElementById('share-webhook-type');
+      if (swSel && sw.type) swSel.value = sw.type;
+    } catch { /* ignore parse errors */ }
     // ── Onglet Integrations — TV1 ────────────────────────────────────────────
     if (typeof TV1Sync !== 'undefined') {
       const tv1 = TV1Sync.loadConfig();
@@ -769,11 +776,50 @@ const SettingsModal = (() => {
   // ══════════════════════════════════════════════════════════════════════════
 
   function saveIntegrations() {
-    if (typeof JiraConfig === 'undefined') return;
-    const baseUrl    = (_val('jira-base-url')    || '').trim().replace(/\/+$/, '');
-    const projectKey = (_val('jira-project-key') || '').trim().toUpperCase();
-    JiraConfig.save({ baseUrl, projectKey });
+    if (typeof JiraConfig !== 'undefined') {
+      const baseUrl    = (_val('jira-base-url')    || '').trim().replace(/\/+$/, '');
+      const projectKey = (_val('jira-project-key') || '').trim().toUpperCase();
+      JiraConfig.save({ baseUrl, projectKey });
+    }
+    // Slack/Teams share webhook
+    const swUrl  = (_val('share-webhook-url') || '').trim();
+    const swType = document.getElementById('share-webhook-type')?.value || 'slack';
+    try {
+      localStorage.setItem('cv_share_webhook', JSON.stringify({ url: swUrl, type: swType }));
+    } catch { /* quota exceeded */ }
     UI.showToast('🔗 Integrations saved', 'success');
+  }
+
+  async function testShareWebhook() {
+    const url  = (_val('share-webhook-url') || '').trim();
+    const type = document.getElementById('share-webhook-type')?.value || 'slack';
+    if (!url) { UI.showToast('Enter a webhook URL first', 'error'); return; }
+
+    const btn = document.querySelector('[onclick*="testShareWebhook"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+
+    const payload = type === 'teams'
+      ? { "@type":    "MessageCard",
+          "@context": "http://schema.org/extensions",
+          "summary":  "ThreatLens Test",
+          "themeColor": "0078d4",
+          "text": "✅ <b>ThreatLens</b> — Share webhook test successful!" }
+      : { text: "✅ ThreatLens — Share webhook test successful!" };
+
+    try {
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+        signal:  AbortSignal.timeout(8000)
+      });
+      if (res.ok) UI.showToast(`✅ Test message sent to ${type === 'teams' ? 'Teams' : 'Slack'}!`, 'success');
+      else        UI.showToast(`⚠️ Webhook responded HTTP ${res.status}`, 'warning');
+    } catch (e) {
+      UI.showToast(`❌ Test failed: ${e.message}`, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🧪 Test webhook'; }
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1008,7 +1054,7 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations,
+    saveIntegrations, testShareWebhook,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

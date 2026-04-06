@@ -20,6 +20,7 @@ const UI = (() => {
       cveFilter:       null,
       statusFilter:    null,
       priorityFilter:  null,
+      actorFilter:     null,
       onlyKEV:         false,
       onlyTrending:    false
     };
@@ -54,6 +55,9 @@ const UI = (() => {
               break;
             case 'priority':
               result.priorityFilter = value.toLowerCase();
+              break;
+            case 'actor':
+              result.actorFilter = value.toLowerCase();
               break;
             default:
               // Unknown operator: treat as plain text
@@ -274,7 +278,15 @@ const UI = (() => {
                title="Detected IOCs: ${article.iocCount} indicator${article.iocCount > 1 ? 's' : ''} (IPs, domains, hashes, URLs)">🔗 ${article.iocCount} IOC</span>`
       : "";
 
-    const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges, iocSummaryBadge]
+    // Badge threat actor — affiché si l'analyste a renseigné un acteur
+    const _actorTag = (typeof EntityStatus !== 'undefined')
+      ? EntityStatus.getThreatActor('article', article.id)
+      : "";
+    const actorBadge = _actorTag
+      ? `<span class="badge badge-actor" title="Threat actor: ${_actorTag.replace(/"/g,'&quot;')} — filter with actor:${_actorTag}">🎭 ${_actorTag}</span>`
+      : "";
+
+    const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges, iocSummaryBadge, actorBadge]
       .filter(Boolean).join("");
 
     // ── Badges IOCs (max 3 sur la carte, click-to-copy) ──────────────────────
@@ -568,6 +580,12 @@ const UI = (() => {
           if (!a.priorityLevel || !a.priorityLevel.toLowerCase().includes(parsed.priorityFilter)) {
             return false;
           }
+        }
+
+        // 6b. actor: filter — matches threat actor tag set by analyst
+        if (parsed.actorFilter && typeof EntityStatus !== 'undefined') {
+          const actor = EntityStatus.getThreatActor('article', a.id).toLowerCase();
+          if (!actor || !actor.includes(parsed.actorFilter)) return false;
         }
 
         // 7. kev shorthand (KEV articles only)

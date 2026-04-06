@@ -74,6 +74,12 @@ const ArticleModal = (() => {
         });
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
       });
+      content.querySelectorAll('.es-block .es-actor-input').forEach(inp => {
+        inp.addEventListener('blur', e => {
+          EntityStatus.updateThreatActor('article', article.id, e.target.value);
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+      });
     }
 
     modal.style.display = 'flex';
