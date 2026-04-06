@@ -78,7 +78,8 @@ async function _handleLookup(req, res, cveId) {
     return res.status(200).json(json);
 
   } catch (err) {
-    return res.status(502).json({ error: `Erreur NVD : ${err.message}`, cveId });
+    console.error("[nvd]", err.message);
+    return res.status(502).json({ error: "NVD lookup failed", cveId });
   }
 }
 
@@ -123,6 +124,7 @@ async function _handleSearch(req, res, q) {
     return res.status(200).json({ cves, total: json.totalResults ?? cves.length, query: q });
 
   } catch (err) {
-    return res.status(502).json({ error: `Erreur NVD search : ${err.message}`, query: q });
+    console.error("[nvd/search]", err.message);
+    return res.status(502).json({ error: "NVD search failed", query: q });
   }
 }

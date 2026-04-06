@@ -390,7 +390,7 @@
       <div class="bp-header">
         <h3 class="bp-title-h3">📰 Briefing — Digest engine selection</h3>
         <span id="briefing-meta" class="bp-meta"></span>
-        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="BriefingPanel.refresh()">↻ Refresh</button>
+        <button class="btn btn-sm" onclick="BriefingPanel.refresh()">↻ Refresh</button>
       </div>
       <div id="briefing-list"></div>
     </div>
@@ -401,7 +401,7 @@
     <div class="stats-panel-inner">
       <div class="bp-header">
         <h3 class="bp-title-h3">🩺 Health — Operational status of the server engine</h3>
-        <button class="btn" style="font-size:.75rem;padding:.3rem .6rem" onclick="HealthPanel.refresh()">↻ Refresh</button>
+        <button class="btn btn-sm" onclick="HealthPanel.refresh()">↻ Refresh</button>
       </div>
       <div id="health-list"></div>
     </div>
@@ -508,7 +508,7 @@
   <div id="toast-area"></div>
 
   <!-- ── Modal Watchlist ───────────────────────────────────────────────────── -->
-  <div id="modal-watchlist" class="modal-overlay" style="display:none" onclick="if(event.target===this)WatchlistModal.close()">
+  <div id="modal-watchlist" class="modal-overlay" style="display:none" onclick="if(event.target===this)WatchlistModal.close()" role="dialog" aria-modal="true" aria-label="Watchlist">
     <div class="modal-box" style="width:min(480px,95vw)">
       <div class="modal-header">
         <h2>👁 Watchlist — Monitored terms</h2>
@@ -556,7 +556,7 @@
   </div>
 
   <!-- ── Modal Paramètres (Alertes + Flux RSS) ─────────────────────────────── -->
-  <div id="modal-settings" class="modal-overlay" style="display:none" onclick="if(event.target===this)SettingsModal.close()">
+  <div id="modal-settings" class="modal-overlay" style="display:none" onclick="if(event.target===this)SettingsModal.close()" role="dialog" aria-modal="true" aria-label="Settings">
     <div class="modal-box modal-box-lg">
       <div class="modal-header">
         <h2>⚙️ Settings</h2>
@@ -997,7 +997,7 @@
             Stored locally in your browser (localStorage). Sent as a request
             header — never appears in URLs or server logs.
           </p>
-          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
+          <div class="integration-actions">
             <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
               💾 Save
             </button>
@@ -1026,7 +1026,7 @@
             Stored locally in your browser (localStorage). Sent to the backend as a
             request header — never appears in URLs or server logs.
           </p>
-          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
+          <div class="integration-actions">
             <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
               💾 Save
             </button>
@@ -1056,7 +1056,7 @@
             Stored locally in your browser (localStorage). Sent to the backend as a
             request header — never appears in URLs or server logs.
           </p>
-          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
+          <div class="integration-actions">
             <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
               💾 Save
             </button>
@@ -1112,7 +1112,8 @@
 
   <!-- ── Modal How it Works ───────────────────────────────────────────────── -->
   <div id="modal-how-it-works" class="modal-overlay" style="display:none"
-       onclick="if(event.target===this)document.getElementById('modal-how-it-works').style.display='none'">
+       onclick="if(event.target===this)document.getElementById('modal-how-it-works').style.display='none'"
+       role="dialog" aria-modal="true" aria-label="How ThreatLens Works">
     <div class="modal-box how-modal-box">
       <div class="modal-header">
         <h2>📖 How ThreatLens Works</h2>
@@ -1165,7 +1166,7 @@
 
   <!-- ── Modal Vues sauvegardées ────────────────────────────────────────────── -->
   <div id="modal-saved-filters" class="modal-overlay" style="display:none"
-       onclick="if(event.target===this)SavedFilters.close()">
+       onclick="if(event.target===this)SavedFilters.close()" role="dialog" aria-modal="true" aria-label="Saved views">
     <div class="modal-box">
       <div class="modal-header">
         <h2>💾 Saved views</h2>

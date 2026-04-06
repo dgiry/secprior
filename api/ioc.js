@@ -94,7 +94,8 @@ async function _handleBody(req, res) {
   } catch (err) {
     const msg = err.name === "AbortError"
       ? "Timeout: source did not respond within 10 s"
-      : err.message;
+      : "Failed to fetch article body";
+    console.error("[ioc/body]", err.message);
     return res.status(500).json({ error: msg });
   }
 }
@@ -173,7 +174,8 @@ async function _handleReputation(req, res) {
   } catch (err) {
     const msg = err.name === "AbortError"
       ? "OTX did not respond within 8 s"
-      : err.message;
+      : "OTX lookup failed";
+    console.error("[ioc/reputation]", err.message);
     return res.status(500).json({ error: msg });
   }
 }
@@ -240,7 +242,8 @@ async function _handleThreatFox(req, res) {
   } catch (err) {
     const msg = err.name === "AbortError"
       ? "ThreatFox did not respond within 8 s"
-      : err.message;
+      : "ThreatFox lookup failed";
+    console.error("[ioc/threatfox]", err.message);
     return res.status(500).json({ error: msg });
   }
 }

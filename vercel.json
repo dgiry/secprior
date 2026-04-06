@@ -36,6 +36,7 @@
     { "source": "/api/briefing-preview", "destination": "/api/briefing-preview" },
     { "source": "/api/feeds",       "destination": "/api/feeds" },
     { "source": "/api/fetch-feeds", "destination": "/api/fetch-feeds" },
+    { "source": "/api/ioc",         "destination": "/api/ioc" },
     { "source": "/api/nvd",         "destination": "/api/nvd" },
     { "source": "/api/epss",        "destination": "/api/epss" },
     { "source": "/api/kev",         "destination": "/api/kev" },

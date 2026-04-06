@@ -78,10 +78,11 @@ async function _handleRSSProxy(req, res, url) {
     res.status(200).send(body);
   } catch (err) {
     const isTimeout = err.name === "TimeoutError" || err.message?.includes("timeout");
+    console.error("[fetch-feeds/rss]", err.message);
     res.status(isTimeout ? 504 : 502).json({
       error: isTimeout
-        ? `Délai dépassé pour ${url}`
-        : `Erreur proxy : ${err.message}`
+        ? "Feed timeout — source did not respond"
+        : "Feed fetch failed"
     });
   }
 }
@@ -184,8 +185,9 @@ async function _handleURLhaus(req, res) {
     return res.status(200).json({ iocMap, total, articles: [] });
 
   } catch (err) {
+    console.error("[fetch-feeds/urlhaus]", err.message);
     return res.status(502).json({
-      error:    `URLhaus error: ${err.message}`,
+      error:    "URLhaus fetch failed",
       articles: [],
       total:    0
     });

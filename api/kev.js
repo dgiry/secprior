@@ -36,6 +36,7 @@ module.exports = async (req, res) => {
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=7200");
     res.status(200).json(json);
   } catch (err) {
-    res.status(502).json({ error: `Erreur CISA KEV : ${err.message}` });
+    console.error("[kev]", err.message);
+    res.status(502).json({ error: "CISA KEV fetch failed" });
   }
 };

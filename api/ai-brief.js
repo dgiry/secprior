@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
       return res.status(504).json({ error: "AI service timeout" });
     }
     console.error("[ai-brief] Fetch error:", e.message);
-    return res.status(502).json({ error: "AI service unreachable", detail: e.message });
+    return res.status(502).json({ error: "AI service unreachable" });
   }
 
   if (!anthropicRes.ok) {

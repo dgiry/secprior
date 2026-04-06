@@ -1,4 +1,4 @@
-// settings-modal.js v20 — Modal Paramètres : Alertes · Flux RSS · Integrations
+// settings-modal.js v33 — Modal Paramètres : Alertes · Flux RSS · Integrations
 
 const SettingsModal = (() => {
 

@@ -109,7 +109,8 @@ module.exports = async (req, res) => {
       console.log(`[send-alert] resend OK — id:${json.id} to:${to} subject:"${subject}"`);
       return res.status(200).json({ success: true, channel: "resend", id: json.id });
     } catch (err) {
-      return res.status(502).json({ error: `Resend : ${err.message}` });
+      console.error("[send-alert/resend]", err.message);
+      return res.status(502).json({ error: "Email delivery failed (Resend)" });
     }
   }
 
@@ -158,7 +159,8 @@ module.exports = async (req, res) => {
       console.log(`[send-alert] sendgrid OK (202) — to:${to} subject:"${subject}"`);
       return res.status(200).json({ success: true, channel: "sendgrid" });
     } catch (err) {
-      return res.status(502).json({ error: `SendGrid : ${err.message}` });
+      console.error("[send-alert/sendgrid]", err.message);
+      return res.status(502).json({ error: "Email delivery failed (SendGrid)" });
     }
   }
 

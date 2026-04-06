@@ -707,6 +707,15 @@ a:hover { text-decoration: underline; }
   border-top: 1px solid var(--border);
 }
 
+/* ── Utility classes — extracted from repeated inline styles ─────────── */
+.integration-actions {
+  display: flex; align-items: center; gap: .75rem;
+  flex-wrap: wrap; padding: .5rem 0 0;
+}
+.btn-sm {
+  font-size: .75rem; padding: .3rem .6rem;
+}
+
 /* ── How It Works modal ─────────────────────────────────────────────────── */
 .how-modal-box {
   max-width: 500px;
