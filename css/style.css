@@ -36,6 +36,17 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ── Demo bar ───────────────────────────────────────────────────────────── */
+#demo-bar {
+  background: #2d1b00;
+  border-bottom: 1px solid #f0883e;
+  padding: .4rem 1rem;
+  font-size: .78rem;
+  color: #f0883e;
+  align-items: center;
+  gap: .5rem;
+}
+
 /* ── Nav bar ────────────────────────────────────────────────────────────── */
 .navbar {
   position: sticky; top: 0; z-index: 100;
@@ -2064,16 +2075,12 @@ body.modal-open { overflow: hidden; }
   height: 1px; background: var(--border); margin: .2rem .3rem;
 }
 
-/* Responsive — footer article simplifié */
-.art-modal-footer {
-  /* Sprint 23 : réduit gap, supprime flex-wrap pour rester sur une ligne */
-  flex-wrap: nowrap;
+/* Responsive — footer article : single-line on desktop, wrap on mobile */
+@media (min-width: 481px) {
+  .art-modal-footer { flex-wrap: nowrap; }
 }
-/* Sur mobile le footer peut quand même wrapper si l'écran est très étroit */
 @media (max-width: 480px) {
-  .art-modal-footer {
-    flex-wrap: wrap;
-  }
+  .art-modal-footer { flex-wrap: wrap; }
   /* Le popover s'aligne à droite pour éviter les débordements hors-écran */
   #art-qa-popover {
     left: auto; right: 0;
@@ -2886,8 +2893,8 @@ body.modal-open { overflow: hidden; }
 .settings-tab:hover { color: var(--text); }
 .settings-tab-active { color: var(--accent); border-bottom-color: var(--accent); }
 
-.settings-tab-pane { animation: fadeIn .15s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+.settings-tab-pane { animation: fadeInSlide .15s ease; }
+@keyframes fadeInSlide { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 
 /* Badge compteur sur l'onglet Flux RSS */
 #fm-active-badge {
@@ -4188,7 +4195,7 @@ body.modal-open { overflow: hidden; }
   position: absolute;
   top: calc(100% + 7px);
   left: 0;
-  z-index: 1200;
+  z-index: 1300;  /* above .qa-ticket-modal (1200) */
   min-width: 170px;
   max-width: 220px;
   background: #1c2128;
@@ -4838,7 +4845,7 @@ body.modal-open { overflow: hidden; }
 
 /* Overlay (full-screen modal backdrop) */
 .ai-brief-overlay {
-  position: fixed; inset: 0; z-index: 1100;
+  position: fixed; inset: 0; z-index: 1150;  /* above .cex-overlay (1100) */
   background: rgba(0,0,0,.65);
   display: flex; align-items: center; justify-content: center;
   padding: 1rem;

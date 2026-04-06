@@ -559,7 +559,10 @@ const App = (() => {
   // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
   function _closeNavDropdowns() {
     document.querySelectorAll(".nav-menu-popover").forEach(p => { p.style.display = "none"; });
-    document.querySelectorAll(".nav-menu-trigger").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".nav-menu-trigger").forEach(t => {
+      t.classList.remove("active");
+      t.setAttribute("aria-expanded", "false");
+    });
   }
 
   function _initNavDropdowns() {
@@ -575,6 +578,7 @@ const App = (() => {
         if (!isOpen) {
           popover.style.display = "flex";
           trigger.classList.add("active");
+          trigger.setAttribute("aria-expanded", "true");
         }
       });
 
