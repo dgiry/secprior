@@ -38,8 +38,14 @@ const ArticleModal = (() => {
     content.innerHTML = _buildContent(article);
 
     // Bind des boutons footer (injectés dynamiquement)
+    // Resolve article at click time (not via closure) so navigating between
+    // articles never makes the button copy data from a previously-opened article.
     document.getElementById('art-modal-copy-ioc')
-      ?.addEventListener('click', () => _copyIOCs(article));
+      ?.addEventListener('click', () => {
+        const aid = document.getElementById('modal-article')?.dataset.currentArticleId;
+        const art = aid ? _articles.find(a => String(a.id) === aid) : null;
+        if (art) _copyIOCs(art);
+      });
 
     // Actions rapides — résumés analyste / exécutif
     if (typeof QuickActions !== 'undefined')
@@ -554,9 +560,11 @@ const ArticleModal = (() => {
   // Met à jour le panneau IOC dans le modal sans rechargement.
 
   async function _fetchDeepIOCs(article) {
-    const btn   = document.getElementById('art-ioc-deep-btn');
-    const panel = document.getElementById('art-ioc-section');
-    if (!btn || !panel) return;
+    // Capture the button before the first await so we can disable it immediately.
+    // Do NOT pre-capture panel here — it must be re-fetched after the await so we
+    // always write to the live DOM node, not a detached one from a previous open().
+    const btn = document.getElementById('art-ioc-deep-btn');
+    if (!btn) return;
 
     btn.disabled    = true;
     btn.textContent = '⏳ Scanning…';
@@ -575,15 +583,22 @@ const ArticleModal = (() => {
       if (typeof IOCExtractor === 'undefined') throw new Error('IOCExtractor not loaded');
       const enriched = IOCExtractor.enrichArticle(article, text);
 
-      // Update article in place so _copyIOCs() and _checkReputation() pick up new IOCs
+      // Always update the article object — it is the right article regardless
+      // of whether the user navigated away.  Data will be correct next time opened.
       article.iocs         = enriched.iocs;
       article.iocCount     = enriched.iocCount;
       article._deepChars   = chars || 0;
       article._deepScanned = true;
 
-      // Re-render via shared helper
-      panel.innerHTML = _renderIOCSection(article);
-      _bindIOCButtons(article);
+      // Only re-render and re-bind if this article is still displayed.
+      // Use a live getElementById (not a pre-await capture) so we never write
+      // to a detached DOM node from a previous open().
+      const modal = document.getElementById('modal-article');
+      if (modal?.dataset.currentArticleId === String(article.id)) {
+        const livePanel = document.getElementById('art-ioc-section');
+        if (livePanel) livePanel.innerHTML = _renderIOCSection(article);
+        _bindIOCButtons(article);
+      }
 
       if (window.UI) UI.showToast(
         `🔬 Deep scan: ${enriched.iocCount} IOC${enriched.iocCount !== 1 ? 's' : ''} found`,
@@ -591,8 +606,9 @@ const ArticleModal = (() => {
       );
 
     } catch (err) {
-      btn.disabled    = false;
-      btn.textContent = '🔍 Deep IOC scan';
+      // Re-enable the button only if it's still the same article's button
+      const liveBtn = document.getElementById('art-ioc-deep-btn');
+      if (liveBtn) { liveBtn.disabled = false; liveBtn.textContent = '🔍 Deep IOC scan'; }
       if (window.UI) UI.showToast(`⚠ Deep scan failed: ${err.message}`, 'error');
     }
   }
@@ -604,9 +620,11 @@ const ArticleModal = (() => {
   // Délai de 200 ms entre requêtes pour respecter les limites OTX (1 req/s).
 
   async function _checkReputation(article) {
+    // Pre-capture button to disable it immediately (pre-await is fine for this).
+    // Do NOT pre-capture panel — fetch it live after the loop so we always write
+    // to the current DOM node, never to a detached node from a previous open().
     const repBtn = document.getElementById('art-ioc-rep-btn');
-    const panel  = document.getElementById('art-ioc-section');
-    if (!repBtn || !panel) return;
+    if (!repBtn) return;
 
     repBtn.disabled    = true;
     repBtn.textContent = '⏳ Checking…';
@@ -641,8 +659,8 @@ const ArticleModal = (() => {
           // Surface OTX_API_KEY missing error immediately
           if (data.error && data.error.includes('OTX_API_KEY')) {
             if (window.UI) UI.showToast(`⚙ ${data.error}`, 'error');
-            repBtn.disabled    = false;
-            repBtn.textContent = '🦠 Check reputation';
+            const liveRepBtn = document.getElementById('art-ioc-rep-btn');
+            if (liveRepBtn) { liveRepBtn.disabled = false; liveRepBtn.textContent = '🦠 Check reputation'; }
             return;
           }
         }
@@ -652,9 +670,16 @@ const ArticleModal = (() => {
       if (i < tasks.length - 1) await new Promise(r => setTimeout(r, 200));
     }
 
+    // Always update the article — it is the correct article regardless of navigation.
     article.iocReputation = reputation;
-    panel.innerHTML = _renderIOCSection(article);
-    _bindIOCButtons(article);
+
+    // Only re-render if this article is still open (use live getElementById).
+    const modal = document.getElementById('modal-article');
+    if (modal?.dataset.currentArticleId === String(article.id)) {
+      const livePanel = document.getElementById('art-ioc-section');
+      if (livePanel) livePanel.innerHTML = _renderIOCSection(article);
+      _bindIOCButtons(article);
+    }
 
     const malCount = Object.values(reputation).filter(r => r.verdict === 'malicious').length;
     const susCount = Object.values(reputation).filter(r => r.verdict === 'suspicious').length;
