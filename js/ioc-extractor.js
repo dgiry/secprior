@@ -45,9 +45,14 @@ const IOCExtractor = (() => {
     'redhat.com','centos.org','fedoraproject.org','debian.org','ubuntu.com','suse.com',
     'kernel.org','gnu.org','apache.org','nginx.org','openssl.org','openssh.com',
     'nodejs.org','python.org','php.net','ruby-lang.org','golang.org',
-    // Agences / Organismes sécu
+    // Domaines gouvernementaux (TLDs restreints aux entités officielles)
+    // Couvre tous les sous-domaines : cyber.gouv.fr, ncsc.gov.uk, etc.
+    'gouv.fr','gov.uk','bund.de','gc.ca','gov.au','govt.nz',
+    'europa.eu','consilium.europa.eu',
+    // Agences / Organismes sécu (entrées explicites conservées pour compatibilité)
     'nist.gov','cisa.gov','nvd.nist.gov','us-cert.gov','first.org','mitre.org',
-    'sans.org','cert.ssi.gouv.fr','ncsc.gov.uk','bsi.bund.de','enisa.europa.eu',
+    'sans.org','cert.ssi.gouv.fr','cyber.gouv.fr','ssi.gouv.fr','anssi.fr',
+    'ncsc.gov.uk','bsi.bund.de','enisa.europa.eu','ccn-cert.cni.es',
     'attack.mitre.org','cve.org','cve.mitre.org',
     // Médias cybersécurité (sources RSS du projet)
     'bleepingcomputer.com','thehackernews.com','krebsonsecurity.com','zataz.com',
