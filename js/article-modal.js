@@ -484,13 +484,31 @@ const ArticleModal = (() => {
   function _reputationBadge(value, reputation) {
     const rep = reputation[value];
     if (!rep) return '';
-    const labStr = rep.labels?.length
-      ? ` <small title="${_esc(rep.labels.join(', '))}">(${rep.pulses} pulse${rep.pulses !== 1 ? 's' : ''})</small>`
-      : ` <small>(${rep.pulses})</small>`;
-    if (rep.verdict === 'malicious')  return `<span class="badge rep-malicious">🔴 Malicious${labStr}</span>`;
-    if (rep.verdict === 'suspicious') return `<span class="badge rep-suspicious">🟡 Suspicious${labStr}</span>`;
-    if (rep.verdict === 'clean')      return `<span class="badge rep-clean">🟢 Clean</span>`;
-    return `<span class="badge rep-unknown">⚪ Unknown</span>`;
+
+    // "OTX unavailable" stored per-value if the key was missing during the check
+    if (rep.otxUnavailable) {
+      return `<span class="badge rep-unknown" title="OTX key not configured">⚪ OTX unavailable</span>`;
+    }
+
+    const pulseCount = rep.pulses ?? 0;
+    const tipLabels  = rep.labels?.length
+      ? rep.labels.join(' · ')
+      : '';
+    const pulseTip   = pulseCount > 0
+      ? `${pulseCount} OTX pulse${pulseCount !== 1 ? 's' : ''}${tipLabels ? ': ' + tipLabels : ''}`
+      : '';
+    const pulseStr   = pulseCount > 0
+      ? ` <small title="${_esc(pulseTip)}">(${pulseCount})</small>`
+      : '';
+
+    // Wording: cautious, factual — no hard "malicious/clean" claims
+    if (rep.verdict === 'malicious')
+      return `<span class="badge rep-malicious" title="${_esc(pulseTip)}">☣️ Seen in OTX${pulseStr}</span>`;
+    if (rep.verdict === 'suspicious')
+      return `<span class="badge rep-suspicious" title="${_esc(pulseTip)}">⚠️ Referenced in OTX${pulseStr}</span>`;
+    if (rep.verdict === 'clean')
+      return `<span class="badge rep-clean" title="No matching OTX pulses">✓ No OTX match</span>`;
+    return `<span class="badge rep-unknown">⚪ OTX unavailable</span>`;
   }
 
   // ─── URLhaus confirmation badge ───────────────────────────────────────────
@@ -542,8 +560,8 @@ const ArticleModal = (() => {
           🔍 Deep IOC scan
         </button>
         ${hasIOCs ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
-                title="Check IOC reputation via AlienVault OTX">
-          🦠 Check reputation
+                title="Query AlienVault OTX for each extracted IOC">
+          🦠 Check OTX
         </button>` : ''}
       </div>` : ''}`;
   }
@@ -655,10 +673,13 @@ const ArticleModal = (() => {
 
     if (!tasks.length) {
       repBtn.disabled    = false;
-      repBtn.textContent = '🦠 Check reputation';
+      repBtn.textContent = '🦠 Check OTX';
       return;
     }
 
+    // Read OTX key from UI (localStorage) — lets open-source users self-configure
+    const otxKey     = localStorage.getItem('cv_otx_api_key') || '';
+    const otxHeaders = otxKey ? { 'X-OTX-Key': otxKey } : {};
     const reputation = { ...(article.iocReputation || {}) };
 
     for (let i = 0; i < tasks.length; i++) {
@@ -666,26 +687,26 @@ const ArticleModal = (() => {
       try {
         const resp = await fetch(
           `/api/ioc?action=reputation&type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
-          { signal: AbortSignal.timeout(10_000) }
+          { headers: otxHeaders, signal: AbortSignal.timeout(10_000) }
         );
         if (resp.ok) {
           const data = await resp.json();
-          if (!data.error) reputation[value] = data;
-          // Surface OTX_API_KEY missing error immediately
-          if (data.error && data.error.includes('OTX_API_KEY')) {
-            if (window.UI) UI.showToast(`⚙ ${data.error}`, 'error');
+          // OTX key missing — surface once and abort
+          if (data.otxUnavailable) {
+            if (window.UI) UI.showToast('⚙ OTX API key not configured — add it in Settings → Integrations', 'warn');
             const liveRepBtn = document.getElementById('art-ioc-rep-btn');
-            if (liveRepBtn) { liveRepBtn.disabled = false; liveRepBtn.textContent = '🦠 Check reputation'; }
+            if (liveRepBtn) { liveRepBtn.disabled = false; liveRepBtn.textContent = '🦠 Check OTX'; }
             return;
           }
+          if (!data.error) reputation[value] = data;
         }
       } catch { /* network error — skip IOC silently */ }
 
-      // 200 ms between calls — respects OTX generous rate limit
+      // 200 ms between calls — respects OTX rate limit
       if (i < tasks.length - 1) await new Promise(r => setTimeout(r, 200));
     }
 
-    // Always update the article — it is the correct article regardless of navigation.
+    // Always update the article — correct regardless of navigation.
     article.iocReputation = reputation;
 
     // Only re-render if this article is still open (use live getElementById).
@@ -696,14 +717,12 @@ const ArticleModal = (() => {
       _bindIOCButtons(article);
     }
 
-    const malCount = Object.values(reputation).filter(r => r.verdict === 'malicious').length;
-    const susCount = Object.values(reputation).filter(r => r.verdict === 'suspicious').length;
-    const msg      = malCount > 0
-      ? `🔴 ${malCount} malicious IOC${malCount !== 1 ? 's' : ''} confirmed (OTX)`
-      : susCount > 0
-        ? `🟡 ${susCount} suspicious IOC${susCount !== 1 ? 's' : ''} (OTX)`
-        : `🟢 All IOCs appear clean (OTX)`;
-    if (window.UI) UI.showToast(msg, malCount > 0 ? 'error' : susCount > 0 ? 'warn' : 'success');
+    // Cautious summary toast — counts only, no hard verdicts
+    const seenCount = Object.values(reputation).filter(r => r.verdict === 'malicious' || r.verdict === 'suspicious').length;
+    const msg = seenCount > 0
+      ? `☣️ ${seenCount} IOC${seenCount !== 1 ? 's' : ''} referenced in OTX`
+      : `✓ No OTX matches found for these IOCs`;
+    if (window.UI) UI.showToast(msg, seenCount > 0 ? 'warn' : 'info');
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────

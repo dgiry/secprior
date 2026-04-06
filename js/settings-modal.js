@@ -62,6 +62,8 @@ const SettingsModal = (() => {
       _val('jira-base-url',    jira.baseUrl    || '');
       _val('jira-project-key', jira.projectKey || '');
     }
+    // ── Onglet Integrations — OTX API Key ───────────────────────────────────
+    _val('otx-api-key', localStorage.getItem('cv_otx_api_key') || '');
     // ── Onglet Integrations — URLhaus Auth-Key ──────────────────────────────
     _val('urlhaus-auth-key', localStorage.getItem('cv_urlhaus_auth_key') || '');
     // ── Onglet Integrations — Slack/Teams share webhook ─────────────────────
@@ -783,6 +785,12 @@ const SettingsModal = (() => {
       const projectKey = (_val('jira-project-key') || '').trim().toUpperCase();
       JiraConfig.save({ baseUrl, projectKey });
     }
+    // OTX API Key
+    const otxKey = (_val('otx-api-key') || '').trim();
+    try {
+      if (otxKey) localStorage.setItem('cv_otx_api_key', otxKey);
+      else        localStorage.removeItem('cv_otx_api_key');
+    } catch { /* quota exceeded */ }
     // URLhaus Auth-Key
     const urlhausKey = (_val('urlhaus-auth-key') || '').trim();
     try {
@@ -855,6 +863,58 @@ const SettingsModal = (() => {
       UI.showToast("❌ URLhaus: " + err.message, "error");
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = "🧪 Test connection"; }
+    }
+  }
+
+  async function testOTX() {
+    const key    = (_val('otx-api-key') || '').trim();
+    const btn    = document.getElementById('btn-otx-test');
+    const status = document.getElementById('otx-key-status');
+
+    const _set = (icon, msg, color) => {
+      if (status) status.innerHTML =
+        `<span style="color:${color};font-weight:600">${icon} ${msg}</span>`;
+    };
+
+    if (!key) { _set('⚠️', 'Enter a key first', '#e3a008'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+    _set('⏳', 'Querying OTX…', '#8b949e');
+
+    try {
+      // Query a well-known benign IP to verify the key works
+      const res = await fetch(
+        '/api/ioc?action=reputation&type=ip&value=8.8.8.8',
+        { headers: { 'X-OTX-Key': key }, signal: AbortSignal.timeout(12_000) }
+      );
+
+      if (!res.ok) {
+        _set('❌', `HTTP ${res.status}`, '#f85149');
+        UI.showToast(`❌ OTX: HTTP ${res.status}`, 'error');
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.otxUnavailable) {
+        _set('⚠️', 'Key not forwarded — retry', '#e3a008');
+        return;
+      }
+      if (data.error) {
+        const isBadKey = String(data.error).includes('401') || String(data.error).includes('403');
+        _set('❌', isBadKey ? 'Invalid API key' : data.error, '#f85149');
+        UI.showToast('❌ OTX: ' + data.error, 'error');
+        return;
+      }
+
+      _set('✅', `Active — OTX reachable`, '#3fb950');
+      UI.showToast('✅ OTX API key is valid', 'success');
+
+    } catch (err) {
+      _set('❌', `Connection error: ${err.message}`, '#f85149');
+      UI.showToast('❌ OTX: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🧪 Test connection'; }
     }
   }
 
@@ -1127,7 +1187,7 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations, testURLhaus, testShareWebhook,
+    saveIntegrations, testOTX, testURLhaus, testShareWebhook,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

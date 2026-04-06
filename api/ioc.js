@@ -110,11 +110,12 @@ async function _handleReputation(req, res) {
   if (!otxType)
     return res.status(400).json({ error: `Unknown IOC type: ${type}. Use: ip, domain, hash, url` });
 
-  const otxKey = process.env.OTX_API_KEY;
+  // UI key (X-OTX-Key header from localStorage) takes priority over env var.
+  // This lets open-source users self-configure without touching Vercel env vars.
+  const otxKey = req.headers["x-otx-key"] || process.env.OTX_API_KEY;
   if (!otxKey) {
-    return res.status(503).json({
-      error: "OTX_API_KEY not configured — add it to Vercel Environment Variables"
-    });
+    // Fail gracefully — frontend shows "OTX unavailable" inline, no hard error
+    return res.status(200).json({ otxUnavailable: true, reason: "OTX_API_KEY not configured" });
   }
 
   const indicator = encodeURIComponent(value);

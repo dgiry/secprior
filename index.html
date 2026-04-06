@@ -979,6 +979,36 @@
           </p>
         </div>
 
+        <!-- ── AlienVault OTX — API Key ─────────────────────────────────── -->
+        <div class="settings-group">
+          <label class="settings-label">🦠 AlienVault OTX — IOC enrichment</label>
+          <p class="settings-hint">
+            On-demand IOC enrichment from AlienVault Open Threat Exchange.
+            When you click <strong>🦠 Check OTX</strong> in an article's IOC panel,
+            each extracted IOC is queried against OTX and results appear inline.<br>
+            Free account and API key at
+            <a href="https://otx.alienvault.com/" target="_blank">otx.alienvault.com</a>.
+            On Vercel, you can also set <code>OTX_API_KEY</code> as an environment variable.
+          </p>
+          <label class="settings-label" for="otx-api-key">API Key</label>
+          <input type="password" id="otx-api-key" class="settings-input"
+                 placeholder="Your OTX API key" autocomplete="off">
+          <p class="settings-hint">
+            Stored locally in your browser (localStorage). Sent as a request
+            header — never appears in URLs or server logs.
+          </p>
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
+            <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
+              💾 Save
+            </button>
+            <button class="btn btn-test" id="btn-otx-test"
+                    onclick="SettingsModal.testOTX()">
+              🧪 Test connection
+            </button>
+            <span id="otx-key-status" class="settings-hint" style="min-width:0"></span>
+          </div>
+        </div>
+
         <!-- ── URLhaus (abuse.ch) — Auth-Key ────────────────────────────── -->
         <div class="settings-group">
           <label class="settings-label">☣️ URLhaus (abuse.ch) — IOC feed</label>
@@ -1344,7 +1374,7 @@
   <script src="js/ai-brief.js?v=4"></script>
   <script src="js/quick-actions.js?v=12"></script>
   <script src="js/urlhaus-ioc.js?v=1"></script>
-  <script src="js/article-modal.js?v=28"></script>
+  <script src="js/article-modal.js?v=29"></script>
   <script src="js/config.js?v=15"></script>
   <script src="js/feed-manager.js?v=14"></script>
   <script src="js/stats.js?v=14"></script>
@@ -1367,7 +1397,7 @@
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=29"></script>
+  <script src="js/settings-modal.js?v=30"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=21"></script>
   <script src="js/pdf-report.js?v=18"></script>
