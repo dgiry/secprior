@@ -582,10 +582,13 @@ const ArticleModal = (() => {
     const hasIOCs   = realCount > 0;
 
     const countPart  = hasIOCs ? ` (${realCount})` : '';
+    // "Auto" prefix tells the analyst this was enriched in the background,
+    // not manually triggered — gives context without adding a heavy UI element.
+    const autoLabel  = article._autoEnriched ? 'Auto · ' : '';
     const stateBadge = (repDone || vtDone)
-      ? ` <span class="badge badge-new">${[repDone && 'OTX ✓', vtDone && 'VT ✓'].filter(Boolean).join(' · ')}</span>`
+      ? ` <span class="badge badge-new">${autoLabel}${[repDone && 'OTX ✓', vtDone && 'VT ✓'].filter(Boolean).join(' · ')}</span>`
       : article._deepScanned
-        ? ' <span class="badge badge-new">Full scan</span>'
+        ? ` <span class="badge badge-new">${autoLabel}Full scan</span>`
         : '';
 
     return `
@@ -1058,5 +1061,20 @@ const ArticleModal = (() => {
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  return { init, open, openById, close, setArticles };
+  // ─── Rafraîchit le panneau IOC si cet article est actuellement ouvert ────────
+  //
+  // Appelé par IOCAutoEnricher après enrichissement en arrière-plan.
+  // No-op si le modal est fermé ou affiche un autre article.
+
+  function refreshIOCSection(articleId) {
+    const modal = document.getElementById('modal-article');
+    if (!modal || modal.dataset.currentArticleId !== String(articleId)) return;
+    const article = _articles.find(a => String(a.id) === String(articleId));
+    if (!article) return;
+    const livePanel = document.getElementById('art-ioc-section');
+    if (livePanel) livePanel.innerHTML = _renderIOCSection(article);
+    _bindIOCButtons(article);
+  }
+
+  return { init, open, openById, close, setArticles, refreshIOCSection };
 })();

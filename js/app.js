@@ -166,6 +166,18 @@ const App = (() => {
         });
       }
 
+      // ── Auto-IOC enrichment — priority articles only (non-bloquant) ─────
+      // Runs Deep IOC scan → OTX for critical_now + KEV/score≥70 articles.
+      // VT remains manual. Max 5 articles per run. Anti-duplicate guarded.
+      if (!isDemo && CONFIG.USE_API && typeof IOCAutoEnricher !== 'undefined') {
+        IOCAutoEnricher.run(articles, (article) => {
+          // Article is mutated in-place — persist and refresh modal if open.
+          Storage.setArticles(state.articles);
+          if (typeof ArticleModal !== 'undefined')
+            ArticleModal.refreshIOCSection(article.id);
+        });
+      }
+
       // ── Étape 6 : Alertes email/webhook intelligentes (non-bloquant) ─────
       if (!isDemo) {
         AlertManager.processNewArticles(articles);
