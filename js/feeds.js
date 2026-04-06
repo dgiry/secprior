@@ -273,7 +273,11 @@ async function fetchAllFeeds(forceRefresh = false) {
   // In static mode (USE_API=false) this block is skipped — no key, no fetch.
   if (CONFIG.USE_API) {
     try {
-      const uhRes = await fetch("/api/fetch-feeds?urlhaus=1", { signal: AbortSignal.timeout(25_000) });
+      const uhKey = localStorage.getItem("cv_urlhaus_auth_key") || "";
+      const uhRes = await fetch("/api/fetch-feeds?urlhaus=1", {
+        headers: uhKey ? { "X-URLhaus-Key": uhKey } : {},
+        signal: AbortSignal.timeout(25_000)
+      });
       if (uhRes.ok) {
         const uhData = await uhRes.json();
         if (Array.isArray(uhData.articles) && uhData.articles.length > 0) {

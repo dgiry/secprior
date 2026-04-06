@@ -979,6 +979,30 @@
           </p>
         </div>
 
+        <!-- ── URLhaus (abuse.ch) — Auth-Key ────────────────────────────── -->
+        <div class="settings-group">
+          <label class="settings-label">☣️ URLhaus (abuse.ch) — IOC feed</label>
+          <p class="settings-hint">
+            URLhaus provides a live feed of confirmed malicious URLs. Enter your
+            abuse.ch Auth-Key to enable it. Free account at
+            <a href="https://urlhaus.abuse.ch/api/" target="_blank">urlhaus.abuse.ch/api/</a>.<br>
+            On Vercel, you can also set <code>URLHAUS_AUTH_KEY</code> as an environment variable
+            — the UI key takes priority if both are present.
+          </p>
+          <label class="settings-label" for="urlhaus-auth-key">Auth-Key</label>
+          <input type="password" id="urlhaus-auth-key" class="settings-input"
+                 placeholder="Your abuse.ch Auth-Key" autocomplete="off">
+          <p class="settings-hint">
+            Stored locally in your browser (localStorage). Sent to the backend as a
+            request header — never appears in URLs or server logs.
+          </p>
+          <div class="settings-row" style="border:none;padding:.5rem 1.25rem 0">
+            <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
+              💾 Save
+            </button>
+          </div>
+        </div>
+
         <!-- ── Slack / Teams — Incoming Webhook ────────────────────────── -->
         <div class="settings-group">
           <label class="settings-label">💬 Slack / Teams — Incoming Webhook</label>
@@ -1337,7 +1361,7 @@
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=27"></script>
+  <script src="js/settings-modal.js?v=28"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=21"></script>
   <script src="js/pdf-report.js?v=18"></script>

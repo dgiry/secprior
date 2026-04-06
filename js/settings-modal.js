@@ -62,6 +62,8 @@ const SettingsModal = (() => {
       _val('jira-base-url',    jira.baseUrl    || '');
       _val('jira-project-key', jira.projectKey || '');
     }
+    // ── Onglet Integrations — URLhaus Auth-Key ──────────────────────────────
+    _val('urlhaus-auth-key', localStorage.getItem('cv_urlhaus_auth_key') || '');
     // ── Onglet Integrations — Slack/Teams share webhook ─────────────────────
     try {
       const sw   = JSON.parse(localStorage.getItem('cv_share_webhook') || '{}');
@@ -781,6 +783,12 @@ const SettingsModal = (() => {
       const projectKey = (_val('jira-project-key') || '').trim().toUpperCase();
       JiraConfig.save({ baseUrl, projectKey });
     }
+    // URLhaus Auth-Key
+    const urlhausKey = (_val('urlhaus-auth-key') || '').trim();
+    try {
+      if (urlhausKey) localStorage.setItem('cv_urlhaus_auth_key', urlhausKey);
+      else            localStorage.removeItem('cv_urlhaus_auth_key');
+    } catch { /* quota exceeded */ }
     // Slack/Teams share webhook
     const swUrl  = (_val('share-webhook-url') || '').trim();
     const swType = document.getElementById('share-webhook-type')?.value || 'slack';

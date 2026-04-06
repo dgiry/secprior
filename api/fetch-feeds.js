@@ -95,7 +95,9 @@ const URLHAUS_CSV_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/";
 const URLHAUS_MAX     = 50; // Keep N most recent rows
 
 async function _handleURLhaus(req, res) {
-  const authKey = process.env.URLHAUS_AUTH_KEY || "";
+  // UI key (from localStorage via X-URLhaus-Key header) takes priority over env var.
+  // This lets open-source users self-configure without touching Vercel env vars.
+  const authKey = req.headers["x-urlhaus-key"] || process.env.URLHAUS_AUTH_KEY || "";
 
   // Fail gracefully when key is not configured
   if (!authKey) {
