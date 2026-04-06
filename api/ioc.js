@@ -1,4 +1,4 @@
-// api/ioc.js — IOC enrichment: article body fetch + OTX reputation + VirusTotal
+// api/ioc.js — IOC enrichment: article body fetch + OTX reputation
 //
 // Merged (Vercel Hobby plan: 12 serverless function limit)
 //
@@ -12,14 +12,6 @@
 //   GET /api/ioc?action=reputation&type=ip|domain|hash|url&value=<value>
 //   → { verdict, pulses, labels, source: "otx" }
 //   Queries AlienVault OTX. Key: X-OTX-Key header || OTX_API_KEY env var.
-//
-//   GET /api/ioc?action=vt&type=ip|domain|hash|url&value=<value>
-//   → { malicious, suspicious, harmless, undetected, total, reputation, country, asOwner, source: "vt" }
-//   Queries VirusTotal API v3. Key: X-VT-Key header || VT_API_KEY env var.
-//   Free tier: 4 req/min, 500/day.
-//   VT API v3 endpoints used:
-//     ip_addresses/{ip}  · domains/{domain}  · files/{hash}
-//     urls/{base64url(url)} — url is base64url-encoded (no padding)
 
 "use strict";
 
@@ -34,10 +26,9 @@ module.exports = async (req, res) => {
 
   if (action === "body")       return _handleBody(req, res);
   if (action === "reputation") return _handleReputation(req, res);
-  if (action === "vt")         return _handleVT(req, res);
 
   return res.status(400).json({
-    error: "Missing or unknown action. Use ?action=body, ?action=reputation or ?action=vt"
+    error: "Missing or unknown action. Use ?action=body or ?action=reputation"
   });
 };
 
@@ -166,85 +157,3 @@ async function _handleReputation(req, res) {
   }
 }
 
-// ── action=vt : VirusTotal API v3 IOC lookup ─────────────────────────────────
-
-async function _handleVT(req, res) {
-  const { type, value } = req.query;
-  if (!type || !value)
-    return res.status(400).json({ error: "Missing required params: type, value" });
-
-  if (!["ip", "domain", "hash", "url"].includes(type))
-    return res.status(400).json({ error: `Unknown IOC type: ${type}. Use: ip, domain, hash, url` });
-
-  // UI key (X-VT-Key header from localStorage) takes priority over env var.
-  const vtKey = req.headers["x-vt-key"] || process.env.VT_API_KEY;
-  if (!vtKey) {
-    // Fail gracefully — frontend shows "VT unavailable" inline, no hard error
-    return res.status(200).json({ vtUnavailable: true, reason: "VT_API_KEY not configured" });
-  }
-
-  // Build VT API v3 endpoint
-  let endpoint;
-  if (type === "ip") {
-    endpoint = `https://www.virustotal.com/api/v3/ip_addresses/${encodeURIComponent(value)}`;
-  } else if (type === "domain") {
-    endpoint = `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(value)}`;
-  } else if (type === "hash") {
-    endpoint = `https://www.virustotal.com/api/v3/files/${encodeURIComponent(value)}`;
-  } else if (type === "url") {
-    // VT requires base64url-encoded URL (no padding)
-    const b64 = Buffer.from(value).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-    endpoint = `https://www.virustotal.com/api/v3/urls/${b64}`;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 10_000);
-
-    const resp = await fetch(endpoint, {
-      headers: { "x-apikey": vtKey },
-      signal:  controller.signal
-    });
-    clearTimeout(timeout);
-
-    // 404 = unknown to VT (never submitted)
-    if (resp.status === 404) {
-      res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=7200");
-      return res.status(200).json({
-        malicious: 0, suspicious: 0, harmless: 0, undetected: 0, total: 0,
-        reputation: 0, source: "vt"
-      });
-    }
-
-    if (resp.status === 401 || resp.status === 403)
-      return res.status(200).json({ vtUnavailable: true, reason: "Invalid or unauthorized VT API key" });
-
-    if (!resp.ok)
-      return res.status(resp.status).json({ error: `VirusTotal returned HTTP ${resp.status}` });
-
-    const json  = await resp.json();
-    const attrs = json?.data?.attributes || {};
-    const stats = attrs.last_analysis_stats || {};
-
-    const malicious   = stats.malicious   || 0;
-    const suspicious  = stats.suspicious  || 0;
-    const harmless    = stats.harmless    || 0;
-    const undetected  = stats.undetected  || 0;
-    const total       = malicious + suspicious + harmless + undetected;
-    const reputation  = attrs.reputation  ?? null;
-    const country     = attrs.country     || null;
-    const asOwner     = attrs.as_owner    || attrs.asn                || null;
-
-    res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
-    return res.status(200).json({
-      malicious, suspicious, harmless, undetected, total,
-      reputation, country, asOwner, source: "vt"
-    });
-
-  } catch (err) {
-    const msg = err.name === "AbortError"
-      ? "VirusTotal did not respond within 10 s"
-      : err.message;
-    return res.status(500).json({ error: msg });
-  }
-}

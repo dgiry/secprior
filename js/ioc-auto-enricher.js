@@ -1,7 +1,7 @@
 // ioc-auto-enricher.js — Background IOC enrichment for priority articles
 //
 // Automatically runs Deep IOC scan → OTX reputation on a small set of
-// priority articles after each pipeline run. VirusTotal is NOT auto-run.
+// priority articles after each pipeline run.
 //
 // Priority predicate (shouldAutoEnrichIOCs):
 //   priorityLevel === 'critical_now'   (KEV / EPSS ≥ 0.7 / score ≥ 80)
