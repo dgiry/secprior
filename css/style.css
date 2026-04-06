@@ -2499,6 +2499,58 @@ body.modal-open { overflow: hidden; }
   .ob-persona-grid { grid-template-columns: 1fr; }
 }
 
+/* ── SLA countdown badge ─────────────────────────────────────────────────── */
+.card-sla-row {
+  padding: .18rem .75rem .1rem;
+}
+
+.card-sla {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .12rem .5rem;
+  border-radius: 3px;
+  letter-spacing: .03em;
+  cursor: default;
+}
+
+/* ≥ 3 days — green, informational */
+.sla-ok {
+  color: #3fb950;
+  background: rgba(63,185,80,.08);
+  border: 1px solid rgba(63,185,80,.22);
+}
+
+/* 1-2 days — amber, attention */
+.sla-urgent {
+  color: #f0883e;
+  background: rgba(240,136,62,.12);
+  border: 1px solid rgba(240,136,62,.38);
+}
+
+/* Due today — red solid */
+.sla-today {
+  color: #f85149;
+  background: rgba(248,81,73,.14);
+  border: 1px solid rgba(248,81,73,.45);
+  animation: sla-pulse 2s ease-in-out infinite;
+}
+
+/* Overdue — full red background */
+.sla-overdue {
+  color: #fff;
+  background: rgba(248,81,73,.7);
+  border: 1px solid #f85149;
+  animation: sla-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes sla-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .65; }
+}
+
 /* ── j/k article navigation focus ring ──────────────────────────────────── */
 .card-nav-focus {
   outline: 2px solid var(--accent, #58a6ff);

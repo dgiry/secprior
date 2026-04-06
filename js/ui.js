@@ -289,6 +289,9 @@ const UI = (() => {
     const extraBadges = [kevBadge, epssBadge, trendingBadge, watchlistBadge, attackBadges, iocSummaryBadge, actorBadge]
       .filter(Boolean).join("");
 
+    // SLA countdown — visible sous le header de la carte
+    const slaBadge = _slaBadgeHTML(article);
+
     // ── Badges IOCs (max 3 sur la carte, click-to-copy) ──────────────────────
     const iocBadges = _buildIOCBadges(article.iocs, article.iocCount);
 
@@ -337,6 +340,7 @@ const UI = (() => {
             ${starred ? '★' : '☆'}
           </button>
         </header>
+        ${slaBadge ? `<div class="card-sla-row">${slaBadge}</div>` : ''}
         ${scoreBar}
         ${priorityLine}
         <h3 class="card-title">
@@ -507,6 +511,55 @@ const UI = (() => {
   function _escHtmlShort(s) {
     return (s || '').slice(0, 40)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ── SLA countdown ─────────────────────────────────────────────────────────
+  // Defaults: critical_now=1d · investigate=7d · watch=30d (low=no SLA)
+  // Override via localStorage key "cv_sla_days": { critical_now:1, investigate:7, watch:30 }
+  const _SLA_DEFAULTS = { critical_now: 1, investigate: 7, watch: 30 };
+
+  function _getSLADays() {
+    try {
+      const custom = JSON.parse(localStorage.getItem('cv_sla_days') || 'null');
+      if (custom && typeof custom === 'object') return { ..._SLA_DEFAULTS, ...custom };
+    } catch { /* ignore */ }
+    return _SLA_DEFAULTS;
+  }
+
+  function _slaBadgeHTML(article) {
+    const slaDays = _getSLADays()[article.priorityLevel];
+    if (!slaDays) return ''; // low priority → no SLA
+
+    // No badge once the analyst has closed the case
+    if (typeof EntityStatus !== 'undefined') {
+      const st = EntityStatus.getEffectiveStatus('article', article.id);
+      if (st === 'mitigated' || st === 'ignored') return '';
+    }
+
+    const deadline    = new Date(article.pubDate.getTime() + slaDays * 86400000);
+    const msLeft      = deadline.getTime() - Date.now();
+    const daysLeft    = Math.ceil(msLeft / 86400000);
+    const dlStr       = deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const slaLabel    = `${slaDays}d SLA`;
+
+    // "watch" (30d): only show badge in last 7 days to avoid noise
+    if (article.priorityLevel === 'watch' && daysLeft > 7) return '';
+
+    if (daysLeft < 0) {
+      const over = Math.abs(daysLeft);
+      return `<span class="card-sla sla-overdue"
+        title="SLA exceeded by ${over}d — patch window was ${slaDays}d">🔴 SLA overdue${over > 1 ? ' +' + over + 'd' : ''}</span>`;
+    }
+    if (daysLeft === 0) {
+      return `<span class="card-sla sla-today"
+        title="Patch deadline: today (${dlStr}) — ${slaLabel}">🔴 Due today</span>`;
+    }
+    if (daysLeft <= 2) {
+      return `<span class="card-sla sla-urgent"
+        title="Patch deadline: ${dlStr} — ${slaLabel}">⚠ ${daysLeft}d left</span>`;
+    }
+    return `<span class="card-sla sla-ok"
+      title="Patch deadline: ${dlStr} — ${slaLabel}">⏱ ${daysLeft}d</span>`;
   }
 
   // ─── Filtrage ──────────────────────────────────────────────────────────────
