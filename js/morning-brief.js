@@ -341,6 +341,28 @@ const MorningBrief = (() => {
     if (modal) modal.style.display = 'none';
   }
 
+  function _print() {
+    const ta = document.getElementById('mb-textarea');
+    if (!ta || !ta.value) return;
+    const area = document.getElementById('mb-print-area');
+    if (!area) return;
+
+    // Populate the print area with the brief text
+    area.textContent = ta.value;
+    document.body.classList.add('mb-printing');
+
+    window.print();
+
+    // Clean up after the print dialog closes
+    const cleanup = () => {
+      document.body.classList.remove('mb-printing');
+      area.textContent = '';
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
+    // Fallback cleanup for browsers that don't fire afterprint
+    setTimeout(cleanup, 3000);
+  }
+
   // ── Public API ─────────────────────────────────────────────────────────────
 
   function show() {
@@ -356,6 +378,7 @@ const MorningBrief = (() => {
     document.getElementById('btn-morning-brief')?.addEventListener('click', show);
     document.getElementById('mb-close')?.addEventListener('click', _close);
     document.getElementById('mb-copy-btn')?.addEventListener('click', _copy);
+    document.getElementById('mb-print-btn')?.addEventListener('click', _print);
 
     // Click outside overlay to close
     document.getElementById('modal-morning-brief')?.addEventListener('click', e => {

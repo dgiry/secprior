@@ -2499,6 +2499,31 @@ body.modal-open { overflow: hidden; }
   .ob-persona-grid { grid-template-columns: 1fr; }
 }
 
+/* ── j/k article navigation focus ring ──────────────────────────────────── */
+.card-nav-focus {
+  outline: 2px solid var(--accent, #58a6ff);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(88,166,255,.12);
+}
+
+/* ── Morning Brief — print area ──────────────────────────────────────────── */
+#mb-print-area { display: none; }
+
+@media print {
+  body.mb-printing > *:not(#mb-print-area) { display: none !important; }
+  #mb-print-area {
+    display: block !important;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #111;
+    padding: 1.5cm;
+    margin: 0;
+  }
+}
+
 /* ── PDF / Print ────────────────────────────────────────────────────────── */
 /* En mode écran : cacher le conteneur rapport */
 #pdf-report { display: none; }

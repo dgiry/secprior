@@ -1107,6 +1107,19 @@
             </tr>
             <tr class="ks-divider-row"><td colspan="2"></td></tr>
             <tr>
+              <td><kbd>j</kbd> / <kbd>k</kbd></td>
+              <td>Next / previous article</td>
+            </tr>
+            <tr>
+              <td><kbd>Enter</kbd></td>
+              <td>Open focused article</td>
+            </tr>
+            <tr>
+              <td><kbd>s</kbd></td>
+              <td>Cycle status of focused article</td>
+            </tr>
+            <tr class="ks-divider-row"><td colspan="2"></td></tr>
+            <tr>
               <td><kbd>?</kbd></td>
               <td>Show this cheatsheet</td>
             </tr>
@@ -1136,6 +1149,7 @@
       </div>
       <div class="mb-footer">
         <span class="mb-hint">Paste into Slack #security, Teams or morning email</span>
+        <button id="mb-print-btn" class="btn" title="Print or save as PDF">🖨 Print / PDF</button>
         <button id="mb-copy-btn" class="btn btn-primary">📋 Copy brief</button>
       </div>
     </div>
@@ -1289,6 +1303,9 @@
     </div>
   </div>
 
+  <!-- ── Conteneur Morning Brief print (caché à l'écran, visible à l'impression) ── -->
+  <div id="mb-print-area"></div>
+
   <!-- ── Conteneur rapport PDF (caché à l'écran, visible à l'impression) ──── -->
   <div id="pdf-report"></div>
 
@@ -1325,11 +1342,11 @@
   <script src="js/ui.js?v=19"></script>
   <script src="js/pdf-report.js?v=18"></script>
   <script src="js/exec-view.js?v=1"></script>
-  <script src="js/morning-brief.js?v=2"></script>
+  <script src="js/morning-brief.js?v=3"></script>
   <script src="js/ioc-export.js?v=1"></script>
   <script src="js/how-it-works.js?v=1"></script>
   <script src="js/keyboard-shortcuts.js?v=1"></script>
-  <script src="js/app.js?v=24"></script>
+  <script src="js/app.js?v=25"></script>
   <script src="js/vendor-panel.js?v=18"></script>
   <script src="js/entity-status.js?v=4"></script>
   <script src="js/ioc-utils.js?v=2"></script>

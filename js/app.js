@@ -2,6 +2,19 @@
 
 const App = (() => {
   // État global de l'application
+  // ─── j/k article navigation ───────────────────────────────────────────────
+  let _navIdx = -1; // -1 = nothing focused yet
+
+  function _navCard(delta) {
+    const cards = Array.from(document.querySelectorAll('#feed-grid .card[data-id]'));
+    if (!cards.length) return;
+    document.querySelector('.card-nav-focus')?.classList.remove('card-nav-focus');
+    _navIdx = Math.max(0, Math.min(cards.length - 1, _navIdx + delta));
+    const card = cards[_navIdx];
+    card.classList.add('card-nav-focus');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   const state = {
     articles: [],         // Tous les articles chargés
     nvdMap: {},           // { articleId: cveData } — données NVD enrichies
@@ -316,6 +329,7 @@ const App = (() => {
       riskFilters:   RiskFilter.getFilters()   // { active: Set, epssThreshold }
     });
     UI.renderCards(filtered);
+    _navIdx = -1; // Reset j/k navigation on every render
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
     _updateNewBadge();                        // badge "N nouveaux" dans la statusbar
@@ -769,6 +783,28 @@ const App = (() => {
         // "?" show keyboard shortcuts cheatsheet
         e.preventDefault();
         if (typeof KeyboardShortcuts !== 'undefined') KeyboardShortcuts.show();
+      } else if (e.key === "j" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "j" navigate to next article card
+        e.preventDefault();
+        _navCard(+1);
+      } else if (e.key === "k" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "k" navigate to previous article card
+        e.preventDefault();
+        _navCard(-1);
+      } else if (e.key === "Enter" && !isInput) {
+        // "Enter" open focused card in article modal
+        const focused = document.querySelector('.card-nav-focus[data-id]');
+        if (focused && typeof ArticleModal !== 'undefined') {
+          e.preventDefault();
+          ArticleModal.openById(focused.dataset.id);
+        }
+      } else if (e.key.toUpperCase() === "S" && !isInput && !e.ctrlKey && !e.metaKey) {
+        // "S" cycle analyst status of focused card
+        const focused = document.querySelector('.card-nav-focus[data-id]');
+        if (focused && typeof UI !== 'undefined') {
+          e.preventDefault();
+          UI.cycleStatus(focused.dataset.id);
+        }
       } else if (e.key === "Escape") {
         // "Escape" close nav dropdowns and side panels
         _closeNavDropdowns();
