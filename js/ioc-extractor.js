@@ -198,10 +198,15 @@ const IOCExtractor = (() => {
   }
 
   // ── Enrichissement d'un article ───────────────────────────────────────────
+  //
+  // @param {object} article   - article ThreatLens enrichi
+  // @param {string} fullText  - corps complet de l'article (optionnel).
+  //                             Fourni par /api/article-body pour le deep scan.
+  //                             Si absent, seuls title + description sont analysés.
 
-  function enrichArticle(article) {
-    // Construire le texte brut (titre + description)
-    const rawText = [article.title, article.description].filter(Boolean).join(' ');
+  function enrichArticle(article, fullText = '') {
+    // Construire le texte brut (titre + description + corps optionnel)
+    const rawText = [article.title, article.description, fullText].filter(Boolean).join(' ');
     // Appliquer le défanging avant extraction
     const text    = _defang(rawText);
 

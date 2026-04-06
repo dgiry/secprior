@@ -1331,6 +1331,36 @@ a:hover { text-decoration: underline; }
 }
 .art-ioc-copy-btn:hover { opacity: 1; }
 
+/* Deep IOC scan button (Option B — fetch full article body) */
+.art-ioc-deep-btn {
+  margin-top: .75rem;
+  font-size: .8rem;
+  padding: .3rem .75rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.art-ioc-deep-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.art-ioc-deep-btn:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+/* Small note below deep scan result */
+.art-ioc-deep-note {
+  margin-top: .5rem;
+  font-size: .75rem;
+  color: var(--text3, var(--text2));
+  opacity: .7;
+}
+
 /* ── Modal Détail Article ────────────────────────────────────────────────── */
 
 /* Curseur pointer sur les cartes (hors liens/boutons) */

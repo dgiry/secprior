@@ -82,6 +82,12 @@ const ArticleModal = (() => {
       });
     }
 
+    // Deep IOC scan — only on Vercel (USE_API=true), where /api/article-body is available
+    if (typeof CONFIG !== 'undefined' && CONFIG.USE_API) {
+      document.getElementById('art-ioc-deep-btn')
+        ?.addEventListener('click', () => _fetchDeepIOCs(article));
+    }
+
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
     content.scrollTop = 0;
@@ -156,11 +162,17 @@ const ArticleModal = (() => {
             </div>
           </div>` : ''}
 
-          ${(article.iocCount > 0) ? `
-          <div class="art-modal-section">
-            <h4 class="art-modal-section-title">🔬 Extracted IOCs (${article.iocCount})</h4>
-            ${_renderIOCPanel(article.iocs)}
-          </div>` : ''}
+          <div class="art-modal-section" id="art-ioc-section">
+            <h4 class="art-modal-section-title">🔬 Extracted IOCs${article.iocCount > 0 ? ` (${article.iocCount})` : ''}</h4>
+            ${article.iocCount > 0
+              ? _renderIOCPanel(article.iocs)
+              : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
+            ${(typeof CONFIG !== 'undefined' && CONFIG.USE_API) ? `
+            <button id="art-ioc-deep-btn" class="btn art-ioc-deep-btn"
+                    title="Fetch full article body and re-scan for IOCs (server-side)">
+              🔍 Deep IOC scan
+            </button>` : ''}
+          </div>
 
         </div>
 
@@ -458,6 +470,64 @@ const ArticleModal = (() => {
     return sections.length
       ? `<div class="art-ioc-panel">${sections.join('')}</div>`
       : '<p class="art-metric-na">No IOC detected in this text.</p>';
+  }
+
+  // ─── Deep IOC scan (Option B — fetch corps complet via backend) ───────────
+  //
+  // Appelle /api/article-body?url=<encoded> pour récupérer le texte brut de l'article
+  // complet, puis relance IOCExtractor.enrichArticle() avec ce texte supplémentaire.
+  // Met à jour le panneau IOC dans le modal sans rechargement.
+
+  async function _fetchDeepIOCs(article) {
+    const btn   = document.getElementById('art-ioc-deep-btn');
+    const panel = document.getElementById('art-ioc-section');
+    if (!btn || !panel) return;
+
+    btn.disabled    = true;
+    btn.textContent = '⏳ Scanning…';
+
+    try {
+      const resp = await fetch(`/api/article-body?url=${encodeURIComponent(article.link)}`, {
+        signal: AbortSignal.timeout(15_000)
+      });
+      if (!resp.ok) {
+        const { error } = await resp.json().catch(() => ({}));
+        throw new Error(error || `HTTP ${resp.status}`);
+      }
+      const { text, chars } = await resp.json();
+
+      // Re-run extraction with full article body
+      if (typeof IOCExtractor === 'undefined') throw new Error('IOCExtractor not loaded');
+      const enriched = IOCExtractor.enrichArticle(article, text);
+
+      // Update article in place so _copyIOCs() picks up the new IOCs
+      article.iocs     = enriched.iocs;
+      article.iocCount = enriched.iocCount;
+
+      // Re-render the IOC section
+      const note = `<p class="art-ioc-deep-note">📄 ${(chars || 0).toLocaleString()} chars scanned from full article</p>`;
+      if (enriched.iocCount > 0) {
+        panel.innerHTML = `
+          <h4 class="art-modal-section-title">🔬 Extracted IOCs (${enriched.iocCount}) <span class="badge badge-new">Full scan</span></h4>
+          ${_renderIOCPanel(enriched.iocs)}
+          ${note}`;
+      } else {
+        panel.innerHTML = `
+          <h4 class="art-modal-section-title">🔬 Extracted IOCs</h4>
+          <p class="art-metric-na">No IOC detected after full article scan.</p>
+          ${note}`;
+      }
+
+      if (window.UI) UI.showToast(
+        `🔬 Deep scan: ${enriched.iocCount} IOC${enriched.iocCount !== 1 ? 's' : ''} found`,
+        enriched.iocCount > 0 ? 'success' : 'info'
+      );
+
+    } catch (err) {
+      btn.disabled    = false;
+      btn.textContent = '🔍 Deep IOC scan';
+      if (window.UI) UI.showToast(`⚠ Deep scan failed: ${err.message}`, 'error');
+    }
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────
