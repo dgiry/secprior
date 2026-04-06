@@ -82,6 +82,11 @@ const ArticleModal = (() => {
       });
     }
 
+    // Track which article is currently open — used by async IOC callbacks
+    // to guard against stale post-await DOM writes when the user navigates
+    // to a different article before the deep scan / reputation check completes.
+    modal.dataset.currentArticleId = article.id;
+
     // IOC action buttons — deep scan (Option B) + reputation (Option C)
     _bindIOCButtons(article);
 
@@ -526,6 +531,16 @@ const ArticleModal = (() => {
 
   function _bindIOCButtons(article) {
     if (typeof CONFIG === 'undefined' || !CONFIG.USE_API) return;
+
+    // Guard: if an async callback (deep scan / reputation) fires after the user
+    // has already navigated to a different article, do NOT bind its stale closure
+    // to the new article's buttons.  Without this check the new buttons would
+    // accumulate an extra listener that calls _fetchDeepIOCs / _checkReputation
+    // with the wrong article, causing IOC data from article A to appear while
+    // article B is displayed.
+    const modal = document.getElementById('modal-article');
+    if (!modal || modal.dataset.currentArticleId !== String(article.id)) return;
+
     document.getElementById('art-ioc-deep-btn')
       ?.addEventListener('click', () => _fetchDeepIOCs(article));
     document.getElementById('art-ioc-rep-btn')
