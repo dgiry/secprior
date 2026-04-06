@@ -972,6 +972,11 @@ const SettingsModal = (() => {
     // Sort each bucket alphabetically by hostname
     Object.values(byBucket).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
 
+    // Fallback: old cached payloads may not have swpTotal — derive from bucket counts
+    const total = data.swpTotal != null
+      ? data.swpTotal
+      : (data.ipsActive || 0) + (data.ipsNotActive || 0) + (data.offline_ipsUnknown || 0) + (data.noIpsFeature || 0);
+
     const ageStr = data.cachedAt
       ? (() => {
           const mins = Math.round((Date.now() - data.cachedAt) / 60000);
@@ -979,7 +984,7 @@ const SettingsModal = (() => {
         })()
       : '';
     const totalLine = `<p class="settings-hint" style="margin:0 0 .6rem">
-      ${data.swpTotal} SWP endpoint${data.swpTotal !== 1 ? 's' : ''}
+      ${total} SWP endpoint${total !== 1 ? 's' : ''}
       ${ageStr ? `· refreshed ${ageStr}` : ''}
     </p>`;
 

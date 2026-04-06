@@ -330,6 +330,8 @@ async function _handleSWP(req, res) {
         const { result } = await kvRes.json();
         if (result) {
           const cached = JSON.parse(result);
+          // Invalidate stale cache missing swpTotal (stored before field was added)
+          if (cached.swpTotal == null) throw new Error("stale_schema");
           // Strip rawSample from cached unless debug requested
           if (!debug) delete cached.rawSample;
           res.setHeader("Cache-Control", `s-maxage=${_SWP_CACHE_TTL_S}, stale-while-revalidate=300`);
