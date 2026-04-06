@@ -510,8 +510,15 @@ const IncidentPanel = (() => {
 
     const title = _makeTitle(cves, vendors, angles, sorted[0]);
 
-    // ID stable : CVE principale ou vendor+date
-    const slug = (cves[0] || `${vendors[0] || "unknown"}-${(lastSeen || "").slice(0, 10)}`)
+    // ID stable : CVE principale, vendor+artKey, ou artKey seul.
+    // Pour les incidents sans CVE, on inclut un fragment de l'ID du premier
+    // article afin d'éviter les collisions entre plusieurs incidents sans CVE
+    // survenus le même jour (ex. plusieurs CISA ICS advisories sans vendor).
+    const artKey = sorted[0].id
+      .replace(/[^a-z0-9]/gi, "").slice(-12) || "x";
+    const baseKey = cves[0]
+      || `${vendors[0] || artKey}-${(lastSeen || "").slice(0, 10)}`;
+    const slug = baseKey
       .toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").slice(0, 44);
     const incidentId = `inc_${slug}`;
 
