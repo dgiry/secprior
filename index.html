@@ -1038,6 +1038,36 @@
           </div>
         </div>
 
+        <!-- ── ThreatFox (abuse.ch) — IOC enrichment ────────────────────── -->
+        <div class="settings-group">
+          <label class="settings-label">🦊 ThreatFox — IOC Reputation (abuse.ch)</label>
+          <p class="settings-hint">
+            ThreatFox is a free threat intelligence feed by abuse.ch. Each extracted IOC
+            is queried against ThreatFox to surface malware families, threat types and
+            confidence scores inline in the IOC panel.<br>
+            Free account at <a href="https://threatfox.abuse.ch/" target="_blank">threatfox.abuse.ch</a>
+            — uses the <strong>same Auth-Key as URLhaus</strong> (both are abuse.ch services).
+            On Vercel, you can also set <code>THREATFOX_AUTH_KEY</code> as an environment variable.
+          </p>
+          <label class="settings-label" for="tf-auth-key">Auth-Key</label>
+          <input type="password" id="tf-auth-key" class="settings-input"
+                 placeholder="Your abuse.ch Auth-Key (same as URLhaus)" autocomplete="off">
+          <p class="settings-hint">
+            Stored locally in your browser (localStorage). Sent to the backend as a
+            request header — never appears in URLs or server logs.
+          </p>
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
+            <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
+              💾 Save
+            </button>
+            <button class="btn btn-test" id="btn-tf-test"
+                    onclick="SettingsModal.testThreatFox()">
+              🧪 Test connection
+            </button>
+            <span id="tf-key-status" class="settings-hint" style="min-width:0"></span>
+          </div>
+        </div>
+
         <!-- ── Slack / Teams — Incoming Webhook ────────────────────────── -->
         <div class="settings-group">
           <label class="settings-label">💬 Slack / Teams — Incoming Webhook</label>
@@ -1374,7 +1404,7 @@
   <script src="js/ai-brief.js?v=4"></script>
   <script src="js/quick-actions.js?v=12"></script>
   <script src="js/urlhaus-ioc.js?v=1"></script>
-  <script src="js/article-modal.js?v=33"></script>
+  <script src="js/article-modal.js?v=34"></script>
   <script src="js/config.js?v=15"></script>
   <script src="js/feed-manager.js?v=14"></script>
   <script src="js/stats.js?v=14"></script>
@@ -1392,13 +1422,13 @@
   <script src="js/ioc-extractor.js?v=21"></script>
   <script src="js/risk-filter.js?v=14"></script>
   <script src="js/pipeline.js?v=13"></script>
-  <script src="js/ioc-auto-enricher.js?v=1"></script>
+  <script src="js/ioc-auto-enricher.js?v=2"></script>
   <script src="js/nvd.js?v=13"></script>
   <!-- trend-vp.js deleted (2026-04): per-CVE VP signal not supported by TV1 public API -->
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=32"></script>
+  <script src="js/settings-modal.js?v=33"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=21"></script>
   <script src="js/pdf-report.js?v=18"></script>

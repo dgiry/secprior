@@ -418,8 +418,9 @@ const ArticleModal = (() => {
   // @param {object} iocs           - { ips, hashes, domains, urls }
   // @param {object} reputation     - map IOC value → OTX result (populated by _checkReputation)
   // @param {object} urlhausMatches - map IOC value → URLhaus entry (from enrichArticle)
+  // @param {object} tfResults      - map IOC value → ThreatFox result (populated by _checkThreatFox)
 
-  function _renderIOCPanel(iocs, reputation = {}, urlhausMatches = {}) {
+  function _renderIOCPanel(iocs, reputation = {}, urlhausMatches = {}, tfResults = {}) {
     if (!iocs) return '<p class="art-metric-na">No IOC detected.</p>';
 
     const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
@@ -430,11 +431,12 @@ const ArticleModal = (() => {
       const shortDisplay = displayVal || value;
       const repBadge     = _reputationBadge(value, reputation);
       const uhBadge      = _urlhausBadge(value, urlhausMatches);
+      const tfBadge      = _threatFoxBadge(value, tfResults);
       return `
         <div class="art-ioc-row">
           <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
-          ${repBadge}${uhBadge}
+          ${repBadge}${uhBadge}${tfBadge}
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
                   title="Copy">📋</button>
@@ -525,26 +527,61 @@ const ArticleModal = (() => {
     return `<span class="badge uh-confirmed"${linkAttr}>☣️ URLhaus: ${_esc(match.threat)}${_esc(tagStr)}</span>`;
   }
 
+  // ─── ThreatFox badge pour une valeur IOC ────────────────────────────────────
+  //
+  // Wording is compact and structural — shows malware family + confidence, or
+  // threat type if no malware name is available. No hard verdicts.
+
+  function _threatFoxBadge(value, tfResults) {
+    const tf = tfResults?.[value];
+    if (!tf) return '';
+
+    if (tf.tfUnavailable)
+      return `<span class="badge tf-unknown" title="ThreatFox key not configured">🦊 ThreatFox unavailable</span>`;
+    if (tf.error) return '';
+
+    if (!tf.matched)
+      return `<span class="badge tf-no-match" title="No ThreatFox entry for this IOC">🦊 No ThreatFox match</span>`;
+
+    // Prefer malware name + confidence; fall back to threat_type alone
+    const label = tf.malware
+      ? `${_esc(tf.malware)}${tf.confidence != null ? ` · conf ${tf.confidence}` : ''}`
+      : `ThreatFox: ${_esc(tf.threat_type || '?')}`;
+
+    // Full tooltip: all available fields
+    const tipParts = [
+      tf.threat_type               && `threat: ${tf.threat_type}`,
+      tf.malware                   && `malware: ${tf.malware}`,
+      tf.confidence != null        && `confidence: ${tf.confidence}%`,
+      tf.first_seen                && `first seen: ${tf.first_seen.slice(0, 10)}`,
+      tf.tags?.length              && `tags: ${tf.tags.join(', ')}`,
+      tf.count > 1                 && `${tf.count} ThreatFox entries`
+    ].filter(Boolean).join(' · ');
+
+    return `<span class="badge tf-match" title="${_esc(tipParts)}">🦊 ${label}</span>`;
+  }
+
   // ─── Section IOC centralisée (re-utilisée par open, deepScan, reputation) ──
   //
   // Seul point d'entrée pour le rendu de la section IOC complète.
-  // Lit article.iocs, article.iocReputation, article._deepChars, article._deepScanned.
+  // Lit article.iocs, article.iocReputation, article.iocThreatFox, article._deepChars, article._deepScanned.
 
   function _renderIOCSection(article) {
-    const rep     = article.iocReputation || {};
+    const rep     = article.iocReputation  || {};
+    const tf      = article.iocThreatFox   || {};
     const hasAPI  = typeof CONFIG !== 'undefined' && CONFIG.USE_API;
     const repDone = Object.keys(rep).length > 0;
+    const tfDone  = Object.keys(tf).length  > 0;
 
     // Source de vérité : toujours les arrays réels, pas article.iocCount (peut dériver)
     const realCount = IOCExtractor.getRealIOCCount(article);
     const hasIOCs   = realCount > 0;
 
     const countPart  = hasIOCs ? ` (${realCount})` : '';
-    // "Auto" prefix tells the analyst this was enriched in the background,
-    // not manually triggered — gives context without adding a heavy UI element.
     const autoLabel  = article._autoEnriched ? 'Auto · ' : '';
-    const stateBadge = repDone
-      ? ` <span class="badge badge-new">${autoLabel}OTX ✓</span>`
+    const enrichTags = [repDone && 'OTX ✓', tfDone && 'TF ✓'].filter(Boolean).join(' · ');
+    const stateBadge = (repDone || tfDone)
+      ? ` <span class="badge badge-new">${autoLabel}${enrichTags}</span>`
       : article._deepScanned
         ? ` <span class="badge badge-new">${autoLabel}Full scan</span>`
         : '';
@@ -552,7 +589,7 @@ const ArticleModal = (() => {
     return `
       <h4 class="art-modal-section-title">🔬 Extracted IOCs${countPart}${stateBadge}</h4>
       ${hasIOCs
-        ? _renderIOCPanel(article.iocs, rep, article.urlhausMatches || {})
+        ? _renderIOCPanel(article.iocs, rep, article.urlhausMatches || {}, tf)
         : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
       ${article._deepChars
         ? `<p class="art-ioc-deep-note">📄 ${article._deepChars.toLocaleString()} chars scanned from full article</p>`
@@ -565,6 +602,10 @@ const ArticleModal = (() => {
         ${hasIOCs ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
                 title="Query AlienVault OTX for each extracted IOC">
           🦠 Check OTX
+        </button>` : ''}
+        ${hasIOCs ? `<button id="art-ioc-tf-btn" class="btn art-ioc-deep-btn"
+                title="Query ThreatFox (abuse.ch) for each extracted IOC">
+          🦊 Check ThreatFox
         </button>` : ''}
       </div>` : ''}`;
   }
@@ -587,6 +628,8 @@ const ArticleModal = (() => {
       ?.addEventListener('click', () => _fetchDeepIOCs(article));
     document.getElementById('art-ioc-rep-btn')
       ?.addEventListener('click', () => _checkReputation(article));
+    document.getElementById('art-ioc-tf-btn')
+      ?.addEventListener('click', () => _checkThreatFox(article));
   }
 
   // ─── Deep IOC scan (Option B — fetch corps complet via backend) ───────────
@@ -726,6 +769,78 @@ const ArticleModal = (() => {
       ? `☣️ ${seenCount} IOC${seenCount !== 1 ? 's' : ''} referenced in OTX`
       : `✓ No OTX matches found for these IOCs`;
     if (window.UI) UI.showToast(msg, seenCount > 0 ? 'warn' : 'info');
+  }
+
+  // ─── Check ThreatFox (Option E) ──────────────────────────────────────────
+  //
+  // Pour chaque IOC extrait, interroge /api/ioc?action=threatfox.
+  // Met à jour article.iocThreatFox puis re-rend la section IOC.
+  // ThreatFox auto-détecte le type IOC côté API — pas besoin de passer type.
+  // Délai de 200 ms entre requêtes.
+
+  async function _checkThreatFox(article) {
+    const tfBtn = document.getElementById('art-ioc-tf-btn');
+    if (!tfBtn) return;
+
+    tfBtn.disabled    = true;
+    tfBtn.textContent = '⏳ Checking…';
+
+    const iocs  = article.iocs || {};
+    const tasks = [];
+
+    // Cap per type — ThreatFox has no strict published rate limit but we stay conservative
+    (iocs.ips     || []).slice(0, 5).forEach(v => tasks.push(v));
+    (iocs.domains || []).slice(0, 5).forEach(v => tasks.push(v));
+    (iocs.hashes  || []).slice(0, 5).forEach(h => tasks.push(h.value));
+    (iocs.urls    || []).slice(0, 3).forEach(v => tasks.push(v));
+
+    if (!tasks.length) {
+      tfBtn.disabled    = false;
+      tfBtn.textContent = '🦊 Check ThreatFox';
+      return;
+    }
+
+    const tfKey     = localStorage.getItem('cv_tf_auth_key') || '';
+    const tfHeaders = tfKey ? { 'X-TF-Key': tfKey } : {};
+    const tfResults = { ...(article.iocThreatFox || {}) };
+
+    for (let i = 0; i < tasks.length; i++) {
+      const value = tasks[i];
+      try {
+        const resp = await fetch(
+          `/api/ioc?action=threatfox&value=${encodeURIComponent(value)}`,
+          { headers: tfHeaders, signal: AbortSignal.timeout(10_000) }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.tfUnavailable) {
+            if (window.UI) UI.showToast('⚙ ThreatFox key not configured — add it in Settings → Integrations', 'warn');
+            const liveTfBtn = document.getElementById('art-ioc-tf-btn');
+            if (liveTfBtn) { liveTfBtn.disabled = false; liveTfBtn.textContent = '🦊 Check ThreatFox'; }
+            return;
+          }
+          if (!data.error) tfResults[value] = data;
+        }
+      } catch { /* network error — skip silently */ }
+
+      if (i < tasks.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+
+    article.iocThreatFox = tfResults;
+
+    const modal = document.getElementById('modal-article');
+    if (modal?.dataset.currentArticleId === String(article.id)) {
+      const livePanel = document.getElementById('art-ioc-section');
+      if (livePanel) livePanel.innerHTML = _renderIOCSection(article);
+      _bindIOCButtons(article);
+    }
+
+    // Cautious summary — report matches, not verdicts
+    const matchCount = Object.values(tfResults).filter(r => r.matched).length;
+    const msg = matchCount > 0
+      ? `🦊 ${matchCount} IOC${matchCount !== 1 ? 's' : ''} matched in ThreatFox`
+      : `🦊 No ThreatFox matches for these IOCs`;
+    if (window.UI) UI.showToast(msg, matchCount > 0 ? 'warn' : 'info');
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────

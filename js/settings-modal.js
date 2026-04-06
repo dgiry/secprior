@@ -66,6 +66,8 @@ const SettingsModal = (() => {
     _val('otx-api-key', localStorage.getItem('cv_otx_api_key') || '');
     // ── Onglet Integrations — URLhaus Auth-Key ──────────────────────────────
     _val('urlhaus-auth-key', localStorage.getItem('cv_urlhaus_auth_key') || '');
+    // ── Onglet Integrations — ThreatFox Auth-Key (same abuse.ch key) ────────
+    _val('tf-auth-key', localStorage.getItem('cv_tf_auth_key') || '');
     // One-time cleanup: remove any VT key stored by a previous version
     try { localStorage.removeItem('cv_vt_api_key'); } catch { /* ignore */ }
     // ── Onglet Integrations — Slack/Teams share webhook ─────────────────────
@@ -799,6 +801,12 @@ const SettingsModal = (() => {
       if (urlhausKey) localStorage.setItem('cv_urlhaus_auth_key', urlhausKey);
       else            localStorage.removeItem('cv_urlhaus_auth_key');
     } catch { /* quota exceeded */ }
+    // ThreatFox Auth-Key (abuse.ch — same key as URLhaus)
+    const tfKey = (_val('tf-auth-key') || '').trim();
+    try {
+      if (tfKey) localStorage.setItem('cv_tf_auth_key', tfKey);
+      else       localStorage.removeItem('cv_tf_auth_key');
+    } catch { /* quota exceeded */ }
     // Slack/Teams share webhook
     const swUrl  = (_val('share-webhook-url') || '').trim();
     const swType = document.getElementById('share-webhook-type')?.value || 'slack';
@@ -915,6 +923,58 @@ const SettingsModal = (() => {
     } catch (err) {
       _set('❌', `Connection error: ${err.message}`, '#f85149');
       UI.showToast('❌ OTX: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🧪 Test connection'; }
+    }
+  }
+
+  async function testThreatFox() {
+    const key    = (_val('tf-auth-key') || '').trim();
+    const btn    = document.getElementById('btn-tf-test');
+    const status = document.getElementById('tf-key-status');
+
+    const _set = (icon, msg, color) => {
+      if (status) status.innerHTML =
+        `<span style="color:${color};font-weight:600">${icon} ${msg}</span>`;
+    };
+
+    if (!key) { _set('⚠️', 'Enter a key first', '#e3a008'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+    _set('⏳', 'Querying ThreatFox…', '#8b949e');
+
+    try {
+      // Query a well-known benign value to verify the key works
+      const res = await fetch(
+        '/api/ioc?action=threatfox&value=8.8.8.8',
+        { headers: { 'X-TF-Key': key }, signal: AbortSignal.timeout(12_000) }
+      );
+
+      if (!res.ok) {
+        _set('❌', `HTTP ${res.status}`, '#f85149');
+        UI.showToast(`❌ ThreatFox: HTTP ${res.status}`, 'error');
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.tfUnavailable) {
+        _set('⚠️', 'Key not forwarded — retry', '#e3a008');
+        return;
+      }
+      if (data.error) {
+        const isBadKey = String(data.error).includes('401') || String(data.error).includes('403');
+        _set('❌', isBadKey ? 'Invalid Auth-Key' : data.error, '#f85149');
+        UI.showToast('❌ ThreatFox: ' + data.error, 'error');
+        return;
+      }
+
+      _set('✅', 'Active — ThreatFox reachable', '#3fb950');
+      UI.showToast('✅ ThreatFox Auth-Key is valid', 'success');
+
+    } catch (err) {
+      _set('❌', `Connection error: ${err.message}`, '#f85149');
+      UI.showToast('❌ ThreatFox: ' + err.message, 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🧪 Test connection'; }
     }
@@ -1189,7 +1249,7 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations, testOTX, testURLhaus, testShareWebhook,
+    saveIntegrations, testOTX, testURLhaus, testThreatFox, testShareWebhook,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

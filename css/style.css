@@ -1411,6 +1411,34 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 
+/* ThreatFox IOC badges */
+.tf-match {
+  background: rgba(239,68,68,.15);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,.3);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+.tf-no-match {
+  background: var(--bg3, var(--bg2));
+  color: var(--text2);
+  border: 1px solid var(--border);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+}
+.tf-unknown {
+  background: var(--bg3, var(--bg2));
+  color: var(--text2);
+  border: 1px solid var(--border);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+}
+
 
 /* ── Modal Détail Article ────────────────────────────────────────────────── */
 

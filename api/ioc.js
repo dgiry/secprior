@@ -1,4 +1,4 @@
-// api/ioc.js — IOC enrichment: article body fetch + OTX reputation
+// api/ioc.js — IOC enrichment: article body fetch + OTX reputation + ThreatFox
 //
 // Merged (Vercel Hobby plan: 12 serverless function limit)
 //
@@ -12,6 +12,12 @@
 //   GET /api/ioc?action=reputation&type=ip|domain|hash|url&value=<value>
 //   → { verdict, pulses, labels, source: "otx" }
 //   Queries AlienVault OTX. Key: X-OTX-Key header || OTX_API_KEY env var.
+//
+//   GET /api/ioc?action=threatfox&value=<value>
+//   → { matched, threat_type, malware, confidence, first_seen, tags, count, source: "threatfox" }
+//   Queries ThreatFox (abuse.ch). Auth-Key: X-TF-Key header || THREATFOX_AUTH_KEY env var.
+//   Same Auth-Key as URLhaus (both abuse.ch services). No IOC type param needed — ThreatFox
+//   auto-detects type from the value (IP, domain, URL, hash).
 
 "use strict";
 
@@ -26,9 +32,10 @@ module.exports = async (req, res) => {
 
   if (action === "body")       return _handleBody(req, res);
   if (action === "reputation") return _handleReputation(req, res);
+  if (action === "threatfox")  return _handleThreatFox(req, res);
 
   return res.status(400).json({
-    error: "Missing or unknown action. Use ?action=body or ?action=reputation"
+    error: "Missing or unknown action. Use ?action=body, ?action=reputation or ?action=threatfox"
   });
 };
 
@@ -152,6 +159,73 @@ async function _handleReputation(req, res) {
   } catch (err) {
     const msg = err.name === "AbortError"
       ? "OTX did not respond within 8 s"
+      : err.message;
+    return res.status(500).json({ error: msg });
+  }
+}
+
+// ── action=threatfox : ThreatFox (abuse.ch) IOC lookup ───────────────────────
+//
+// ThreatFox uses a POST JSON API — the backend proxies it server-side.
+// The Auth-Key is the same abuse.ch key as URLhaus (unified auth).
+// No IOC type param is required: ThreatFox auto-detects from the value.
+
+async function _handleThreatFox(req, res) {
+  const { value } = req.query;
+  if (!value)
+    return res.status(400).json({ error: "Missing required param: value" });
+
+  // UI key (X-TF-Key header from localStorage) or env var fallback.
+  // Same abuse.ch Auth-Key as URLhaus — users only need one key for both.
+  const tfKey = req.headers["x-tf-key"] || process.env.THREATFOX_AUTH_KEY;
+  if (!tfKey) {
+    return res.status(200).json({ tfUnavailable: true, reason: "THREATFOX_AUTH_KEY not configured" });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), 8_000);
+
+    const resp = await fetch("https://threatfox-api.abuse.ch/api/v1/", {
+      method:  "POST",
+      headers: {
+        "Auth-Key":     tfKey,
+        "Content-Type": "application/json"
+      },
+      body:   JSON.stringify({ query: "search_ioc", search_term: value }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok)
+      return res.status(resp.status).json({ error: `ThreatFox returned HTTP ${resp.status}` });
+
+    const json = await resp.json();
+
+    // No result or empty dataset
+    if (json.query_status === "no_result" || !Array.isArray(json.data) || !json.data.length) {
+      res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=7200");
+      return res.status(200).json({ matched: false, source: "threatfox" });
+    }
+
+    // Best result = highest confidence_level
+    const best = [...json.data].sort((a, b) => (b.confidence_level || 0) - (a.confidence_level || 0))[0];
+
+    res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
+    return res.status(200).json({
+      matched:     true,
+      threat_type: best.threat_type        || null,
+      malware:     best.malware_printable  || null,
+      confidence:  best.confidence_level   ?? null,
+      first_seen:  best.first_seen         || null,
+      tags:        (best.tags || []).slice(0, 4),
+      count:       json.data.length,
+      source:      "threatfox"
+    });
+
+  } catch (err) {
+    const msg = err.name === "AbortError"
+      ? "ThreatFox did not respond within 8 s"
       : err.message;
     return res.status(500).json({ error: msg });
   }

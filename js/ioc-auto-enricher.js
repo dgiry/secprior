@@ -135,11 +135,58 @@ const IOCAutoEnricher = (() => {
     }
 
     article.iocReputation = reputation;
-    article._autoEnriched = true;
 
     const seenCount = Object.values(reputation)
       .filter(r => r.verdict === 'malicious' || r.verdict === 'suspicious').length;
     console.log(`[IOCAutoEnricher] OTX done → ${seenCount} referenced — "${article.title?.slice(0, 50)}"`);
+
+    // ── Step 3: ThreatFox — only if not already enriched from cache ──────────
+    if (article.iocThreatFox && Object.keys(article.iocThreatFox).length > 0) {
+      // Already has ThreatFox results (e.g. restored from cache) — mark done.
+      article._autoEnriched = true;
+      return;
+    }
+
+    const tfKey     = localStorage.getItem('cv_tf_auth_key') || '';
+    const tfHeaders = tfKey ? { 'X-TF-Key': tfKey } : {};
+
+    if (!tfKey) {
+      // No ThreatFox key configured — skip silently, still mark as enriched
+      article._autoEnriched = true;
+      return;
+    }
+
+    // Collect unique IOC values (ThreatFox auto-detects type)
+    const tfValues = [
+      ...(iocs.ips     || []).slice(0, 3),
+      ...(iocs.domains || []).slice(0, 3),
+      ...(iocs.hashes  || []).slice(0, 2).map(h => h.value),
+      ...(iocs.urls    || []).slice(0, 2)
+    ].slice(0, 5);  // hard cap: 5 ThreatFox calls per article
+
+    const tfResults = {};
+
+    for (let i = 0; i < tfValues.length; i++) {
+      const value = tfValues[i];
+      try {
+        const r = await fetch(
+          `/api/ioc?action=threatfox&value=${encodeURIComponent(value)}`,
+          { headers: tfHeaders, signal: AbortSignal.timeout(10_000) }
+        );
+        if (r.ok) {
+          const data = await r.json();
+          if (data.tfUnavailable) break;
+          if (!data.error) tfResults[value] = data;
+        }
+      } catch { /* network error — skip silently */ }
+      if (i < tfValues.length - 1) await _delay(200);
+    }
+
+    article.iocThreatFox  = tfResults;
+    article._autoEnriched = true;
+
+    const tfMatchCount = Object.values(tfResults).filter(r => r.matched).length;
+    console.log(`[IOCAutoEnricher] ThreatFox done → ${tfMatchCount} matched — "${article.title?.slice(0, 50)}"`);
   }
 
   function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
