@@ -528,10 +528,19 @@ const ArticleModal = (() => {
   }
 
   // ─── VirusTotal badge pour une valeur IOC ────────────────────────────────────
+  //
+  // Wording is intentionally cautious:
+  //   • "no detections" ≠ safe/clean — VT absence of detection is not a benign verdict.
+  //   • Detection ratios are shown as-is (N/total) without a hard "malicious" label.
+  //   • Private IPs are skipped entirely (vtSkipped sentinel) — no badge rendered.
 
   function _vtBadge(value, vtResults) {
     const vt = vtResults?.[value];
     if (!vt) return '';
+
+    // Private IP was skipped before lookup — render nothing, not even "skipped"
+    // (avoids analyst confusion about why an internal IP has a VT entry at all)
+    if (vt.vtSkipped) return '';
 
     if (vt.vtUnavailable)
       return `<span class="badge vt-unknown" title="VT key not configured">⚪ VT unavailable</span>`;
@@ -542,17 +551,18 @@ const ArticleModal = (() => {
     const total = vt.total      || 0;
 
     if (total === 0)
-      return `<span class="badge vt-unknown" title="No VT analysis data">⚪ VT: no data</span>`;
+      return `<span class="badge vt-unknown" title="No VT analysis data available">⚪ VT: no data</span>`;
 
     const tip = `${mal} malicious · ${sus} suspicious · ${vt.harmless || 0} harmless / ${total} engines`
-              + (vt.country  ? ` · ${vt.country}`  : '')
-              + (vt.asOwner  ? ` · ${vt.asOwner}`  : '');
+              + (vt.country ? ` · ${vt.country}` : '')
+              + (vt.asOwner ? ` · ${vt.asOwner}` : '');
 
     if (mal > 0)
-      return `<span class="badge vt-malicious" title="${_esc(tip)}">🛡 VT: ${mal}/${total}</span>`;
+      return `<span class="badge vt-malicious" title="${_esc(tip)}">VT: ${mal}/${total} detected</span>`;
     if (sus > 0)
-      return `<span class="badge vt-suspicious" title="${_esc(tip)}">⚠️ VT: ${sus}/${total}</span>`;
-    return `<span class="badge vt-clean" title="${_esc(tip)}">✓ VT clean</span>`;
+      return `<span class="badge vt-suspicious" title="${_esc(tip)}">⚠️ VT: ${sus}/${total} suspicious</span>`;
+    // Zero detections — cautious wording, not "clean"
+    return `<span class="badge vt-clean" title="${_esc(tip)}">VT: no detections</span>`;
   }
 
   // ─── Section IOC centralisée (re-utilisée par open, deepScan, reputation) ──
@@ -763,6 +773,29 @@ const ArticleModal = (() => {
     if (window.UI) UI.showToast(msg, seenCount > 0 ? 'warn' : 'info');
   }
 
+  // ─── Private IP guard ────────────────────────────────────────────────────────
+  //
+  // VT lookups on RFC1918/loopback/link-local IPs are meaningless and produce
+  // misleading output (VT has no reputation data for internal ranges).
+  // Defense-in-depth: ioc-extractor already filters these, but we guard here too
+  // in case full-text deep scan surfaces an internal IP in edge cases.
+
+  const _PRIVATE_IP_RE = [
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^127\./,
+    /^169\.254\./,   // link-local
+    /^0\./,
+    /^255\./,
+    /^224\./,        // multicast
+    /^240\./         // reserved
+  ];
+
+  function _isPrivateIP(ip) {
+    return _PRIVATE_IP_RE.some(re => re.test(ip));
+  }
+
   // ─── Check VirusTotal (Option D) ─────────────────────────────────────────
   //
   // Pour chaque IOC extrait, interroge /api/ioc?action=vt (VT API v3 backend).
@@ -776,11 +809,20 @@ const ArticleModal = (() => {
     vtBtn.disabled    = true;
     vtBtn.textContent = '⏳ Checking…';
 
-    const iocs  = article.iocs || {};
-    const tasks = [];
+    const iocs      = article.iocs || {};
+    const tasks     = [];
+    const vtResults = { ...(article.iocVT || {}) };
+
+    // IPs — skip private/internal ranges (no VT reputation for non-public IPs)
+    (iocs.ips || []).slice(0, 3).forEach(v => {
+      if (_isPrivateIP(v)) {
+        vtResults[v] = { vtSkipped: true };  // sentinel — renders no badge
+      } else {
+        tasks.push({ type: 'ip', value: v });
+      }
+    });
 
     // Cap per type: VT free tier is 4 req/min (500/day)
-    (iocs.ips     || []).slice(0, 3).forEach(v => tasks.push({ type: 'ip',     value: v }));
     (iocs.domains || []).slice(0, 3).forEach(v => tasks.push({ type: 'domain', value: v }));
     (iocs.hashes  || []).slice(0, 3).forEach(h => tasks.push({ type: 'hash',   value: h.value }));
     (iocs.urls    || []).slice(0, 2).forEach(v => tasks.push({ type: 'url',    value: v }));
@@ -793,7 +835,6 @@ const ArticleModal = (() => {
 
     const vtKey     = localStorage.getItem('cv_vt_api_key') || '';
     const vtHeaders = vtKey ? { 'X-VT-Key': vtKey } : {};
-    const vtResults = { ...(article.iocVT || {}) };
 
     for (let i = 0; i < tasks.length; i++) {
       const { type, value } = tasks[i];
@@ -828,12 +869,12 @@ const ArticleModal = (() => {
       _bindIOCButtons(article);
     }
 
-    // Summary toast
-    const malCount = Object.values(vtResults).filter(r => (r.malicious || 0) > 0).length;
-    const msg = malCount > 0
-      ? `🛡 VT: ${malCount} IOC${malCount !== 1 ? 's' : ''} flagged as malicious`
-      : `✓ VT: No malicious IOCs found`;
-    if (window.UI) UI.showToast(msg, malCount > 0 ? 'warn' : 'info');
+    // Summary toast — cautious wording, no safety claims
+    const detCount = Object.values(vtResults).filter(r => !r.vtSkipped && (r.malicious || 0) > 0).length;
+    const msg = detCount > 0
+      ? `🛡 VT: ${detCount} IOC${detCount !== 1 ? 's' : ''} with detections`
+      : `VT check complete — no detections`;
+    if (window.UI) UI.showToast(msg, detCount > 0 ? 'warn' : 'info');
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────
