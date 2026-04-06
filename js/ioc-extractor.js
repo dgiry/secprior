@@ -145,19 +145,50 @@ const IOCExtractor = (() => {
   }
 
   // ── Extraction URLs suspectes ─────────────────────────────────────────────
+  //
+  // Filtering pipeline (V2 — editorial URL exclusion):
+  //   1. Same-domain as article source → self-referential link, not an IOC
+  //   2. Known legitimate / infrastructure domain whitelist
+  //   3. Obvious editorial / navigation paths (homepage, category, archive…)
+  //
+  // IPs, domains, hashes are unaffected by these rules.
+
+  // Path segments that identify editorial / navigation pages — never IOCs.
+  // Applied regardless of hostname (a /category/ path is not a C2 endpoint
+  // on any domain). Conservative set: only clear-cut editorial patterns.
+  const _EDITORIAL_PATH_RE = /^\/(category|categories|tag|tags|author|authors|archive|archives|search|page|feed|rss|podcast|podcasts|episodes?|about|contact|privacy|terms|subscribe|newsletter)(\/|$|\?|#)/i;
+
   function _extractURLs(text, sourceLink) {
     const seen = new Set();
     const re   = /https?:\/\/[^\s<>"')\]},;|\\]+/gi;
+
+    // Derive source hostname once — used for same-domain exclusion
+    let srcHost = '';
+    try { srcHost = new URL(sourceLink || '').hostname.replace(/^www\./, ''); } catch {}
+
     let m;
     while ((m = re.exec(text)) !== null) {
-      // Nettoyer la ponctuation de fin
-      let url = m[0].replace(/[.,;:!?'")\]|]+$/, '');
+      // Strip trailing punctuation artefacts
+      const url = m[0].replace(/[.,;:!?'")\]|]+$/, '');
       if (url === sourceLink) continue;
-      if (url.startsWith(sourceLink || '☒')) continue;  // sous-URL de la source
+
+      let host, pathname;
       try {
-        const host = new URL(url).hostname.replace(/^www\./, '');
-        if (_isDomainLegit(host)) continue;
+        const parsed = new URL(url);
+        host     = parsed.hostname.replace(/^www\./, '');
+        pathname = parsed.pathname;
       } catch { continue; }
+
+      // 1. Same-domain as article source — editorial / navigation link, not an IOC
+      //    (covers homepage, other articles, category pages from the same site)
+      if (srcHost && host === srcHost) continue;
+
+      // 2. Known legitimate infrastructure / media domain whitelist
+      if (_isDomainLegit(host)) continue;
+
+      // 3. Editorial path patterns: homepage or well-known navigation segments
+      if (pathname === '/' || pathname === '' || _EDITORIAL_PATH_RE.test(pathname)) continue;
+
       seen.add(url);
     }
     return [...seen].slice(0, 5);
