@@ -220,8 +220,37 @@ const Contextualizer = (() => {
     });
   }
 
+  /**
+   * ensureWatchlistConsistency(articles) — normalise watchlistMatches sur des
+   * articles restaurés depuis le cache qui n'ont pas repassé par contextualize().
+   *
+   * Cause racine du bug : contextualize() peuple toujours watchlistMatches ET
+   * watchlistMatchItems, mais un article re-scoré (re-scorer sans re-contextualiser,
+   * ou restauré tel quel depuis le cache long-lived) peut avoir watchlistMatchItems
+   * renseigné et watchlistMatches vide (ou absent). Les consommateurs (Morning Brief,
+   * Exec View, badges ui.js) doivent pouvoir se fier à watchlistMatches.
+   *
+   * Idempotent : sans effet si watchlistMatches est déjà renseigné.
+   * Coût : O(n) sur le tableau, aucun accès DOM ni réseau.
+   */
+  function ensureWatchlistConsistency(articles) {
+    if (!Array.isArray(articles)) return articles;
+    return articles.map(a => {
+      if ((a.watchlistMatchItems?.length > 0) && !(a.watchlistMatches?.length > 0)) {
+        return {
+          ...a,
+          watchlistMatches: a.watchlistMatchItems
+            .map(i => i.label || i.value)
+            .filter(Boolean)
+        };
+      }
+      return a;
+    });
+  }
+
   return {
     contextualize,
+    ensureWatchlistConsistency,
     getWatchlist,
     saveWatchlist,
     addToWatchlist,

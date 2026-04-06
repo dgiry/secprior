@@ -161,7 +161,10 @@ const App = (() => {
       UI.showToast("Error loading RSS feeds. Check your connection.", "error");
       const cache = Storage.getCache();
       if (cache && cache.items) {
-        state.articles = cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
+        const _cacheItems = cache.items.map(a => ({ ...a, pubDate: new Date(a.pubDate) }));
+        state.articles = typeof Contextualizer !== 'undefined'
+          ? Contextualizer.ensureWatchlistConsistency(_cacheItems)
+          : _cacheItems;
         console.warn(`[App] Using fallback cache with ${state.articles.length} items after refresh error`);
         render();
         if (!state.articles?.length) console.warn("[App] render() called with empty cache items");
@@ -892,7 +895,11 @@ const App = (() => {
     const _restoredArticles = Storage.getArticles();
     if (_restoredArticles && _restoredArticles.length > 0) {
       console.log(`[App] Restored ${_restoredArticles.length} articles from long-lived cache`);
-      state.articles = _restoredArticles;
+      // Ensure watchlistMatches is always derived from watchlistMatchItems when missing
+      // (cache path skips contextualize(), leaving the two arrays potentially out of sync)
+      state.articles = typeof Contextualizer !== 'undefined'
+        ? Contextualizer.ensureWatchlistConsistency(_restoredArticles)
+        : _restoredArticles;
       render();
       StatsPanel.update(_restoredArticles);
       VendorPanel.update(_restoredArticles);

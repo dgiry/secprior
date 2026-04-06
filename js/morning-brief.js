@@ -379,5 +379,11 @@ const MorningBrief = (() => {
     });
   }
 
-  return { init, show, generate };
+  // _isWLMatch and _priorityAction are exposed for unit testing (underscore = internal).
+  // Production code should only use init / show / generate.
+  return { init, show, generate, _isWLMatch, _priorityAction };
 })();
+
+// Node.js / Jest: allow require('../js/morning-brief.js') in unit tests.
+// No-op in browser (module is not defined).
+if (typeof module !== 'undefined') module.exports = MorningBrief;
