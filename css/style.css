@@ -1331,9 +1331,14 @@ a:hover { text-decoration: underline; }
 }
 .art-ioc-copy-btn:hover { opacity: 1; }
 
-/* Deep IOC scan button (Option B — fetch full article body) */
-.art-ioc-deep-btn {
+/* IOC action buttons row (Deep scan + Reputation) */
+.art-ioc-actions {
+  display: flex;
+  gap: .5rem;
   margin-top: .75rem;
+  flex-wrap: wrap;
+}
+.art-ioc-deep-btn {
   font-size: .8rem;
   padding: .3rem .75rem;
   background: var(--bg2);
@@ -1359,6 +1364,42 @@ a:hover { text-decoration: underline; }
   font-size: .75rem;
   color: var(--text3, var(--text2));
   opacity: .7;
+}
+
+/* IOC Reputation badges (Option C — OTX lookup) */
+.rep-malicious {
+  background: rgba(239,68,68,.18);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,.35);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.rep-suspicious {
+  background: rgba(245,158,11,.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,.35);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.rep-clean {
+  background: rgba(63,185,80,.15);
+  color: #4ade80;
+  border: 1px solid rgba(63,185,80,.3);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+}
+.rep-unknown {
+  background: var(--bg3, var(--bg2));
+  color: var(--text2);
+  border: 1px solid var(--border);
+  font-size: .7rem;
+  padding: .1rem .4rem;
+  border-radius: 4px;
 }
 
 /* ── Modal Détail Article ────────────────────────────────────────────────── */

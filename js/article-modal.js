@@ -82,11 +82,8 @@ const ArticleModal = (() => {
       });
     }
 
-    // Deep IOC scan — only on Vercel (USE_API=true), where /api/article-body is available
-    if (typeof CONFIG !== 'undefined' && CONFIG.USE_API) {
-      document.getElementById('art-ioc-deep-btn')
-        ?.addEventListener('click', () => _fetchDeepIOCs(article));
-    }
+    // IOC action buttons — deep scan (Option B) + reputation (Option C)
+    _bindIOCButtons(article);
 
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
@@ -163,15 +160,7 @@ const ArticleModal = (() => {
           </div>` : ''}
 
           <div class="art-modal-section" id="art-ioc-section">
-            <h4 class="art-modal-section-title">🔬 Extracted IOCs${article.iocCount > 0 ? ` (${article.iocCount})` : ''}</h4>
-            ${article.iocCount > 0
-              ? _renderIOCPanel(article.iocs)
-              : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
-            ${(typeof CONFIG !== 'undefined' && CONFIG.USE_API) ? `
-            <button id="art-ioc-deep-btn" class="btn art-ioc-deep-btn"
-                    title="Fetch full article body and re-scan for IOCs (server-side)">
-              🔍 Deep IOC scan
-            </button>` : ''}
+            ${_renderIOCSection(article)}
           </div>
 
         </div>
@@ -414,20 +403,26 @@ const ArticleModal = (() => {
   }
 
   // ─── Panneau IOCs complet (modal) ─────────────────────────────────────────
+  //
+  // @param {object} iocs       - { ips, hashes, domains, urls }
+  // @param {object} reputation - map of IOC value → { verdict, pulses, labels }
+  //                              populated by _checkReputation() (Option C)
 
-  function _renderIOCPanel(iocs) {
+  function _renderIOCPanel(iocs, reputation = {}) {
     if (!iocs) return '<p class="art-metric-na">No IOC detected.</p>';
 
     const { ips = [], hashes = [], domains = [], urls = [] } = iocs;
     const sections = [];
 
     const _iocRow = (type, icon, cssType, value, displayVal) => {
-      const copyEsc = (value || '').replace(/'/g, "\\'");
+      const copyEsc      = (value || '').replace(/'/g, "\\'");
       const shortDisplay = displayVal || value;
+      const repBadge     = _reputationBadge(value, reputation);
       return `
         <div class="art-ioc-row">
           <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
+          ${repBadge}
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
                   title="Copy">📋</button>
@@ -472,6 +467,67 @@ const ArticleModal = (() => {
       : '<p class="art-metric-na">No IOC detected in this text.</p>';
   }
 
+  // ─── Réputation badge pour une valeur IOC ─────────────────────────────────
+
+  function _reputationBadge(value, reputation) {
+    const rep = reputation[value];
+    if (!rep) return '';
+    const labStr = rep.labels?.length
+      ? ` <small title="${_esc(rep.labels.join(', '))}">(${rep.pulses} pulse${rep.pulses !== 1 ? 's' : ''})</small>`
+      : ` <small>(${rep.pulses})</small>`;
+    if (rep.verdict === 'malicious')  return `<span class="badge rep-malicious">🔴 Malicious${labStr}</span>`;
+    if (rep.verdict === 'suspicious') return `<span class="badge rep-suspicious">🟡 Suspicious${labStr}</span>`;
+    if (rep.verdict === 'clean')      return `<span class="badge rep-clean">🟢 Clean</span>`;
+    return `<span class="badge rep-unknown">⚪ Unknown</span>`;
+  }
+
+  // ─── Section IOC centralisée (re-utilisée par open, deepScan, reputation) ──
+  //
+  // Seul point d'entrée pour le rendu de la section IOC complète.
+  // Lit article.iocs, article.iocReputation, article._deepChars, article._deepScanned.
+
+  function _renderIOCSection(article) {
+    const rep    = article.iocReputation || {};
+    const hasAPI = typeof CONFIG !== 'undefined' && CONFIG.USE_API;
+    const repDone = Object.keys(rep).length > 0;
+
+    const countPart = article.iocCount > 0 ? ` (${article.iocCount})` : '';
+    const stateBadge = repDone
+      ? ' <span class="badge badge-new">Rep ✓</span>'
+      : article._deepScanned
+        ? ' <span class="badge badge-new">Full scan</span>'
+        : '';
+
+    return `
+      <h4 class="art-modal-section-title">🔬 Extracted IOCs${countPart}${stateBadge}</h4>
+      ${article.iocCount > 0
+        ? _renderIOCPanel(article.iocs, rep)
+        : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
+      ${article._deepChars
+        ? `<p class="art-ioc-deep-note">📄 ${article._deepChars.toLocaleString()} chars scanned from full article</p>`
+        : ''}
+      ${hasAPI ? `<div class="art-ioc-actions">
+        <button id="art-ioc-deep-btn" class="btn art-ioc-deep-btn"
+                title="Fetch full article and re-scan for IOCs (server-side)">
+          🔍 Deep IOC scan
+        </button>
+        ${article.iocCount > 0 ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
+                title="Check IOC reputation via AlienVault OTX">
+          🦠 Check reputation
+        </button>` : ''}
+      </div>` : ''}`;
+  }
+
+  // ─── Binding des boutons IOC (deep scan + reputation) ────────────────────
+
+  function _bindIOCButtons(article) {
+    if (typeof CONFIG === 'undefined' || !CONFIG.USE_API) return;
+    document.getElementById('art-ioc-deep-btn')
+      ?.addEventListener('click', () => _fetchDeepIOCs(article));
+    document.getElementById('art-ioc-rep-btn')
+      ?.addEventListener('click', () => _checkReputation(article));
+  }
+
   // ─── Deep IOC scan (Option B — fetch corps complet via backend) ───────────
   //
   // Appelle /api/article-body?url=<encoded> pour récupérer le texte brut de l'article
@@ -500,23 +556,15 @@ const ArticleModal = (() => {
       if (typeof IOCExtractor === 'undefined') throw new Error('IOCExtractor not loaded');
       const enriched = IOCExtractor.enrichArticle(article, text);
 
-      // Update article in place so _copyIOCs() picks up the new IOCs
-      article.iocs     = enriched.iocs;
-      article.iocCount = enriched.iocCount;
+      // Update article in place so _copyIOCs() and _checkReputation() pick up new IOCs
+      article.iocs         = enriched.iocs;
+      article.iocCount     = enriched.iocCount;
+      article._deepChars   = chars || 0;
+      article._deepScanned = true;
 
-      // Re-render the IOC section
-      const note = `<p class="art-ioc-deep-note">📄 ${(chars || 0).toLocaleString()} chars scanned from full article</p>`;
-      if (enriched.iocCount > 0) {
-        panel.innerHTML = `
-          <h4 class="art-modal-section-title">🔬 Extracted IOCs (${enriched.iocCount}) <span class="badge badge-new">Full scan</span></h4>
-          ${_renderIOCPanel(enriched.iocs)}
-          ${note}`;
-      } else {
-        panel.innerHTML = `
-          <h4 class="art-modal-section-title">🔬 Extracted IOCs</h4>
-          <p class="art-metric-na">No IOC detected after full article scan.</p>
-          ${note}`;
-      }
+      // Re-render via shared helper
+      panel.innerHTML = _renderIOCSection(article);
+      _bindIOCButtons(article);
 
       if (window.UI) UI.showToast(
         `🔬 Deep scan: ${enriched.iocCount} IOC${enriched.iocCount !== 1 ? 's' : ''} found`,
@@ -528,6 +576,75 @@ const ArticleModal = (() => {
       btn.textContent = '🔍 Deep IOC scan';
       if (window.UI) UI.showToast(`⚠ Deep scan failed: ${err.message}`, 'error');
     }
+  }
+
+  // ─── Check reputation via OTX (Option C) ─────────────────────────────────
+  //
+  // Pour chaque IOC extrait, interroge /api/ioc-reputation (OTX backend).
+  // Met à jour article.iocReputation puis re-rend la section IOC avec les badges.
+  // Délai de 200 ms entre requêtes pour respecter les limites OTX (1 req/s).
+
+  async function _checkReputation(article) {
+    const repBtn = document.getElementById('art-ioc-rep-btn');
+    const panel  = document.getElementById('art-ioc-section');
+    if (!repBtn || !panel) return;
+
+    repBtn.disabled    = true;
+    repBtn.textContent = '⏳ Checking…';
+
+    const iocs  = article.iocs || {};
+    const tasks = [];
+
+    // Collect IOCs to check (cap per type to avoid quota abuse)
+    (iocs.ips     || []).slice(0, 5).forEach(v      => tasks.push({ type: 'ip',     value: v }));
+    (iocs.domains || []).slice(0, 5).forEach(v      => tasks.push({ type: 'domain', value: v }));
+    (iocs.hashes  || []).slice(0, 5).forEach(h      => tasks.push({ type: 'hash',   value: h.value }));
+    (iocs.urls    || []).slice(0, 3).forEach(v      => tasks.push({ type: 'url',    value: v }));
+
+    if (!tasks.length) {
+      repBtn.disabled    = false;
+      repBtn.textContent = '🦠 Check reputation';
+      return;
+    }
+
+    const reputation = { ...(article.iocReputation || {}) };
+
+    for (let i = 0; i < tasks.length; i++) {
+      const { type, value } = tasks[i];
+      try {
+        const resp = await fetch(
+          `/api/ioc-reputation?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
+          { signal: AbortSignal.timeout(10_000) }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (!data.error) reputation[value] = data;
+          // Surface OTX_API_KEY missing error immediately
+          if (data.error && data.error.includes('OTX_API_KEY')) {
+            if (window.UI) UI.showToast(`⚙ ${data.error}`, 'error');
+            repBtn.disabled    = false;
+            repBtn.textContent = '🦠 Check reputation';
+            return;
+          }
+        }
+      } catch { /* network error — skip IOC silently */ }
+
+      // 200 ms between calls — respects OTX generous rate limit
+      if (i < tasks.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+
+    article.iocReputation = reputation;
+    panel.innerHTML = _renderIOCSection(article);
+    _bindIOCButtons(article);
+
+    const malCount = Object.values(reputation).filter(r => r.verdict === 'malicious').length;
+    const susCount = Object.values(reputation).filter(r => r.verdict === 'suspicious').length;
+    const msg      = malCount > 0
+      ? `🔴 ${malCount} malicious IOC${malCount !== 1 ? 's' : ''} confirmed (OTX)`
+      : susCount > 0
+        ? `🟡 ${susCount} suspicious IOC${susCount !== 1 ? 's' : ''} (OTX)`
+        : `🟢 All IOCs appear clean (OTX)`;
+    if (window.UI) UI.showToast(msg, malCount > 0 ? 'error' : susCount > 0 ? 'warn' : 'success');
   }
 
   // ─── Algorithme articles similaires ───────────────────────────────────────
