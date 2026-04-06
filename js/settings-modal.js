@@ -39,7 +39,15 @@ const SettingsModal = (() => {
     document.querySelectorAll(".settings-tab-pane").forEach(p =>
       (p.style.display = p.id === `settings-tab-${tab}` ? "block" : "none")
     );
-    if (tab === "feeds") renderFeeds(_feedFilter);
+    if (tab === "feeds")        renderFeeds(_feedFilter);
+    if (tab === "integrations") {
+      // Auto-refresh SWP posture when the integrations tab is opened
+      // (only if the widget body still shows the placeholder text)
+      const body = document.getElementById('swp-posture-body');
+      if (body && body.querySelector('p')?.textContent.includes('↻ Refresh')) {
+        _swpRefresh();
+      }
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -752,6 +760,8 @@ const SettingsModal = (() => {
     document.getElementById("btn-settings")?.addEventListener("click", open);
     document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
     _updateSettingsBtn(AlertManager.loadSettings());
+    // SWP posture refresh button (rendered in index.html, wired here at init)
+    document.getElementById('btn-swp-refresh')?.addEventListener('click', _swpRefresh);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -885,7 +895,104 @@ const SettingsModal = (() => {
   // ── Per-CVE VP status / toggle / test connection removed (2026-04) ──────────
   // TV1 public API does not expose an IPS rule catalog or CVE-to-rule mapping.
   // All candidate paths (/v3.0/ips/filters, /v3.0/ips/rules, etc.) return 404.
-  // Global SWP posture (mode=swp) remains as a backend debug endpoint.
+
+  // ── SWP IPS posture drill-down ────────────────────────────────────────────
+
+  const _SWP_BUCKETS = [
+    { key: 'ipsActive',          label: 'IPS active',        color: '#3fb950' },
+    { key: 'ipsNotActive',       label: 'IPS inactive',      color: '#f0883e' },
+    { key: 'offline_ipsUnknown', label: 'Offline / unknown', color: '#8b949e' },
+    { key: 'noIpsFeature',       label: 'No IPS feature',    color: '#8b949e' },
+  ];
+  const _SWP_MAX_SHOWN = 25; // max endpoints per bucket before truncation
+
+  /** Render posture counts + collapsible endpoint lists into #swp-posture-body */
+  function _renderSWPPosture(data) {
+    const body = document.getElementById('swp-posture-body');
+    if (!body) return;
+
+    if (!data || data.status === 'unknown' || data.status === 'error') {
+      body.innerHTML = `<p class="settings-hint swp-posture-error" style="margin:0;color:#f85149">
+        ⚠ Could not load posture — check TV1_API_KEY and region.</p>`;
+      return;
+    }
+
+    // Group endpoints by bucket
+    const byBucket = {};
+    (data.endpoints || []).forEach(ep => {
+      if (!byBucket[ep.bucket]) byBucket[ep.bucket] = [];
+      byBucket[ep.bucket].push(ep);
+    });
+    // Sort each bucket alphabetically by hostname
+    Object.values(byBucket).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+
+    const ageStr = data.cachedAt
+      ? (() => {
+          const mins = Math.round((Date.now() - data.cachedAt) / 60000);
+          return mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
+        })()
+      : '';
+    const totalLine = `<p class="settings-hint" style="margin:0 0 .6rem">
+      ${data.swpTotal} SWP endpoint${data.swpTotal !== 1 ? 's' : ''}
+      ${ageStr ? `· refreshed ${ageStr}` : ''}
+    </p>`;
+
+    const bucketRows = _SWP_BUCKETS.map(b => {
+      const count = data[b.key] || 0;
+      if (count === 0) return '';
+      const eps   = byBucket[b.key] || [];
+      const id    = `swp-bucket-${b.key}`;
+
+      const shown    = eps.slice(0, _SWP_MAX_SHOWN);
+      const overflow = eps.length - shown.length;
+      const epHTML   = shown.map(ep => {
+        const age = ep.hoursAgo !== null
+          ? `<span class="swp-ep-age">${ep.hoursAgo < 1 ? '<1h' : Math.round(ep.hoursAgo) + 'h'}</span>`
+          : '';
+        return `<div class="swp-ep-item">${ep.name}${age}</div>`;
+      }).join('') + (overflow > 0
+        ? `<div class="swp-ep-item swp-ep-more">…and ${overflow} more</div>`
+        : '');
+
+      return `
+        <div class="swp-bucket" onclick="this.classList.toggle('swp-bucket--open')" id="${id}">
+          <span class="swp-bucket-chevron">▶</span>
+          <span class="swp-bucket-label">${b.label}</span>
+          <span class="swp-bucket-count" style="color:${b.color}">${count}</span>
+        </div>
+        <div class="swp-ep-list" data-bucket="${b.key}">${epHTML}</div>`;
+    }).join('');
+
+    body.innerHTML = totalLine + `<div class="swp-bucket-rows">${bucketRows}</div>`;
+  }
+
+  let _swpLoading = false;
+
+  /** Fetch mode=swp from backend and render result into the posture widget */
+  async function _swpRefresh() {
+    const body = document.getElementById('swp-posture-body');
+    const btn  = document.getElementById('btn-swp-refresh');
+    if (!body || _swpLoading) return;
+    _swpLoading = true;
+    if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+    body.innerHTML = `<p class="settings-hint" style="margin:0">Loading posture from TV1…</p>`;
+
+    try {
+      const region = (typeof TV1Sync !== 'undefined')
+        ? (TV1Sync.loadConfig().region || 'us')
+        : 'us';
+      const res  = await fetch(`/api/tv1-sync?mode=swp&region=${region}`);
+      const data = await res.json();
+      _renderSWPPosture(data);
+    } catch (err) {
+      const body2 = document.getElementById('swp-posture-body');
+      if (body2) body2.innerHTML = `<p class="settings-hint" style="margin:0;color:#f85149">
+        ⚠ Request failed — ${err.message}</p>`;
+    } finally {
+      _swpLoading = false;
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; }
+    }
+  }
 
   // ── API publique ────────────────────────────────────────────────────────────
 

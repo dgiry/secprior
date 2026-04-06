@@ -393,8 +393,9 @@ async function _handleSWP(req, res) {
   );
 
   // ── Per-endpoint classification ─────────────────────────────────────────────
-  const counts = { ipsActive: 0, ipsNotActive: 0, offline_ipsUnknown: 0, noIpsFeature: 0 };
-  const rawSample = [];
+  const counts    = { ipsActive: 0, ipsNotActive: 0, offline_ipsUnknown: 0, noIpsFeature: 0 };
+  const endpoints = []; // always built — { name, bucket, hoursAgo } — drives UI drill-down
+  const rawSample = []; // debug=1 only — full diagnostic fields
 
   for (const ep of swpEndpoints) {
     const guid = ep.agentGuid;
@@ -454,6 +455,15 @@ async function _handleSWP(req, res) {
 
     counts[classifiedAs] = (counts[classifiedAs] || 0) + 1;
 
+    // Always record name + bucket + last-seen age — used by frontend drill-down
+    endpoints.push({
+      name:     ep.endpointName || ep.displayName || "—",
+      bucket:   classifiedAs,
+      hoursAgo: eppLastConnectedHoursAgo !== null
+                  ? Math.round(eppLastConnectedHoursAgo * 10) / 10
+                  : null
+    });
+
     if (debug) {
       rawSample.push({
         endpointName:              ep.endpointName || ep.displayName || "unknown",
@@ -481,6 +491,7 @@ async function _handleSWP(req, res) {
     elapsedMs:            Date.now() - t0,
     source:               "trend_swp",
     cachedAt:             Date.now(),
+    endpoints,
     ...(debug ? { rawSample } : {})
   };
 

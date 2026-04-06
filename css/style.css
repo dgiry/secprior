@@ -772,6 +772,20 @@ a:hover { text-decoration: underline; }
   font-size: .73rem; color: var(--text2); margin: .4rem 0 .6rem;
   line-height: 1.5;
 }
+
+/* SWP endpoint drill-down */
+.swp-bucket       { display:flex; align-items:center; gap:.45rem; padding:.28rem .2rem; cursor:pointer; border-radius:3px; user-select:none; }
+.swp-bucket:hover { background:var(--hover-bg,rgba(255,255,255,.05)); }
+.swp-bucket-chevron { font-size:.62rem; color:#8b949e; width:10px; transition:transform .15s; }
+.swp-bucket--open .swp-bucket-chevron { transform:rotate(90deg); }
+.swp-bucket-label { font-size:.75rem; color:var(--text2); flex:1; }
+.swp-bucket-count { font-size:.78rem; font-weight:600; }
+.swp-ep-list  { display:none; padding:.1rem 0 .3rem 1.35rem; }
+.swp-bucket--open + .swp-ep-list { display:block; }
+.swp-ep-item  { font-size:.7rem; color:#8b949e; padding:.06rem 0; }
+.swp-ep-item::before { content:"· "; }
+.swp-ep-age   { margin-left:.4rem; font-size:.65rem; color:#484f58; }
+.swp-ep-more  { font-style:italic; }
 .settings-hint a { color: var(--accent); }
 .settings-hint code {
   background: var(--surface2); padding: .05em .3em;

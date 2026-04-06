@@ -945,20 +945,18 @@
           <!-- Statut dernière sync -->
           <div id="tv1-last-sync" class="settings-hint" style="margin-top:.4rem;min-height:1.2em"></div>
 
-          <!-- SWP IPS posture — passive info block (not an active feature) -->
-          <div style="margin-top:.9rem;padding:.6rem .75rem;border-radius:6px;background:rgba(139,148,158,.07);border:1px solid rgba(139,148,158,.18)">
-            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
+          <!-- SWP IPS posture — live drill-down widget -->
+          <div style="margin-top:.9rem;border-radius:6px;border:1px solid rgba(139,148,158,.18);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .75rem;background:rgba(139,148,158,.07)">
               <span style="font-size:.85rem;font-weight:600;color:#c9d1d9">🖥 SWP IPS posture</span>
-              <span style="font-size:.7rem;font-weight:600;padding:.1rem .45rem;border-radius:20px;background:rgba(139,148,158,.15);color:#8b949e;white-space:nowrap">Not active in ThreatLens</span>
+              <button id="btn-swp-refresh" class="btn" style="font-size:.72rem;padding:.18rem .55rem"
+                      title="Refresh endpoint posture from Trend Vision One">↻ Refresh</button>
             </div>
-            <p class="settings-hint" style="margin:0 0 .3rem">
-              Read-only visibility into Intrusion Prevention posture on Trend SWP-managed endpoints.
-              This signal is under evaluation and is not currently used by ThreatLens.
-            </p>
-            <p class="settings-hint" style="margin:0;font-style:italic">
-              Per-CVE virtual patch availability is not supported through the current TV1 API in SWP-only mode.
-              Use <strong>Search in Trend</strong> for CVE / Workbench correlation.
-            </p>
+            <div id="swp-posture-body" style="padding:.5rem .75rem">
+              <p class="settings-hint" style="margin:0">
+                Click <strong>↻ Refresh</strong> to load live IPS posture from your TV1 tenant.
+              </p>
+            </div>
           </div>
 
           <!-- Preview area — populated dynamically by JS -->
