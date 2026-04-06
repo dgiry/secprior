@@ -140,10 +140,11 @@ const MorningBrief = (() => {
          (a.attackTags || []).some(t => t.label === '0-Day') ||
          /zero.?day|0day/i.test(a.title || ''));
     return {
-      kev:     arts.filter(a => a.isKEV).length,
-      ioc:     arts.filter(a => (a.iocCount || 0) > 0).length,
-      cve:     arts.filter(a => (a.cves || []).length > 0).length,
-      zeroDay: arts.filter(isZD).length
+      kev:       arts.filter(a => a.isKEV).length,
+      ioc:       arts.filter(a => (a.iocCount || 0) > 0).length,
+      cve:       arts.filter(a => (a.cves || []).length > 0).length,
+      zeroDay:   arts.filter(isZD).length,
+      watchlist: arts.filter(_isWLMatch).length
     };
   }
 
@@ -288,6 +289,8 @@ const MorningBrief = (() => {
     L.push(`    🔍  Hunt in SIEM/EDR   (IOC):  ${pad(act.ioc)}`);
     L.push(`    📋  Apply advisory     (CVE):  ${pad(act.cve)}`);
     L.push(`    ⏳  Zero-day — monitor       :  ${pad(act.zeroDay)}`);
+    if (act.watchlist > 0)
+      L.push(`    👁  Watchlist matches        :  ${pad(act.watchlist)}`);
     // VP line removed — per-CVE signal unsupported by TV1 API (2026-04)
     L.push('');
     L.push(SEP);

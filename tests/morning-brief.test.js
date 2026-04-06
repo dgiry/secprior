@@ -197,4 +197,18 @@ describe('generate()', () => {
     const out = MB.generate(arts, 0);
     expect(out).toContain('CRITICAL');
   });
+
+  test('ACTIONABILITY shows watchlist line only when count > 0', () => {
+    // No watchlist match → line absent
+    expect(MB.generate([art()], 0)).not.toContain('Watchlist matches');
+
+    // V1 match → line present with correct count
+    const out = MB.generate([
+      art({ watchlistMatches: ['Fortinet'] }),
+      art({ watchlistMatches: ['Cisco'] }),
+      art(),  // no match
+    ], 0);
+    expect(out).toContain('👁  Watchlist matches');
+    expect(out).toContain(':    2');
+  });
 });
