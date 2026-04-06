@@ -273,7 +273,7 @@ async function fetchAllFeeds(forceRefresh = false) {
   // In static mode (USE_API=false) this block is skipped — no key, no fetch.
   if (CONFIG.USE_API) {
     try {
-      const uhRes = await fetch("/api/urlhaus", { signal: AbortSignal.timeout(25_000) });
+      const uhRes = await fetch("/api/fetch-feeds?urlhaus=1", { signal: AbortSignal.timeout(25_000) });
       if (uhRes.ok) {
         const uhData = await uhRes.json();
         if (Array.isArray(uhData.articles) && uhData.articles.length > 0) {
