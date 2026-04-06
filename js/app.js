@@ -179,6 +179,9 @@ const App = (() => {
         state.articles = typeof Contextualizer !== 'undefined'
           ? Contextualizer.ensureWatchlistConsistency(_cacheItems)
           : _cacheItems;
+        // Normalise iocCount from real arrays — prevents stale counts from cache
+        if (typeof IOCExtractor !== 'undefined')
+          state.articles.forEach(a => { a.iocCount = IOCExtractor.getRealIOCCount(a); });
         console.warn(`[App] Using fallback cache with ${state.articles.length} items after refresh error`);
         render();
         if (!state.articles?.length) console.warn("[App] render() called with empty cache items");
@@ -982,6 +985,10 @@ const App = (() => {
       state.articles = typeof Contextualizer !== 'undefined'
         ? Contextualizer.ensureWatchlistConsistency(_restoredArticles)
         : _restoredArticles;
+      // Normalise iocCount from real arrays — prevents stale counts after cache restore
+      // (iocCount can drift from actual iocs arrays when extraction logic changes between sessions)
+      if (typeof IOCExtractor !== 'undefined')
+        state.articles.forEach(a => { a.iocCount = IOCExtractor.getRealIOCCount(a); });
       render();
       StatsPanel.update(_restoredArticles);
       VendorPanel.update(_restoredArticles);

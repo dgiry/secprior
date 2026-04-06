@@ -220,7 +220,7 @@ const ArticleModal = (() => {
         </button>
         ${typeof QuickActions !== 'undefined'
           ? QuickActions.articleButtonsHTML({
-              showIoc: (article.iocCount || 0) > 0,
+              showIoc: IOCExtractor.hasRealIOCs(article),
               articleId: article.id,
               showTrendSearch: typeof TrendSearch !== 'undefined' && TrendSearch.hasIndicators(article)
             })
@@ -487,11 +487,15 @@ const ArticleModal = (() => {
   // Lit article.iocs, article.iocReputation, article._deepChars, article._deepScanned.
 
   function _renderIOCSection(article) {
-    const rep    = article.iocReputation || {};
-    const hasAPI = typeof CONFIG !== 'undefined' && CONFIG.USE_API;
+    const rep     = article.iocReputation || {};
+    const hasAPI  = typeof CONFIG !== 'undefined' && CONFIG.USE_API;
     const repDone = Object.keys(rep).length > 0;
 
-    const countPart = article.iocCount > 0 ? ` (${article.iocCount})` : '';
+    // Source de vérité : toujours les arrays réels, pas article.iocCount (peut dériver)
+    const realCount = IOCExtractor.getRealIOCCount(article);
+    const hasIOCs   = realCount > 0;
+
+    const countPart  = hasIOCs ? ` (${realCount})` : '';
     const stateBadge = repDone
       ? ' <span class="badge badge-new">Rep ✓</span>'
       : article._deepScanned
@@ -500,7 +504,7 @@ const ArticleModal = (() => {
 
     return `
       <h4 class="art-modal-section-title">🔬 Extracted IOCs${countPart}${stateBadge}</h4>
-      ${article.iocCount > 0
+      ${hasIOCs
         ? _renderIOCPanel(article.iocs, rep)
         : '<p class="art-metric-na">No IOC detected in RSS summary.</p>'}
       ${article._deepChars
@@ -511,7 +515,7 @@ const ArticleModal = (() => {
                 title="Fetch full article and re-scan for IOCs (server-side)">
           🔍 Deep IOC scan
         </button>
-        ${article.iocCount > 0 ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
+        ${hasIOCs ? `<button id="art-ioc-rep-btn" class="btn art-ioc-deep-btn"
                 title="Check IOC reputation via AlienVault OTX">
           🦠 Check reputation
         </button>` : ''}
@@ -727,7 +731,7 @@ const ArticleModal = (() => {
 
     const payload = lines.join('\n');
     const total   = (article.cves?.length || 0) + (article.attackTags?.length || 0)
-                  + (article.iocCount || 0);
+                  + IOCExtractor.getRealIOCCount(article); // real arrays, not stale iocCount
 
     try {
       await navigator.clipboard.writeText(payload);

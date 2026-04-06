@@ -273,9 +273,11 @@ const UI = (() => {
     })();
 
     // Badge résumé IOC — compteur rapide dans la rangée principale des signaux
-    const iocSummaryBadge = (article.iocCount || 0) > 0
+    // Toujours calculé depuis les arrays réels (pas iocCount stocké — peut être périmé)
+    const _realIOCN = IOCExtractor.getRealIOCCount(article);
+    const iocSummaryBadge = _realIOCN > 0
       ? `<span class="badge badge-ioc-summary"
-               title="Detected IOCs: ${article.iocCount} indicator${article.iocCount > 1 ? 's' : ''} (IPs, domains, hashes, URLs)">🔗 ${article.iocCount} IOC</span>`
+               title="Detected IOCs: ${_realIOCN} indicator${_realIOCN > 1 ? 's' : ''} (IPs, domains, hashes, URLs)">🔗 ${_realIOCN} IOC</span>`
       : "";
 
     // Badge threat actor — affiché si l'analyste a renseigné un acteur
@@ -293,7 +295,7 @@ const UI = (() => {
     const slaBadge = _slaBadgeHTML(article);
 
     // ── Badges IOCs (max 3 sur la carte, click-to-copy) ──────────────────────
-    const iocBadges = _buildIOCBadges(article.iocs, article.iocCount);
+    const iocBadges = _buildIOCBadges(article.iocs);
 
     // Badge "Nouveau depuis la dernière visite" — affiché dans le header
     const newBadge = article._isNew
@@ -356,8 +358,14 @@ const UI = (() => {
   }
 
   // ─── Badges IOCs compacts pour les cartes ─────────────────────────────────
-  function _buildIOCBadges(iocs, iocCount) {
-    if (!iocs || !iocCount) return "";
+  // Paramètre iocCount retiré — le comptage est toujours dérivé des arrays réels.
+  function _buildIOCBadges(iocs) {
+    if (!iocs) return "";
+
+    // Calculer depuis les arrays réels, jamais depuis article.iocCount (peut être périmé)
+    const realTotal = (iocs.ips?.length || 0) + (iocs.domains?.length || 0)
+                    + (iocs.hashes?.length || 0) + (iocs.urls?.length || 0);
+    if (!realTotal) return "";
 
     const badges = [];
     const MAX_CARD = 3; // max badges visibles sur la carte
@@ -392,7 +400,8 @@ const UI = (() => {
 
     if (!badges.length) return "";
 
-    const more = iocCount - badges.length;
+    // Overflow badge : basé sur le total réel des arrays, pas sur iocCount stocké
+    const more = realTotal - badges.length;
     const moreBadge = more > 0
       ? `<span class="badge badge-ioc badge-ioc-more" title="${more} more IOC(s) — Open details">+${more} IOC${more > 1 ? 's' : ''}</span>`
       : "";
@@ -718,7 +727,7 @@ const UI = (() => {
     }
 
     if (riskActive.has('ioc')) {
-      filtered = filtered.filter(a => (a.iocCount || 0) > 0);
+      filtered = filtered.filter(a => IOCExtractor.hasRealIOCs(a));
     }
 
     if (riskActive.has('zero_day')) {

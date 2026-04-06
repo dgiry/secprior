@@ -197,6 +197,27 @@ const IOCExtractor = (() => {
     return [...seen].slice(0, 5);
   }
 
+  // ── Source de vérité : comptage depuis les arrays réels ──────────────────
+  //
+  // Toutes les surfaces UI doivent appeler getRealIOCCount / hasRealIOCs
+  // plutôt que lire article.iocCount directement.
+  // article.iocCount peut dériver des arrays (cache LocalStorage 30 min,
+  // changements de whitelist entre sessions, etc.).
+  // Ces fonctions lisent toujours les arrays en temps réel.
+
+  function getRealIOCCount(article) {
+    const iocs = article.iocs;
+    if (!iocs) return 0;
+    return (iocs.ips?.length     || 0)
+         + (iocs.domains?.length || 0)
+         + (iocs.hashes?.length  || 0)
+         + (iocs.urls?.length    || 0);
+  }
+
+  function hasRealIOCs(article) {
+    return getRealIOCCount(article) > 0;
+  }
+
   // ── Enrichissement d'un article ───────────────────────────────────────────
   //
   // @param {object} article   - article ThreatLens enrichi
@@ -215,8 +236,10 @@ const IOCExtractor = (() => {
     const domains = _extractDomains(text, article.link);
     const urls    = _extractURLs(text, article.link);
 
-    const iocs     = { ips, hashes, domains, urls };
-    const iocCount = ips.length + hashes.length + domains.length + urls.length;
+    const iocs = { ips, hashes, domains, urls };
+    // iocCount est TOUJOURS dérivé des arrays réels via getRealIOCCount
+    // pour garantir la cohérence entre la valeur stockée et les données réelles.
+    const iocCount = getRealIOCCount({ iocs });
 
     return { ...article, iocs, iocCount };
   }
@@ -257,5 +280,5 @@ const IOCExtractor = (() => {
     }
   }
 
-  return { enrichArticle, enrichAll, copyIOC, formatForDisplay };
+  return { enrichArticle, enrichAll, copyIOC, formatForDisplay, getRealIOCCount, hasRealIOCs };
 })();
