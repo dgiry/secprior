@@ -798,6 +798,66 @@ const SettingsModal = (() => {
     UI.showToast('🔗 Integrations saved', 'success');
   }
 
+  async function testURLhaus() {
+    const key    = (_val("urlhaus-auth-key") || "").trim();
+    const btn    = document.getElementById("btn-urlhaus-test");
+    const status = document.getElementById("urlhaus-key-status");
+
+    const _set = (icon, msg, color) => {
+      if (status) status.innerHTML =
+        `<span style="color:${color};font-weight:600">${icon} ${msg}</span>`;
+    };
+
+    if (!key) {
+      _set("⚠️", "Enter a key first", "#e3a008");
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ Testing…"; }
+    _set("⏳", "Contacting URLhaus…", "#8b949e");
+
+    try {
+      const res = await fetch("/api/fetch-feeds?urlhaus=1", {
+        headers: { "X-URLhaus-Key": key },
+        signal:  AbortSignal.timeout(25_000)
+      });
+
+      if (!res.ok) {
+        // Backend relays upstream HTTP error (403 = bad key, 5xx = network)
+        let hint = `HTTP ${res.status}`;
+        try { const d = await res.json(); hint = d.error || hint; } catch {}
+        const isBadKey = res.status === 502 && hint.includes("403");
+        _set("❌", isBadKey ? "Invalid key (URLhaus rejected it)" : `Error: ${hint}`, "#f85149");
+        UI.showToast("❌ URLhaus: " + hint, "error");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.skipped) {
+        // Shouldn't happen since we sent a key, but handle gracefully
+        _set("⚠️", "Key not forwarded — refresh and retry", "#e3a008");
+        return;
+      }
+
+      if (data.error) {
+        _set("❌", data.error, "#f85149");
+        UI.showToast("❌ URLhaus: " + data.error, "error");
+        return;
+      }
+
+      const count = data.total ?? data.articles?.length ?? 0;
+      _set("✅", `Active — ${count} malicious URLs received`, "#3fb950");
+      UI.showToast(`✅ URLhaus active — ${count} URLs received`, "success");
+
+    } catch (err) {
+      _set("❌", `Connection error: ${err.message}`, "#f85149");
+      UI.showToast("❌ URLhaus: " + err.message, "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "🧪 Test connection"; }
+    }
+  }
+
   async function testShareWebhook() {
     const url  = (_val('share-webhook-url') || '').trim();
     const type = document.getElementById('share-webhook-type')?.value || 'slack';
@@ -1067,7 +1127,7 @@ const SettingsModal = (() => {
     deleteFeed, editFeedToggle, saveEditFeed,
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
-    saveIntegrations, testShareWebhook,
+    saveIntegrations, testURLhaus, testShareWebhook,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

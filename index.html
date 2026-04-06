@@ -996,10 +996,15 @@
             Stored locally in your browser (localStorage). Sent to the backend as a
             request header — never appears in URLs or server logs.
           </p>
-          <div class="settings-row" style="border:none;padding:.5rem 1.25rem 0">
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.5rem 0 0">
             <button class="btn btn-primary" onclick="SettingsModal.saveIntegrations()">
               💾 Save
             </button>
+            <button class="btn btn-test" id="btn-urlhaus-test"
+                    onclick="SettingsModal.testURLhaus()">
+              🧪 Test connection
+            </button>
+            <span id="urlhaus-key-status" class="settings-hint" style="min-width:0"></span>
           </div>
         </div>
 
@@ -1361,7 +1366,7 @@
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>
-  <script src="js/settings-modal.js?v=28"></script>
+  <script src="js/settings-modal.js?v=29"></script>
   <script src="js/watchlist-modal.js?v=19"></script>
   <script src="js/ui.js?v=21"></script>
   <script src="js/pdf-report.js?v=18"></script>
