@@ -143,8 +143,16 @@ const UI = (() => {
           ? `<span class="badge badge-sources" title="${article.sourceCount} sources cover this topic">×${article.sourceCount} sources</span>`
           : "");
 
-    const watchlistBadge = article.watchlistMatches?.length > 0
-      ? `<span class="badge badge-watchlist" title="Watchlist: ${article.watchlistMatches.join(', ')}">👁 Matches you</span>`
+    const _wlMatch = (article.watchlistMatches?.length > 0) ||
+                     (article.watchlistMatchItems?.length > 0) ||
+                     !!(article.prioritySignals?.watchlist);
+    const _wlTitle = article.watchlistMatches?.length > 0
+      ? `Watchlist: ${article.watchlistMatches.join(', ')}`
+      : article.prioritySignals?.watchlistItems?.length > 0
+        ? `Watchlist: ${article.prioritySignals.watchlistItems.map(i => i.label).join(', ')}`
+        : 'Watchlist match';
+    const watchlistBadge = _wlMatch
+      ? `<span class="badge badge-watchlist" title="${_wlTitle}">👁 Matches you</span>`
       : "";
 
     const attackBadges = (article.attackTags || []).slice(0, 2).map(t =>

@@ -9,7 +9,7 @@ const ExecView = (function () {
   'use strict';
 
   let _articles    = [];
-  let _trendVPMap  = {};  // { "CVE-2025-XXXX": vpData } — Trend virtual patch status
+  // _trendVPMap removed — per-CVE VP signal unsupported by TV1 API (2026-04)
   let _scopeDays   = 7;   // Default scope: last 7 days
 
   // ── Scope filter ──────────────────────────────────────────────────────────
@@ -45,9 +45,8 @@ const ExecView = (function () {
     });
   }
 
-  function update(articles, trendVPMap) {
+  function update(articles) {
     _articles = articles || [];
-    if (trendVPMap) _trendVPMap = trendVPMap;
     // Re-render live if modal is already open
     const modal = document.getElementById('modal-exec-view');
     if (modal && modal.style.display !== 'none') _render();
@@ -122,8 +121,17 @@ const ExecView = (function () {
 
   // ── Signals ────────────────────────────────────────────────────────────────
 
+  // Shared watchlist-match predicate — broadest credible definition.
+  // Checks all available signals so V1 (watchlistMatches string array) and
+  // V2 (watchlistMatchItems / prioritySignals.watchlist) paths both count.
+  function _isWLMatch(a) {
+    return (a.watchlistMatches?.length > 0) ||
+           (a.watchlistMatchItems?.length > 0) ||
+           !!(a.prioritySignals?.watchlist);
+  }
+
   function _watchlistHits(arts) {
-    return arts.filter(a => (a.watchlistMatches || []).length > 0).length;
+    return arts.filter(_isWLMatch).length;
   }
 
   function _topVendors(arts, max) {
@@ -198,14 +206,7 @@ const ExecView = (function () {
       !_isZeroDay(a)
     ).length;
 
-    // Trend virtual patch available — only counted when feature is enabled
-    const vpAvailable = CONFIG.TREND_V1_ENABLED
-      ? arts.filter(a =>
-          (a.cves || []).some(c => _trendVPMap[c.toUpperCase()]?.status === 'available')
-        ).length
-      : null; // null = row hidden in UI
-
-    return { kev, withIOC, cveLinking, zeroDays, noSignal, vpAvailable };
+    return { kev, withIOC, cveLinking, zeroDays, noSignal };
   }
 
   // ── Actionability HTML builder ─────────────────────────────────────────────
@@ -230,7 +231,6 @@ const ExecView = (function () {
           ${row('🔍', 'With IOC',                  act.withIOC,     'ioc',  'Hunt in SIEM&thinsp;/&thinsp;EDR')}
           ${row('📋', 'CVE-linked',                act.cveLinking,  'cve',  'Apply vendor advisory')}
           ${row('⏳', 'Zero-day',                  act.zeroDays,    'zero', 'No patch yet — monitor')}
-          ${act.vpAvailable !== null ? row('🛡️', 'Trend virtual patch', act.vpAvailable, 'vp', 'Filter available to deploy') : ''}
           ${row('📰', 'No direct signal',          act.noSignal,    'none', 'Strategic watch')}
         </div>
       </div>`;

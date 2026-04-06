@@ -5,7 +5,7 @@ const App = (() => {
   const state = {
     articles: [],         // Tous les articles chargés
     nvdMap: {},           // { articleId: cveData } — données NVD enrichies
-    trendVPMap: {},       // { "CVE-2025-XXXX": vpData } — Trend virtual patch status
+    // trendVPMap removed — per-CVE VP signal unsupported by TV1 API (2026-04)
     query: "",
     criticality: "all",
     source: "all",
@@ -108,11 +108,11 @@ const App = (() => {
       // Mettre à jour le dashboard stats
       StatsPanel.update(articles);
       VendorPanel.update(articles);
-      CVEPanel.update(articles, _buildCveNvdMap(), state.trendVPMap);
+      CVEPanel.update(articles, _buildCveNvdMap());
       IncidentPanel.update(articles);
       VisibilityPanel.update(articles);
       if (typeof ProfilePanel  !== 'undefined') ProfilePanel.update(articles);
-      if (typeof ExecView      !== 'undefined') ExecView.update(articles, state.trendVPMap);
+      if (typeof ExecView      !== 'undefined') ExecView.update(articles);
 
       // Mettre à jour la référence articles du modal de détail
       ArticleModal.setArticles(articles, state.nvdMap);
@@ -137,10 +137,7 @@ const App = (() => {
         enrichWithNVD(articles);
       }
 
-      // ── Enrichissement Trend Virtual Patch en arrière-plan (non-bloquant) ─
-      if (typeof TV1Sync !== 'undefined' && TV1Sync.loadConfig()?.vpEnabled && !isDemo) {
-        enrichWithTrendVP(articles);
-      }
+      // Trend VP enrichment removed — per-CVE signal unsupported by TV1 API (2026-04)
 
       // ── NVD keyword search : trouver les CVE manquants (non-bloquant) ─────
       // Pour les articles avec vendor connu mais 0 CVE dans le texte RSS.
@@ -150,7 +147,7 @@ const App = (() => {
           if (!target) return;
           target.cves = [...new Set([...(target.cves || []), ...newCveIds])];
           // Mettre à jour tous les panneaux avec les nouveaux CVE IDs
-          CVEPanel.update(state.articles, _buildCveNvdMap(), state.trendVPMap);
+          CVEPanel.update(state.articles, _buildCveNvdMap());
           Storage.setArticles(state.articles);
         });
       }
@@ -246,7 +243,7 @@ const App = (() => {
       // Synchroniser le modal si c'est l'article actuellement affiché
       ArticleModal.setArticles(state.articles, state.nvdMap);
       // Mettre à jour le panneau CVE avec les données NVD (timeline / âge)
-      if (typeof CVEPanel !== 'undefined') CVEPanel.update(state.articles, _buildCveNvdMap(), state.trendVPMap);
+      if (typeof CVEPanel !== 'undefined') CVEPanel.update(state.articles, _buildCveNvdMap());
     });
   }
 
@@ -266,20 +263,7 @@ const App = (() => {
     )];
   }
 
-  // ─── Enrichissement Trend Virtual Patch en arrière-plan ──────────────────
-  async function enrichWithTrendVP(articles) {
-    if (typeof TV1Sync === 'undefined' || !TV1Sync.loadConfig()?.vpEnabled) return;
-    const cveIds = _buildCveIdList(articles);
-    await TrendVP.enrichCVEs(cveIds, (cveId, vpData) => {
-      state.trendVPMap[cveId] = vpData;
-      // Rafraîchir le panneau CVE si ouvert
-      if (typeof CVEPanel !== 'undefined')
-        CVEPanel.update(state.articles, _buildCveNvdMap(), state.trendVPMap);
-      // Rafraîchir l'Exec View si ouvert
-      if (typeof ExecView !== 'undefined')
-        ExecView.update(state.articles, state.trendVPMap);
-    });
-  }
+  // enrichWithTrendVP removed — per-CVE VP signal unsupported by TV1 API (2026-04)
 
   // ─── Rendu avec filtres ────────────────────────────────────────────────────
   function render() {
@@ -846,7 +830,7 @@ const App = (() => {
     if (typeof ExecView !== 'undefined') ExecView.init();
 
     // ── Morning Brief generator ────────────────────────────────────────────────
-    if (typeof MorningBrief  !== 'undefined') MorningBrief.init(() => state.articles, () => state.trendVPMap);
+    if (typeof MorningBrief  !== 'undefined') MorningBrief.init(() => state.articles);
 
     // ── IOC Bulk Export ────────────────────────────────────────────────────────
     if (typeof IOCExport !== 'undefined') IOCExport.init(() => state.articles);
@@ -912,11 +896,11 @@ const App = (() => {
       render();
       StatsPanel.update(_restoredArticles);
       VendorPanel.update(_restoredArticles);
-      CVEPanel.update(_restoredArticles, _buildCveNvdMap(), state.trendVPMap);
+      CVEPanel.update(_restoredArticles, _buildCveNvdMap());
       IncidentPanel.update(_restoredArticles);
       VisibilityPanel.update(_restoredArticles);
       if (typeof ProfilePanel  !== 'undefined') ProfilePanel.update(_restoredArticles);
-      if (typeof ExecView      !== 'undefined') ExecView.update(_restoredArticles, state.trendVPMap);
+      if (typeof ExecView      !== 'undefined') ExecView.update(_restoredArticles);
       ArticleModal.setArticles(_restoredArticles, state.nvdMap);
       try {
         const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;

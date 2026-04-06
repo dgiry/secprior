@@ -940,27 +940,21 @@
           <!-- Statut dernière sync -->
           <div id="tv1-last-sync" class="settings-hint" style="margin-top:.4rem;min-height:1.2em"></div>
 
-          <!-- SWP IPS posture toggle + badge de connexion -->
-          <div style="display:flex;align-items:center;gap:.6rem;margin-top:.75rem;flex-wrap:wrap">
-            <input type="checkbox" id="tv1-vp-enabled"
-                   onchange="SettingsModal.toggleVP(this.checked)"
-                   style="width:1rem;height:1rem;cursor:pointer;flex-shrink:0">
-            <label for="tv1-vp-enabled" style="cursor:pointer;font-size:.9rem;flex:1">
-              🖥 Enable SWP IPS posture signal
-            </label>
-            <span id="tv1-vp-badge" class="tv1-vp-badge tv1-vp-badge-idle">⚪ SWP posture API not validated yet</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:.75rem;margin-top:.4rem;margin-left:1.6rem;flex-wrap:wrap">
-            <button class="btn" id="btn-tv1-vp-test" style="font-size:.8rem;padding:.2rem .7rem"
-                    onclick="SettingsModal.testVPConnection()">
-              🔵 Test connection
-            </button>
-            <p class="settings-hint" style="margin:0">
-              Read-only visibility into Intrusion Prevention posture on Trend SWP-managed endpoints. Requires <code>TV1_API_KEY</code>.
+          <!-- SWP IPS posture — passive info block (not an active feature) -->
+          <div style="margin-top:.9rem;padding:.6rem .75rem;border-radius:6px;background:rgba(139,148,158,.07);border:1px solid rgba(139,148,158,.18)">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem">
+              <span style="font-size:.85rem;font-weight:600;color:#c9d1d9">🖥 SWP IPS posture</span>
+              <span style="font-size:.7rem;font-weight:600;padding:.1rem .45rem;border-radius:20px;background:rgba(139,148,158,.15);color:#8b949e;white-space:nowrap">Not active in ThreatLens</span>
+            </div>
+            <p class="settings-hint" style="margin:0 0 .3rem">
+              Read-only visibility into Intrusion Prevention posture on Trend SWP-managed endpoints.
+              This signal is under evaluation and is not currently used by ThreatLens.
+            </p>
+            <p class="settings-hint" style="margin:0;font-style:italic">
+              Per-CVE virtual patch availability is not supported through the current TV1 API in SWP-only mode.
+              Use <strong>Search in Trend</strong> for CVE / Workbench correlation.
             </p>
           </div>
-          <!-- SWP posture status — mis à jour au toggle et à l'ouverture -->
-          <div id="tv1-vp-status" class="settings-hint" style="margin-top:.4rem;margin-left:1.6rem;min-height:1.2em"></div>
 
           <!-- Preview area — populated dynamically by JS -->
           <div id="tv1-preview" style="display:none;margin-top:.75rem"></div>
@@ -1282,7 +1276,7 @@
   <script src="js/risk-filter.js?v=14"></script>
   <script src="js/pipeline.js?v=13"></script>
   <script src="js/nvd.js?v=13"></script>
-  <script src="js/trend-vp.js?v=2"></script>
+  <!-- trend-vp.js deleted (2026-04): per-CVE VP signal not supported by TV1 public API -->
   <script src="js/trend-search.js?v=1"></script>
   <script src="js/email-alerts.js?v=20"></script>
   <script src="js/tv1-sync.js?v=2"></script>

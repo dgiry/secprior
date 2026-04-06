@@ -220,5 +220,20 @@ const TrendSearch = (() => {
     });
   }
 
-  return { searchArticle, hasIndicators, _triggerUI };
+  // ── Public: single-CVE search for use outside the article modal ─────────────
+  // Returns the same result shape as _fetchOne. Uses the shared 1h cache.
+
+  async function searchCVE(cveId) {
+    return await _fetchOne({ query: cveId.toUpperCase(), type: 'cve' });
+  }
+
+  // ── Public: synchronous cache read — no network call ─────────────────────────
+  // Returns cached data if a non-expired entry exists for this CVE, else null.
+  // Used by the CVE table to restore visible result state on re-render.
+
+  function getCachedCVE(cveId) {
+    return _getCached(`cve:${cveId.toUpperCase()}`);
+  }
+
+  return { searchArticle, hasIndicators, _triggerUI, searchCVE, getCachedCVE };
 })();

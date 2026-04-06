@@ -6,12 +6,9 @@
 //   • TV1_API_KEY configured        → calls TV1 V3.0 endpoint inventory API
 //   Returns: { items, source, count, fetchedAt, note?, errorCode? }
 //
-// MODE 2 — Virtual Patch lookup
-//   GET /api/tv1-sync?mode=vp&cveId=CVE-YYYY-NNNNN[&region=us]
-//   • TV1_API_KEY not set → { status: "unknown", reason: "not_configured" }
-//   • TV1_API_KEY set     → queries IPS filter catalog
-//   Returns: { cveId, status, filterId?, filterName?, publishedAt?, source, cachedAt }
-//     status: "available" | "not_available" | "unknown"
+// MODE 2 — Virtual Patch lookup (REMOVED 2026-04)
+//   TV1 public API does not expose IPS rule catalog — all candidate paths return 404.
+//   _handleVP and client-side trend-vp.js have been removed.
 //
 // Security:
 //   • TV1_API_KEY never logged or forwarded to client
@@ -51,9 +48,10 @@ module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET")     return res.status(405).json({ error: "Method not allowed" });
 
-  // ── Route to Virtual Patch mode ───────────────────────────────────────────
-  if (req.query.mode === "vp")     return _handleVP(req, res);
+  // ── Route to mode handlers ────────────────────────────────────────────────
+  // mode=vp removed — TV1 API does not expose IPS rule catalog (all paths 404)
   if (req.query.mode === "search") return _handleSearch(req, res);
+  if (req.query.mode === "swp")    return _handleSWP(req, res);
 
   const forceDemo = req.query.demo === "1";
   const apiKey    = process.env.TV1_API_KEY;
@@ -271,76 +269,234 @@ async function _handleSearch(req, res) {
   }
 }
 
-// ── Virtual Patch handler ─────────────────────────────────────────────────────
-// GET /api/tv1-sync?mode=vp&cveId=CVE-YYYY-NNNNN[&region=us]
+// ── Virtual Patch handler REMOVED (2026-04) ──────────────────────────────────
+// TV1 public API /v3.0/ips/filters returns 404 — no IPS rule catalog exposed.
+// _handleVP was the per-CVE VP lookup; it has been removed along with all
+// client-side UI that consumed it.  mode=vp requests now fall through to the
+// default watchlist handler (harmless — returns endpoint inventory or demo data).
 
-async function _handleVP(req, res) {
-  const { cveId, region = "us" } = req.query;
+// ── SWP IPS Posture handler ───────────────────────────────────────────────────
+// GET /api/tv1-sync?mode=swp[&region=us][&debug=1][&force=1]
+//
+// Returns global IPS posture across all SWP-managed endpoints.
+// Expensive (1 list call + N per-endpoint calls). Results cached 30 min in KV.
+//
+// Response shape:
+//   { status, scope, swpTotal, ipsActive, ipsNotActive,
+//     offline_ipsUnknown, noIpsFeature,
+//     offlineThresholdHours, pagesConsumed, apiCallsTotal,
+//     elapsedMs, source, cachedAt, rawSample? }
+//
+// status: "available" | "unknown"
+// rawSample: only present when debug=1 (truncated GUIDs, no full data)
 
-  if (!cveId) return res.status(400).json({ error: "Parameter 'cveId' required" });
-  if (!/^CVE-\d{4}-\d{4,}$/i.test(cveId))
-    return res.status(400).json({ error: "Invalid CVE format (expected: CVE-YYYY-NNNNN)" });
+const _SWP_PRODUCT_NAME    = "Server & Workload Protection";
+const _SWP_OFFLINE_HOURS   = 24;
+const _SWP_MAX_PAGES       = 5;
+const _SWP_CACHE_TTL_S     = 1800; // 30 min
+const _SWP_PAGE_SIZE       = 100;  // API default; no param to change it
 
-  const apiKey = process.env.TV1_API_KEY || "";
-  if (!apiKey) {
-    return res.status(200).json({
-      cveId: cveId.toUpperCase(), status: "unknown",
-      reason: "not_configured", source: "trend_v1", cachedAt: Date.now()
-    });
+async function _handleSWP(req, res) {
+  const t0      = Date.now();
+  const apiKey  = process.env.TV1_API_KEY || "";
+  const region  = ((req.query.region || process.env.TV1_REGION || "us")).toLowerCase();
+  const debug   = req.query.debug === "1";
+  const force   = req.query.force === "1"; // bypass cache
+  const cacheKey = `swp_posture_${region}`;
+
+  const _unknown = (reason) => res.status(200).json({
+    status: "unknown", reason, scope: "global", swpTotal: 0,
+    ipsActive: 0, ipsNotActive: 0, offline_ipsUnknown: 0, noIpsFeature: 0,
+    source: "trend_swp", cachedAt: Date.now()
+  });
+
+  if (!apiKey) return _unknown("not_configured");
+
+  // ── KV cache check ──────────────────────────────────────────────────────────
+  if (!force) {
+    try {
+      const kvUrl = `${process.env.KV_REST_API_URL}/get/${cacheKey}`;
+      const kvRes = await fetch(kvUrl, {
+        headers: { Authorization: `Bearer ${process.env.KV_REST_API_READ_ONLY_TOKEN}` },
+        signal: AbortSignal.timeout(3_000)
+      });
+      if (kvRes.ok) {
+        const { result } = await kvRes.json();
+        if (result) {
+          const cached = JSON.parse(result);
+          // Strip rawSample from cached unless debug requested
+          if (!debug) delete cached.rawSample;
+          res.setHeader("Cache-Control", `s-maxage=${_SWP_CACHE_TTL_S}, stale-while-revalidate=300`);
+          res.setHeader("X-Cache", "HIT");
+          return res.status(200).json(cached);
+        }
+      }
+    } catch (_) {
+      // KV unavailable — proceed to live fetch, don't block
+    }
   }
 
   const base = TV1_BASE[region] || TV1_BASE.us;
-  const url  = `${base}/v3.0/ips/filters?cveId=${encodeURIComponent(cveId.toUpperCase())}`;
 
-  try {
-    const tv1Res = await fetch(url, {
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
-        "User-Agent": "CyberVeille-Pro/2.0"
-      },
-      signal: AbortSignal.timeout(12_000)
-    });
+  // ── Paginated endpoint list ─────────────────────────────────────────────────
+  const allItems      = [];
+  let   pagesConsumed = 0;
+  let   apiCallsTotal = 0;
+  let   nextUrl       = `${base}/v3.0/endpointSecurity/endpoints`;
 
-    if (tv1Res.status === 429) {
-      const ra = tv1Res.headers.get("Retry-After") || "60";
+  while (nextUrl && pagesConsumed < _SWP_MAX_PAGES) {
+    let listRes;
+    try {
+      listRes = await fetch(nextUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept:        "application/json",
+          "User-Agent":  "CyberVeille-Pro/2.0"
+        },
+        signal: AbortSignal.timeout(12_000)
+      });
+    } catch (err) {
+      console.warn("[tv1-swp] list fetch error:", err.message);
+      return _unknown(err.name === "TimeoutError" ? "timeout" : "network_error");
+    }
+
+    apiCallsTotal++;
+
+    if (listRes.status === 429) {
+      const ra = listRes.headers.get("Retry-After") || "60";
       res.setHeader("Retry-After", ra);
       return res.status(429).json({ error: "Rate limited", retryAfter: ra });
     }
-    if (!tv1Res.ok) {
-      console.warn(`[tv1-vp] HTTP ${tv1Res.status} for ${cveId} on ${base}`);
-      return res.status(200).json({
-        cveId: cveId.toUpperCase(), status: "unknown",
-        reason: `tv1_http_${tv1Res.status}`, httpStatus: tv1Res.status,
-        source: "trend_v1", cachedAt: Date.now()
-      });
+    if (!listRes.ok) {
+      console.warn("[tv1-swp] list HTTP", listRes.status);
+      return _unknown(`list_http_${listRes.status}`);
     }
 
-    const json  = await tv1Res.json();
-    const items = json?.items || [];
-    const upper = cveId.toUpperCase();
-    const hit   = items.find(f => (f.cveIds || []).some(c => c.toUpperCase() === upper));
+    const body = await listRes.json();
+    allItems.push(...(body.items || []));
+    pagesConsumed++;
+    nextUrl = body.nextLink || null;
 
-    res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=3600");
-
-    if (!hit) {
-      return res.status(200).json({
-        cveId: upper, status: "not_available", source: "trend_v1", cachedAt: Date.now()
-      });
-    }
-    return res.status(200).json({
-      cveId: upper, status: "available",
-      filterId: String(hit.id || ""), filterName: hit.name || "",
-      publishedAt: hit.publishedAt || null, source: "trend_v1", cachedAt: Date.now()
-    });
-
-  } catch (err) {
-    return res.status(200).json({
-      cveId: cveId.toUpperCase(), status: "unknown",
-      reason: err.name === "TimeoutError" ? "timeout" : "network_error",
-      source: "trend_v1", cachedAt: Date.now()
-    });
+    // If page was under capacity we've exhausted the list
+    if ((body.items || []).length < _SWP_PAGE_SIZE) break;
   }
+
+  // ── Filter SWP endpoints ────────────────────────────────────────────────────
+  const swpEndpoints = allItems.filter(ep =>
+    (ep.eppAgent?.productNames || []).includes(_SWP_PRODUCT_NAME)
+  );
+
+  // ── Per-endpoint classification ─────────────────────────────────────────────
+  const counts = { ipsActive: 0, ipsNotActive: 0, offline_ipsUnknown: 0, noIpsFeature: 0 };
+  const rawSample = [];
+
+  for (const ep of swpEndpoints) {
+    const guid = ep.agentGuid;
+    let classifiedAs           = "ipsNotActive";
+    let ipsFeatureStatus       = null;
+    let eppLastConnectedHoursAgo = null;
+
+    try {
+      const detailRes = await fetch(
+        `${base}/v3.0/endpointSecurity/endpoints/${encodeURIComponent(guid)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            Accept:        "application/json",
+            "User-Agent":  "CyberVeille-Pro/2.0"
+          },
+          signal: AbortSignal.timeout(12_000)
+        }
+      );
+      apiCallsTotal++;
+
+      if (detailRes.ok) {
+        const detail   = await detailRes.json();
+        const lastConn = detail.eppAgent?.lastConnectedDateTime;
+
+        if (lastConn) {
+          eppLastConnectedHoursAgo =
+            (Date.now() - new Date(lastConn).getTime()) / 3_600_000;
+        }
+
+        // ⚠ Offline check MUST come before IPS status — stale data guard
+        if (eppLastConnectedHoursAgo === null ||
+            eppLastConnectedHoursAgo > _SWP_OFFLINE_HOURS) {
+          classifiedAs = "offline_ipsUnknown";
+        } else {
+          const feats = detail.eppAgent?.features ?? [];
+          const ips   = feats.find(f => f.name === "IntrusionPreventionSystem");
+
+          if (!ips) {
+            classifiedAs = "noIpsFeature";
+          } else {
+            ipsFeatureStatus = ips.status;
+            if (ips.status === "enabled" || ips.status === "enabledAndCompliant") {
+              classifiedAs = "ipsActive";
+            } else {
+              // "disabled" or any future unknown value → conservative
+              classifiedAs = "ipsNotActive";
+            }
+          }
+        }
+      } else {
+        classifiedAs = "offline_ipsUnknown";
+      }
+    } catch (_) {
+      classifiedAs = "offline_ipsUnknown";
+    }
+
+    counts[classifiedAs] = (counts[classifiedAs] || 0) + 1;
+
+    if (debug) {
+      rawSample.push({
+        endpointName:              ep.endpointName || ep.displayName || "unknown",
+        agentGuid:                 guid ? guid.slice(0, 8) + "..." : null,
+        ipsFeatureStatus,
+        eppLastConnectedHoursAgo:  eppLastConnectedHoursAgo !== null
+                                   ? Math.round(eppLastConnectedHoursAgo * 10) / 10
+                                   : null,
+        classifiedAs
+      });
+    }
+  }
+
+  const result = {
+    status:               "available",
+    scope:                "global",
+    swpTotal:             swpEndpoints.length,
+    ipsActive:            counts.ipsActive            || 0,
+    ipsNotActive:         counts.ipsNotActive         || 0,
+    offline_ipsUnknown:   counts.offline_ipsUnknown   || 0,
+    noIpsFeature:         counts.noIpsFeature         || 0,
+    offlineThresholdHours: _SWP_OFFLINE_HOURS,
+    pagesConsumed,
+    apiCallsTotal,
+    elapsedMs:            Date.now() - t0,
+    source:               "trend_swp",
+    cachedAt:             Date.now(),
+    ...(debug ? { rawSample } : {})
+  };
+
+  // ── Store in KV cache ───────────────────────────────────────────────────────
+  try {
+    const kvSetUrl = `${process.env.KV_REST_API_URL}/set/${cacheKey}`;
+    await fetch(kvSetUrl, {
+      method:  "POST",
+      headers: {
+        Authorization:  `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ value: JSON.stringify(result), ex: _SWP_CACHE_TTL_S }),
+      signal: AbortSignal.timeout(3_000)
+    });
+  } catch (_) {
+    // KV write failure is non-fatal — result is still returned to client
+  }
+
+  res.setHeader("Cache-Control", `s-maxage=${_SWP_CACHE_TTL_S}, stale-while-revalidate=300`);
+  res.setHeader("X-Cache", "MISS");
+  return res.status(200).json(result);
 }
 
 // ── Normalize TV1 endpoint inventory → watchlist items ───────────────────────

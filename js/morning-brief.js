@@ -23,7 +23,7 @@ const MorningBrief = (() => {
   'use strict';
 
   let _getArticles    = null;  // () => Article[]
-  let _getTrendVPMap  = null;  // () => { "CVE-XXXX": vpData }
+  // _getTrendVPMap removed — per-CVE VP signal unsupported by TV1 API (2026-04)
   let _scopeDays      = 7;     // default scope: last 7 days
 
   const SEP = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
@@ -97,12 +97,36 @@ const MorningBrief = (() => {
       .slice(0, 5);
   }
 
-  // Aggregate watchlist hits by term name → count
+  // Shared watchlist-match predicate — mirrors exec-view.js _isWLMatch.
+  // Checks all available signals so both V1 (watchlistMatches) and
+  // V2 (watchlistMatchItems / prioritySignals.watchlist) paths are counted.
+  function _isWLMatch(a) {
+    return (a.watchlistMatches?.length > 0) ||
+           (a.watchlistMatchItems?.length > 0) ||
+           !!(a.prioritySignals?.watchlist);
+  }
+
+  // Aggregate watchlist hits by term name → count.
+  // Pulls labels from all available sources in priority order:
+  //   1. watchlistMatches (V1 string labels from contextualizer)
+  //   2. watchlistMatchItems (V2 full objects from contextualizer)
+  //   3. prioritySignals.watchlistItems (scored display items)
+  //   4. generic "Watchlist" fallback when a match exists but no labels are available
   function _watchlistTally(arts) {
     const tally = {};
     arts.forEach(a => {
-      (a.watchlistMatches || []).forEach(term => {
-        if (term) tally[term] = (tally[term] || 0) + 1;
+      if (!_isWLMatch(a)) return;
+      let labels = [];
+      if (a.watchlistMatches?.length > 0) {
+        labels = a.watchlistMatches;
+      } else if (a.watchlistMatchItems?.length > 0) {
+        labels = a.watchlistMatchItems.map(i => i.label || i.value).filter(Boolean);
+      } else if (a.prioritySignals?.watchlistItems?.length > 0) {
+        labels = a.prioritySignals.watchlistItems.map(i => i.label).filter(Boolean);
+      }
+      if (labels.length === 0) labels = ['Watchlist'];
+      labels.forEach(term => {
+        tally[term] = (tally[term] || 0) + 1;
       });
     });
     return Object.entries(tally)
@@ -115,18 +139,65 @@ const MorningBrief = (() => {
       !!(a.prioritySignals?.isZeroDay ||
          (a.attackTags || []).some(t => t.label === '0-Day') ||
          /zero.?day|0day/i.test(a.title || ''));
-    const vpMap = (_getTrendVPMap && CONFIG.TREND_V1_ENABLED) ? _getTrendVPMap() : null;
     return {
       kev:     arts.filter(a => a.isKEV).length,
       ioc:     arts.filter(a => (a.iocCount || 0) > 0).length,
       cve:     arts.filter(a => (a.cves || []).length > 0).length,
-      zeroDay: arts.filter(isZD).length,
-      vp:      vpMap !== null
-               ? arts.filter(a =>
-                   (a.cves || []).some(c => vpMap[c.toUpperCase()]?.status === 'available')
-                 ).length
-               : null  // null = line omitted in brief
+      zeroDay: arts.filter(isZD).length
     };
+  }
+
+  // ── Priority action line ──────────────────────────────────────────────────
+  // Returns a single analyst-toned recommendation based on the highest-signal
+  // condition present in scope. Evaluated in strict priority order.
+
+  function _priorityAction(arts, posture, act, wl) {
+    // 1. KEV items that also carry IOC — highest urgency
+    const kevWithIOC = arts.filter(a => a.isKEV && (a.iocCount || 0) > 0).length;
+    if (kevWithIOC > 0) {
+      return `patch ${kevWithIOC} KEV item${kevWithIOC !== 1 ? 's' : ''} immediately — active exploitation indicators present.`;
+    }
+
+    // 2. Any KEV — cite up to 2 CVEs for specificity
+    if (act.kev > 0) {
+      const cveHint = arts
+        .filter(a => a.isKEV)
+        .flatMap(a => (a.cves || []).slice(0, 1))
+        .slice(0, 2)
+        .join(', ');
+      const suffix = cveHint ? ` (${cveHint})` : '';
+      return `patch ${act.kev} actively exploited item${act.kev !== 1 ? 's' : ''}${suffix} — KEV confirmed.`;
+    }
+
+    // 3. Critical-priority items with no KEV label
+    if (posture.critCount > 0) {
+      return `investigate ${posture.critCount} critical-priority item${posture.critCount !== 1 ? 's' : ''} — immediate triage required.`;
+    }
+
+    // 4. Multiple IOC-bearing articles
+    if (act.ioc >= 3) {
+      return `hunt in SIEM/EDR — ${act.ioc} articles carry active indicators of compromise.`;
+    }
+
+    // 5. Zero-day
+    if (act.zeroDay > 0) {
+      return `monitor ${act.zeroDay} zero-day item${act.zeroDay !== 1 ? 's' : ''} — no patch available; apply compensating controls.`;
+    }
+
+    // 6. Watchlist hits — name top matched terms
+    if (wl.length > 0) {
+      const terms = wl.slice(0, 2).map(([t]) => t).join(', ');
+      const total = wl.reduce((s, [, c]) => s + c, 0);
+      return `review ${total} watchlist-matched article${total !== 1 ? 's' : ''} — terms: ${terms}.`;
+    }
+
+    // 7. CVE-linked items with no stronger signal
+    if (act.cve > 0) {
+      return `apply vendor advisories — ${act.cve} CVE-linked article${act.cve !== 1 ? 's' : ''} in scope.`;
+    }
+
+    // 8. Nominal / quiet period
+    return `maintain standard monitoring cadence — no elevated threats detected.`;
   }
 
   // ── Brief generator ────────────────────────────────────────────────────────
@@ -162,6 +233,7 @@ const MorningBrief = (() => {
     L.push('');
     L.push(`📊  THREAT POSTURE: ${posture.level} ${posture.icon}`);
     L.push(`    ${posture.desc}`);
+    L.push(`⚡  Priority action: ${_priorityAction(arts, posture, act, wl)}`);
     L.push('');
     L.push(SEP);
 
@@ -216,9 +288,7 @@ const MorningBrief = (() => {
     L.push(`    🔍  Hunt in SIEM/EDR   (IOC):  ${pad(act.ioc)}`);
     L.push(`    📋  Apply advisory     (CVE):  ${pad(act.cve)}`);
     L.push(`    ⏳  Zero-day — monitor       :  ${pad(act.zeroDay)}`);
-    if (act.vp !== null) {
-      L.push(`    🖥  SWP IPS posture signal   :  ${pad(act.vp)}`);
-    }
+    // VP line removed — per-CVE signal unsupported by TV1 API (2026-04)
     L.push('');
     L.push(SEP);
 
@@ -277,9 +347,8 @@ const MorningBrief = (() => {
     modal.style.display = 'flex';
   }
 
-  function init(getArticlesFn, getTrendVPMapFn) {
+  function init(getArticlesFn) {
     _getArticles   = getArticlesFn;
-    _getTrendVPMap = getTrendVPMapFn || null;
 
     document.getElementById('btn-morning-brief')?.addEventListener('click', show);
     document.getElementById('mb-close')?.addEventListener('click', _close);

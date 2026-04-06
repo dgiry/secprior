@@ -59,9 +59,7 @@ const SettingsModal = (() => {
       const tv1 = TV1Sync.loadConfig();
       const sel = document.getElementById('tv1-region');
       if (sel && tv1.region) sel.value = tv1.region;
-      const vpCb = document.getElementById('tv1-vp-enabled');
-      if (vpCb) vpCb.checked = !!tv1.vpEnabled;
-      _renderVPStatus();
+      // Per-CVE VP toggle removed — TV1 API does not expose IPS rule catalog
 
       // Afficher le statut de la dernière sync
       const lastSyncEl = document.getElementById('tv1-last-sync');
@@ -884,131 +882,10 @@ const SettingsModal = (() => {
     });
   }
 
-  // ── VP status renderer (appelé à l'ouverture du modal ET au toggle) ──────────
-
-  function _renderVPStatus() {
-    if (typeof TV1Sync === 'undefined') return;
-    const tv1 = TV1Sync.loadConfig();
-
-    // ── Badge de connexion ──
-    const badge = document.getElementById('tv1-vp-badge');
-    if (badge) {
-      const r      = tv1.vpTestResult;
-      const detail = tv1.vpTestReason ? ` (${tv1.vpTestReason})` : '';
-      if (!r || r === 'untested') {
-        badge.textContent = '⚪ SWP posture API not validated yet';
-        badge.title       = 'Click "Test connection" to validate the SWP posture API';
-        badge.className   = 'tv1-vp-badge tv1-vp-badge-idle';
-      } else if (r === 'ok') {
-        const ago = tv1.vpTestAt
-          ? Math.round((Date.now() - tv1.vpTestAt) / 60_000) : null;
-        badge.textContent = `🟢 Connected${ago !== null ? ` · ${ago < 1 ? '<1' : ago} min ago` : ''}`;
-        badge.title       = 'SWP endpoint API reachable — IPS posture data available';
-        badge.className   = 'tv1-vp-badge tv1-vp-badge-ok';
-      } else {
-        const labels = {
-          error_nokey:   '🔴 No API key',
-          error_auth:    '🔴 Invalid API key (401)',
-          error_scope:   '🔴 Insufficient scope (403)',
-          error_404:     '⚪ SWP posture API not validated yet',
-          error_timeout: '🟡 Timeout',
-          error_network: '🟡 Unreachable',
-        };
-        const tooltips = {
-          error_nokey:   'Configure your TV1 API key above',
-          error_auth:    'API key rejected — check TV1_API_KEY in Vercel env vars',
-          error_scope:   'Token lacks endpoint-security scope — check Automation Center permissions',
-          error_404:     'SWP posture endpoint not found — API validation required before this feature can be used.',
-          error_timeout: 'TV1 API did not respond in time — check region setting',
-          error_network: 'Could not reach TV1 API — check connectivity',
-        };
-        badge.textContent = labels[r] || '🔴 Error';
-        badge.title       = tooltips[r] || detail || r;
-        badge.className   = r === 'error_timeout' || r === 'error_network'
-          ? 'tv1-vp-badge tv1-vp-badge-warn'
-          : r === 'error_404'
-            ? 'tv1-vp-badge tv1-vp-badge-idle'
-            : 'tv1-vp-badge tv1-vp-badge-error';
-      }
-    }
-
-    // ── Statut cache VP ──
-    const vpStatusEl = document.getElementById('tv1-vp-status');
-    if (vpStatusEl && typeof TrendVP !== 'undefined') {
-      const st = TrendVP.getStats();
-      // SWP posture: per-CVE virtual patch catalog is not supported
-      if (tv1.vpTestResult === 'error_404') {
-        vpStatusEl.innerHTML =
-          'Per-CVE virtual patch filter availability is not supported in SWP-only mode. ' +
-          'ThreatLens can instead use SWP machine posture to show whether Intrusion Prevention appears active on Trend-managed endpoints. ' +
-          '<strong>Use the "Search in Trend" action in article modal</strong> to correlate CVEs with Workbench alerts.';
-        return;
-      }
-      if (!tv1.vpEnabled) {
-        vpStatusEl.textContent = st.total > 0
-          ? `⏸ SWP posture disabled · ${st.total} entries in cache (stale)`
-          : '⏸ SWP posture disabled — enable above to activate.';
-      } else if (st.total === 0) {
-        vpStatusEl.textContent = '⏳ No SWP posture data cached yet — will populate on next feed refresh.';
-      } else {
-        const agoMs  = st.newestAt ? Date.now() - st.newestAt : null;
-        const agoStr = agoMs === null ? ''
-          : agoMs < 60_000        ? ' · updated just now'
-          : agoMs < 3_600_000     ? ` · updated ${Math.round(agoMs / 60_000)} min ago`
-          :                         ` · updated ${Math.round(agoMs / 3_600_000)} h ago`;
-        vpStatusEl.textContent =
-          `🖥 SWP posture: ${st.total} endpoints · ${st.available} IPS active · ${st.notAvailable} not active${agoStr}`;
-      }
-    }
-  }
-
-  // ── VP toggle ──────────────────────────────────────────────────────────────
-
-  function toggleVP(checked) {
-    if (typeof TV1Sync === 'undefined') return;
-    const cfg = TV1Sync.loadConfig();
-    const region = document.getElementById('tv1-region')?.value || cfg.region;
-    TV1Sync.saveConfig({ ...cfg, vpEnabled: !!checked, region: region || cfg.region });
-    _renderVPStatus();
-  }
-
-  // ── VP test de connexion ───────────────────────────────────────────────────
-
-  async function testVPConnection() {
-    if (typeof TV1Sync === 'undefined') return;
-    const btn = document.getElementById('btn-tv1-vp-test');
-    if (btn) { btn.disabled = true; btn.textContent = '⟳ Testing…'; }
-
-    const region = TV1Sync.loadConfig()?.region || 'us';
-    // CVE connue, présente dans le catalogue IPS Trend (peu importe le résultat available/not)
-    const url = `/api/tv1-sync?mode=vp&cveId=CVE-2024-21413&region=${encodeURIComponent(region)}`;
-
-    let testResult = 'error_network';
-    let testReason = '';
-    try {
-      const res  = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-      const data = await res.json();
-      const reason = data.reason || '';
-      testReason = reason || (data.status === 'unknown' ? 'unknown' : 'ok');
-      if (reason === 'not_configured')        testResult = 'error_nokey';
-      else if (reason.includes('401'))        testResult = 'error_auth';
-      else if (reason.includes('403'))        testResult = 'error_scope';
-      else if (reason.includes('404'))        testResult = 'error_404';
-      else if (reason === 'timeout')          testResult = 'error_timeout';
-      else if (data.status === 'unknown')     testResult = 'error_network';
-      else                                    testResult = 'ok';
-    } catch (err) {
-      testResult = err.name === 'AbortError' ? 'error_timeout' : 'error_network';
-      testReason = err.message || testResult;
-    }
-
-    // Sauvegarder le résultat + raison brute dans la config
-    const cfg = TV1Sync.loadConfig();
-    TV1Sync.saveConfig({ ...cfg, vpTestResult: testResult, vpTestReason: testReason, vpTestAt: Date.now() });
-
-    if (btn) { btn.disabled = false; btn.textContent = '🔵 Test connection'; }
-    _renderVPStatus();
-  }
+  // ── Per-CVE VP status / toggle / test connection removed (2026-04) ──────────
+  // TV1 public API does not expose an IPS rule catalog or CVE-to-rule mapping.
+  // All candidate paths (/v3.0/ips/filters, /v3.0/ips/rules, etc.) return 404.
+  // Global SWP posture (mode=swp) remains as a backend debug endpoint.
 
   // ── API publique ────────────────────────────────────────────────────────────
 
@@ -1027,7 +904,6 @@ const SettingsModal = (() => {
     saveIntegrations,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
-    // TV1 Virtual Patch toggle + test
-    toggleVP, testVPConnection
+    // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API
   };
 })();

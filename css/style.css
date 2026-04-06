@@ -3329,6 +3329,18 @@ body.modal-open { overflow: hidden; }
                     color:var(--accent); background:transparent; }
 .cp-num           { text-align:right; font-family:monospace; font-size:.75rem; }
 .cp-dim           { color:var(--text2); }
+
+/* CVE table — Search in Trend per-row action */
+.cp-th-trend      { text-align:center !important; width:5.5rem; }
+.cp-td-trend      { text-align:center; white-space:nowrap; }
+.cp-trend-btn     { background:none; border:1px solid rgba(88,166,255,.25); color:#58a6ff;
+                    border-radius:4px; padding:.1rem .4rem; font-size:.7rem; cursor:pointer;
+                    line-height:1.4; transition:background .15s; }
+.cp-trend-btn:hover     { background:rgba(88,166,255,.12); }
+.cp-trend-btn:disabled  { color:#8b949e; border-color:rgba(139,148,158,.18); cursor:default; }
+.cp-trend-found   { font-size:.7rem; font-weight:600; }
+.cp-trend-empty   { font-size:.7rem; color:#8b949e; }
+.cp-trend-unknown { font-style:italic; }
 .cp-vendors-cell  { max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* État vide */
@@ -4494,19 +4506,7 @@ body.modal-open { overflow: hidden; }
 .ts-badge-unknown { color: #8b949e; font-style: italic; }
 .ts-badge-loading { color: #58a6ff; animation: ts-spin .8s linear infinite; display: inline-block; }
 
-/* ── VP connection badge (Integrations tab) ─────────────────────────────────── */
-.tv1-vp-badge {
-  font-size: .75rem;
-  font-weight: 600;
-  padding: .15rem .5rem;
-  border-radius: 20px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.tv1-vp-badge-idle  { background: rgba(139,148,158,.12); color: #8b949e; }
-.tv1-vp-badge-ok    { background: rgba(63,185,80,.12);   color: #3fb950; }
-.tv1-vp-badge-warn  { background: rgba(210,153,34,.12);  color: #d29922; }
-.tv1-vp-badge-error { background: rgba(248,81,73,.12);   color: #f85149; }
+/* VP connection badge removed — per-CVE signal unsupported by TV1 API (2026-04) */
 
 @keyframes ts-spin { to { transform: rotate(360deg); } }
 
@@ -5738,21 +5738,4 @@ body.modal-open { overflow: hidden; }
 .cp-exposure-med  { background: #271e08; color: #d29922; border: 1px solid #9e6a03; }
 .cp-exposure-low  { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
 
-/* Trend VP timeline node */
-.cp-tl-vp .cp-tl-dot    { background: #a371f7; }   /* purple — distinct from other nodes */
-.cp-tl-vp .cp-tl-label  { color: #a371f7; }
-
-/* "No virtual patch yet" note — muted, below timeline */
-.cp-tl-vp-none {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  margin-left: auto;
-  font-size: .67rem;
-  color: #6e7681;
-  font-style: italic;
-}
-
-/* Exec View VP actionability row */
-.ev-act-row-active.ev-act-vp { border-left: 3px solid #a371f7; }
-.ev-act-c-vp                 { color: #a371f7; }
+/* VP timeline node, "No VP yet" note, Exec View VP row — all removed (2026-04) */
