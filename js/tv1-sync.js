@@ -25,6 +25,9 @@
 
 const TV1Sync = (() => {
 
+  // One-shot cleanup: remove orphaned cache key from removed trend-vp feature
+  try { localStorage.removeItem('cv_trend_vp_cache'); } catch {}
+
   const CONFIG_KEY = "cv_tv1_config";
 
   // ── Messages d'erreur FR mappés depuis errorCode API ─────────────────────────

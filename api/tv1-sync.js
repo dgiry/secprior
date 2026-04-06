@@ -49,7 +49,13 @@ module.exports = async (req, res) => {
   if (req.method !== "GET")     return res.status(405).json({ error: "Method not allowed" });
 
   // ── Route to mode handlers ────────────────────────────────────────────────
-  // mode=vp removed — TV1 API does not expose IPS rule catalog (all paths 404)
+  if (req.query.mode === "vp") {
+    return res.status(410).json({
+      error:  "mode=vp has been removed",
+      reason: "TV1 public API does not expose an IPS rule catalog — /v3.0/ips/filters returns 404 on this tenant",
+      status: "gone",
+    });
+  }
   if (req.query.mode === "search") return _handleSearch(req, res);
   if (req.query.mode === "swp")    return _handleSWP(req, res);
 

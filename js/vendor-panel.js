@@ -354,26 +354,26 @@ const VendorPanel = (() => {
           ? vendors.filter(v => v.briefingCount > 0).length
           : "—";
         const epssStr = globalEpssMax > 0 ? `${(globalEpssMax * 100).toFixed(0)} %` : "—";
-        metaEl.innerHTML = `<div class="vp-kpi-bar">
-  <span class="vp-kpi"><span class="vp-kpi-val">${vendors.length}</span><span class="vp-kpi-lbl">vendors détectés</span></span>
-  <span class="vp-kpi"><span class="vp-kpi-val">${briefingKpiVal}</span><span class="vp-kpi-lbl">dans le briefing</span></span>
-  <span class="vp-kpi"><span class="vp-kpi-val">${vendorsWithKev}</span><span class="vp-kpi-lbl">avec KEV</span></span>
-  <span class="vp-kpi"><span class="vp-kpi-val">${epssStr}</span><span class="vp-kpi-lbl">EPSS max global</span></span>
+        metaEl.innerHTML = `<div class="vpanel-kpi-bar">
+  <span class="vpanel-kpi"><span class="vpanel-kpi-val">${vendors.length}</span><span class="vpanel-kpi-lbl">vendors détectés</span></span>
+  <span class="vpanel-kpi"><span class="vpanel-kpi-val">${briefingKpiVal}</span><span class="vpanel-kpi-lbl">dans le briefing</span></span>
+  <span class="vpanel-kpi"><span class="vpanel-kpi-val">${vendorsWithKev}</span><span class="vpanel-kpi-lbl">avec KEV</span></span>
+  <span class="vpanel-kpi"><span class="vpanel-kpi-val">${epssStr}</span><span class="vpanel-kpi-lbl">EPSS max global</span></span>
 </div>`;
       }
     }
 
-    const searchBar = `<div class="vp-search-bar">
-  <input id="vp-search-input" class="vp-search-input" type="search"
+    const searchBar = `<div class="vpanel-search-bar">
+  <input id="vpanel-search-input" class="vpanel-search-input" type="search"
     placeholder="🔍 Search vendor or product…"
     value="${_escHtml(_searchQuery)}" autocomplete="off" spellcheck="false">
 </div>`;
 
-    const filterBar = `<div class="vp-filter-bar">
-  <button class="vp-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">All (${allVendors.length})</button>
-  <button class="vp-filter-btn${_filterBy==="briefing"  ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
-  <button class="vp-filter-btn${_filterBy==="kev"       ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
-  <button class="vp-filter-btn${_filterBy==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist (${allVendors.filter(v=>v.hasWatchlist).length})</button>
+    const filterBar = `<div class="vpanel-filter-bar">
+  <button class="vpanel-filter-btn${_filterBy==="all"       ?" active":""}" data-filter="all">All (${allVendors.length})</button>
+  <button class="vpanel-filter-btn${_filterBy==="briefing"  ?" active":""}" data-filter="briefing">📬 Briefing${_briefingAvailable?" ("+allVendors.filter(v=>v.briefingCount>0).length+")":""}</button>
+  <button class="vpanel-filter-btn${_filterBy==="kev"       ?" active":""}" data-filter="kev">🔴 KEV (${allVendors.filter(v=>v.kev>0).length})</button>
+  <button class="vpanel-filter-btn${_filterBy==="watchlist" ?" active":""}" data-filter="watchlist">👁 Watchlist (${allVendors.filter(v=>v.hasWatchlist).length})</button>
 </div>`;
 
     if (vendors.length === 0) {
@@ -384,19 +384,19 @@ const VendorPanel = (() => {
           : _filterBy === "watchlist"
             ? "No vendor in watchlist — configure keywords in the app."
             : "No vendor for this filter.";
-      listEl.innerHTML = searchBar + filterBar + `<div class="vp-empty">${emptyMsg}</div>`;
-      listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
+      listEl.innerHTML = searchBar + filterBar + `<div class="vpanel-empty">${emptyMsg}</div>`;
+      listEl.querySelectorAll(".vpanel-filter-btn").forEach(btn =>
         btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
-      document.getElementById("vp-search-input")?.addEventListener("input", _onSearch);
+      document.getElementById("vpanel-search-input")?.addEventListener("input", _onSearch);
       return;
     }
 
     const hint = !_briefingAvailable
-      ? '<span class="vp-sort-hint">Briefing non chargé — ouvre l\'onglet Briefing d\'abord</span>'
+      ? '<span class="vpanel-sort-hint">Briefing non chargé — ouvre l\'onglet Briefing d\'abord</span>'
       : '';
-    const sortBar = `<div class="vp-sort-bar">
-  <label class="vp-sort-label">Tri :</label>
-  <select id="vp-sort-select" class="vp-sort-select">
+    const sortBar = `<div class="vpanel-sort-bar">
+  <label class="vpanel-sort-label">Tri :</label>
+  <select id="vpanel-sort-select" class="vpanel-sort-select">
     <option value="default"  ${_sortBy==="default" ?"selected":""}>Criticité (défaut)</option>
     <option value="kev"      ${_sortBy==="kev"     ?"selected":""}>KEV</option>
     <option value="epss"     ${_sortBy==="epss"    ?"selected":""}>EPSS max</option>
@@ -409,54 +409,54 @@ const VendorPanel = (() => {
     listEl.innerHTML = searchBar + filterBar + sortBar + vendors.map(v => _renderVendorCard(v)).join("");
 
     // Filtre : boutons
-    listEl.querySelectorAll(".vp-filter-btn").forEach(btn =>
+    listEl.querySelectorAll(".vpanel-filter-btn").forEach(btn =>
       btn.addEventListener("click", () => { _filterBy = btn.dataset.filter; _render(); }));
 
     // Tri : changement de l'option
-    document.getElementById("vp-sort-select")?.addEventListener("change", e => {
+    document.getElementById("vpanel-sort-select")?.addEventListener("change", e => {
       _sortBy = e.target.value;
       _render();
     });
 
     // Recherche : mise à jour avec restauration de focus
-    document.getElementById("vp-search-input")?.addEventListener("input", _onSearch);
+    document.getElementById("vpanel-search-input")?.addEventListener("input", _onSearch);
 
     // Expand/collapse vendor detail
-    listEl.querySelectorAll(".vp-row").forEach(row => {
+    listEl.querySelectorAll(".vpanel-row").forEach(row => {
       row.addEventListener("click", () => _toggleDetail(row.dataset.slug));
     });
   }
 
   function _renderVendorCard(v) {
     const slug = _slugify(v.name);
-    const critClass = v.critMax === "high" ? "vp-crit-high"
-                    : v.critMax === "medium" ? "vp-crit-med"
-                    : "vp-crit-low";
-    const critLabel = v.critMax === "high"   ? '<span class="vp-crit-badge" style="color:var(--crit-high,#f87171)">🔴 HIGH</span>'
-                    : v.critMax === "medium" ? '<span class="vp-crit-badge" style="color:var(--crit-med,#fbbf24)">🟡 MEDIUM</span>'
-                    : '<span class="vp-crit-badge" style="color:var(--text-muted)">🟢 LOW</span>';
+    const critClass = v.critMax === "high" ? "vpanel-crit-high"
+                    : v.critMax === "medium" ? "vpanel-crit-med"
+                    : "vpanel-crit-low";
+    const critLabel = v.critMax === "high"   ? '<span class="vpanel-crit-badge" style="color:var(--crit-high,#f87171)">🔴 HIGH</span>'
+                    : v.critMax === "medium" ? '<span class="vpanel-crit-badge" style="color:var(--crit-med,#fbbf24)">🟡 MEDIUM</span>'
+                    : '<span class="vpanel-crit-badge" style="color:var(--text-muted)">🟢 LOW</span>';
 
     const badges = [];
-    if (v.kev > 0)                             badges.push(`<span class="vp-badge vp-kev">KEV ×${v.kev}</span>`);
-    if (v.epssMax > 0)                         badges.push(`<span class="vp-badge vp-epss">EPSS ${(v.epssMax * 100).toFixed(0)}%</span>`);
-    if (_briefingAvailable && v.briefingCount > 0) badges.push(`<span class="vp-badge vp-briefing">📬 ${v.briefingCount}</span>`);
-    if (v.hasWatchlist)                        badges.push(`<span class="vp-badge vp-wl">👁 Watchlist</span>`);
+    if (v.kev > 0)                             badges.push(`<span class="vpanel-badge vpanel-kev">KEV ×${v.kev}</span>`);
+    if (v.epssMax > 0)                         badges.push(`<span class="vpanel-badge vpanel-epss">EPSS ${(v.epssMax * 100).toFixed(0)}%</span>`);
+    if (_briefingAvailable && v.briefingCount > 0) badges.push(`<span class="vpanel-badge vpanel-briefing">📬 ${v.briefingCount}</span>`);
+    if (v.hasWatchlist)                        badges.push(`<span class="vpanel-badge vpanel-wl">👁 Watchlist</span>`);
 
     const detailHtml = _renderDetail(v, slug);
 
     return `
-<div class="vp-card ${critClass}">
-  <div class="vp-row" data-slug="${slug}">
-    <span class="vp-name">${v.name}</span>
-    <span class="vp-badges">${badges.join("") || ""}</span>
-    <span class="vp-meta">
-      <span class="vp-stat" title="Nombre d'articles">📄 ${v.count} article${v.count > 1 ? "s" : ""}</span>
-      <span class="vp-stat" title="Sujets/CVE uniques">🧩 ${v.topics} sujet${v.topics > 1 ? "s" : ""}</span>
+<div class="vpanel-card ${critClass}">
+  <div class="vpanel-row" data-slug="${slug}">
+    <span class="vpanel-name">${v.name}</span>
+    <span class="vpanel-badges">${badges.join("") || ""}</span>
+    <span class="vpanel-meta">
+      <span class="vpanel-stat" title="Nombre d'articles">📄 ${v.count} article${v.count > 1 ? "s" : ""}</span>
+      <span class="vpanel-stat" title="Sujets/CVE uniques">🧩 ${v.topics} sujet${v.topics > 1 ? "s" : ""}</span>
       ${critLabel}
     </span>
-    <span class="vp-chevron">▶</span>
+    <span class="vpanel-chevron">▶</span>
   </div>
-  <div class="vp-detail" id="vp-detail-${slug}" style="display:none">
+  <div class="vpanel-detail" id="vpanel-detail-${slug}" style="display:none">
     ${detailHtml}
   </div>
 </div>`;
@@ -493,20 +493,20 @@ const VendorPanel = (() => {
     if (products.length === 0) return "";
     const rows = products.map(p => {
       const kevBadge     = p.kev > 0
-        ? `<span class="vp-badge vp-kev">KEV ×${p.kev}</span>` : "";
+        ? `<span class="vpanel-badge vpanel-kev">KEV ×${p.kev}</span>` : "";
       const epssBadge    = p.epssMax > 0
-        ? `<span class="vp-badge vp-epss">EPSS ${(p.epssMax * 100).toFixed(0)}%</span>` : "";
+        ? `<span class="vpanel-badge vpanel-epss">EPSS ${(p.epssMax * 100).toFixed(0)}%</span>` : "";
       const briefingBadge = (_briefingAvailable && p.briefingCount > 0)
-        ? `<span class="vp-badge vp-briefing">📬 ${p.briefingCount}</span>` : "";
-      return `<div class="vp-prod-row">
-  <span class="vp-prod-name">${_escHtml(p.label)}</span>
-  <span class="vp-prod-stat">📄 ${p.count}</span>
-  <span class="vp-prod-stat">🧩 ${p.topics}</span>
+        ? `<span class="vpanel-badge vpanel-briefing">📬 ${p.briefingCount}</span>` : "";
+      return `<div class="vpanel-prod-row">
+  <span class="vpanel-prod-name">${_escHtml(p.label)}</span>
+  <span class="vpanel-prod-stat">📄 ${p.count}</span>
+  <span class="vpanel-prod-stat">🧩 ${p.topics}</span>
   ${kevBadge}${epssBadge}${briefingBadge}
 </div>`;
     }).join("");
-    return `<div class="vp-prod-block">
-  <div class="vp-prod-head">📦 Produits détectés (${products.length})</div>
+    return `<div class="vpanel-prod-block">
+  <div class="vpanel-prod-head">📦 Produits détectés (${products.length})</div>
   ${rows}
 </div>`;
   }
@@ -521,13 +521,13 @@ const VendorPanel = (() => {
 
     return prodBlock + sorted.map(a => {
       const inBriefing = _lastBriefingIds && _lastBriefingIds.has(a.id);
-      const critIcon   = a.criticality === "high"   ? '<span class="vp-ac" style="color:var(--crit-high,#f87171)">🔴</span>'
-                       : a.criticality === "medium" ? '<span class="vp-ac" style="color:var(--crit-med,#fbbf24)">🟡</span>'
-                       : '<span class="vp-ac" style="color:var(--text-muted)">🟢</span>';
-      const briefingMark = inBriefing ? ' <span class="vp-badge vp-briefing vp-in-briefing">📬 Top briefing</span>' : "";
-      const kevBadge     = a.isKEV ? ' <span class="vp-badge vp-kev">KEV</span>' : "";
+      const critIcon   = a.criticality === "high"   ? '<span class="vpanel-ac" style="color:var(--crit-high,#f87171)">🔴</span>'
+                       : a.criticality === "medium" ? '<span class="vpanel-ac" style="color:var(--crit-med,#fbbf24)">🟡</span>'
+                       : '<span class="vpanel-ac" style="color:var(--text-muted)">🟢</span>';
+      const briefingMark = inBriefing ? ' <span class="vpanel-badge vpanel-briefing vpanel-in-briefing">📬 Top briefing</span>' : "";
+      const kevBadge     = a.isKEV ? ' <span class="vpanel-badge vpanel-kev">KEV</span>' : "";
       const epssBadge    = (typeof a.epssScore === "number" && a.epssScore > 0)
-        ? ` <span class="vp-badge vp-epss">EPSS ${(a.epssScore * 100).toFixed(0)}%</span>` : "";
+        ? ` <span class="vpanel-badge vpanel-epss">EPSS ${(a.epssScore * 100).toFixed(0)}%</span>` : "";
       const srcName      = a.source || a.feedName || "";
 
       // CVE badges : on utilise a.cveIds (enrichi par le pipeline) ou fallback regex sur le titre
@@ -535,26 +535,26 @@ const VendorPanel = (() => {
         ? a.cveIds
         : ((a.title || "").match(/CVE-\d{4}-\d+/gi) || []).map(c => c.toUpperCase());
       const cveBadges = [...new Set(rawCves)].slice(0, 3)
-        .map(c => `<span class="vp-badge vp-cve">${_escHtml(c)}</span>`)
+        .map(c => `<span class="vpanel-badge vpanel-cve">${_escHtml(c)}</span>`)
         .join("");
 
-      return `<div class="vp-article${inBriefing ? " vp-article-top" : ""}">
+      return `<div class="vpanel-article${inBriefing ? " vpanel-article-top" : ""}">
   ${critIcon}
-  <a class="vp-article-title" href="${a.link || "#"}" target="_blank" rel="noopener noreferrer">${_escHtml(a.title || "Sans titre")}</a>
+  <a class="vpanel-article-title" href="${a.link || "#"}" target="_blank" rel="noopener noreferrer">${_escHtml(a.title || "Sans titre")}</a>
   ${briefingMark}${kevBadge}${epssBadge}${cveBadges}
-  ${srcName ? `<span class="vp-article-src">${_escHtml(srcName)}</span>` : ""}
+  ${srcName ? `<span class="vpanel-article-src">${_escHtml(srcName)}</span>` : ""}
 </div>`;
     }).join("");
   }
 
   function _toggleDetail(slug) {
-    const detailEl = document.getElementById(`vp-detail-${slug}`);
-    const row = document.querySelector(`.vp-row[data-slug="${slug}"]`);
+    const detailEl = document.getElementById(`vpanel-detail-${slug}`);
+    const row = document.querySelector(`.vpanel-row[data-slug="${slug}"]`);
     if (!detailEl || !row) return;
 
     const isOpen = detailEl.style.display !== "none";
     detailEl.style.display = isOpen ? "none" : "flex";
-    row.classList.toggle("vp-row-open", !isOpen);
+    row.classList.toggle("vpanel-row-open", !isOpen);
   }
 
   /** Recherche : vérifie si un vendor correspond au terme (nom ou alias). */
@@ -570,7 +570,7 @@ const VendorPanel = (() => {
     const pos = e.target.selectionStart;
     _searchQuery = e.target.value;
     _render();
-    const inp = document.getElementById("vp-search-input");
+    const inp = document.getElementById("vpanel-search-input");
     if (inp) { inp.focus(); inp.setSelectionRange(pos, pos); }
   }
 
