@@ -258,14 +258,14 @@ const Storage = {
     const searches = this.getRecentSearches();
     const trimmed = query.trim();
 
-    // Ne pas sauvegarder si c'est le même que le dernier
-    if (searches.length > 0 && searches[0] === trimmed) return;
-
-    // Ajouter au début
-    searches.unshift(trimmed);
+    // Move-to-top: remove all existing occurrences, re-add at front
+    const deduped = searches.filter(s => s !== trimmed);
+    // Already at top as sole occurrence → nothing changed, skip write
+    if (searches[0] === trimmed && deduped.length === searches.length - 1) return;
+    deduped.unshift(trimmed);
 
     // Garder seulement les N derniers
-    const bounded = searches.slice(0, RECENT_SEARCHES_MAX);
+    const bounded = deduped.slice(0, RECENT_SEARCHES_MAX);
 
     try {
       localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(bounded));
