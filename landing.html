@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SecPrior — Open-source threat prioritization for SecOps teams. Correlates CVEs, incidents and exposure context to help defenders focus on what matters first.">
+  <title>SecPrior 🛡️ — Open-source threat prioritization for SecOps teams</title>
+  <meta name="theme-color" content="#020617">
+  <link rel="icon" href="icons/icon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { cyan: { 400: '#22d3ee', 200: '#a5f3fc', 300: '#67e8f9' } }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+
+  <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+      <span class="text-lg font-bold tracking-tight text-white">🛡️ Sec<span class="text-cyan-400">Prior</span></span>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/dgiry/secprior" target="_blank" rel="noopener"
+           class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+          ⭐ GitHub
+        </a>
+        <a href="index.html"
+           class="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]">
+          Live Demo →
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-28">
+      <div class="max-w-3xl">
+        <div class="mb-6 inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-1 text-sm text-cyan-200">
+          Open-source SecOps prioritization
+        </div>
+        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+          SecPrior
+        </h1>
+        <p class="mt-4 text-2xl font-medium text-slate-200 sm:text-3xl">
+          Open-source threat prioritization for SecOps teams
+        </p>
+        <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+          Turn cyber noise into operational priorities. SecPrior correlates
+          security news, CVEs, incidents, and exposure context to help
+          defenders focus on what matters first.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-4">
+          <a href="https://github.com/dgiry/secprior" target="_blank" rel="noopener"
+             class="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]">
+            View on GitHub
+          </a>
+          <a href="#quick-start"
+             class="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            Get Started
+          </a>
+          <a href="index.html"
+             class="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            Live Demo
+          </a>
+        </div>
+        <p class="mt-4 text-sm text-slate-400">
+          Self-hostable · Analyst-friendly · Built for real-world security operations
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── The problem ──────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">The problem</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Security teams do not lack information. They lack prioritization.
+          </h2>
+        </div>
+        <div class="space-y-5 text-slate-300">
+          <p>
+            Most teams already monitor too many feeds, too many sources, and
+            too many alerts. The real challenge is not collecting more data.
+            It is identifying which threats deserve attention now.
+          </p>
+          <p>
+            SecPrior helps reduce that noise by turning fragmented cyber
+            monitoring into structured, actionable priorities for defenders.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Features ─────────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Why SecPrior</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          Built for teams who need signal, not more dashboards
+        </h2>
+        <p class="mt-5 text-lg leading-8 text-slate-300">
+          SecPrior is designed for SecOps, CTI, and blue team workflows
+          where time, context, and prioritization matter.
+        </p>
+      </div>
+      <div class="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">Context-aware prioritization</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Surface the threats that deserve attention first using severity, exploitation context, article correlation, and operational relevance.</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">CVE and incident correlation</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Connect cyber news, vulnerabilities, and incident patterns in one workflow so analysts understand what is happening and why it matters.</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">Analyst-ready briefings</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Generate concise outputs for analysts and readable summaries for managers without forcing teams to sift through fragmented feeds.</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">Watchlists and exposure visibility</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Track vendors, technologies, assets, and strategic topics that matter to your environment.</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">Operational sharing</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Export results, trigger notifications, and plug outputs into existing workflows through email, webhooks, and integrations.</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <h3 class="text-lg font-semibold text-white">Self-hostable and open source</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Deploy in your own environment, review the code, adapt the workflow, and contribute improvements back to the project.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Quick Start ───────────────────────────────────────────────────────── -->
+  <section id="quick-start" class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Quick start</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Get SecPrior running quickly
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-slate-300">
+            Deploy locally, explore the interface, and start building a more
+            useful threat monitoring workflow in minutes.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-4">
+            <a href="https://github.com/dgiry/secprior#quick-start" target="_blank" rel="noopener"
+               class="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]">
+              Read the Docs
+            </a>
+            <a href="https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior"
+               target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              ▲ Deploy to Vercel
+            </a>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <ol class="space-y-4">
+            <li class="flex items-start gap-4">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">1</div>
+              <div class="pt-1 text-slate-200">Clone the repository</div>
+            </li>
+            <li class="flex items-start gap-4">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">2</div>
+              <div class="pt-1 text-slate-200">Configure your environment</div>
+            </li>
+            <li class="flex items-start gap-4">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">3</div>
+              <div class="pt-1 text-slate-200">Start the application</div>
+            </li>
+            <li class="flex items-start gap-4">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">4</div>
+              <div class="pt-1 text-slate-200">Add feeds, watchlists, and monitored entities</div>
+            </li>
+            <li class="flex items-start gap-4">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">5</div>
+              <div class="pt-1 text-slate-200">Review priorities and generate briefings</div>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Who it's for ──────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Who it is for</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Designed for practical security teams
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-slate-300">
+            SecPrior is a strong fit for teams that want more actionable
+            monitoring without adding more clutter to analyst workflows.
+          </p>
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">SecOps teams</div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">CTI analysts</div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">SOC leads</div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">MSSPs</div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Blue team builders</div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Homelab defenders</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Open source ───────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Open source by design</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Transparent, adaptable, and community-friendly
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-slate-300">
+            SecPrior is built for practitioners who want control over
+            deployment, reviewability, and real operational customization.
+          </p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">Self-hostable</div>
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">Open codebase</div>
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">Extensible workflows</div>
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">Integration-ready</div>
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">Contribution-friendly</div>
+            <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">MIT license</div>
+          </div>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a href="https://github.com/dgiry/secprior#quick-start" target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              Read the Docs
+            </a>
+            <a href="https://github.com/dgiry/secprior#roadmap" target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              Roadmap
+            </a>
+            <a href="https://github.com/dgiry/secprior#contributing" target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              Contributing
+            </a>
+            <a href="https://github.com/dgiry/secprior/blob/main/LICENSE" target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              License
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Differentiators ───────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">What makes it different</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          Not just another feed reader
+        </h2>
+        <p class="mt-5 text-lg leading-8 text-slate-300">
+          SecPrior is not built to dump more information onto analysts. It
+          is built to help teams decide what deserves attention first.
+        </p>
+      </div>
+      <div class="mt-10 grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Prioritization over feed volume</div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Operational context over raw collection</div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Useful synthesis over endless scrolling</div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-slate-200">Outputs that work for both analysts and managers</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Example value ─────────────────────────────────────────────────────── -->
+  <section id="demo" class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Example value</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            What teams can do with SecPrior
+          </h2>
+          <div class="mt-8">
+            <a href="index.html"
+               class="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]">
+              Open the Live Demo →
+            </a>
+          </div>
+        </div>
+        <div class="space-y-4 text-slate-300">
+          <p>Track active cyber developments affecting monitored vendors.</p>
+          <p>Review top CVEs and related reporting in one workflow.</p>
+          <p>Create daily briefings for SecOps review.</p>
+          <p>Maintain a cleaner watch process across multiple intelligence sources.</p>
+          <p>Give managers a clearer, more readable picture of emerging risk.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Community ─────────────────────────────────────────────────────────── -->
+  <section class="border-b border-white/10">
+    <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="rounded-[2rem] border border-cyan-400/20 bg-cyan-400/10 p-8 lg:p-12">
+        <div class="max-w-3xl">
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Community</p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Build it, improve it, share it
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">
+            SecPrior is meant to evolve with its users. Contributions,
+            feedback, testing, and operational ideas are welcome.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-4">
+            <a href="https://github.com/dgiry/secprior" target="_blank" rel="noopener"
+               class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]">
+              Contribute on GitHub
+            </a>
+            <a href="https://github.com/dgiry/secprior#roadmap" target="_blank" rel="noopener"
+               class="rounded-2xl border border-white/20 bg-transparent px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              View Roadmap
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Final CTA ─────────────────────────────────────────────────────────── -->
+  <section class="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+    <div class="max-w-3xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Get started</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+        Make threat monitoring more actionable
+      </h2>
+      <p class="mt-5 text-lg leading-8 text-slate-300">
+        SecPrior helps security teams move from passive monitoring to
+        operational prioritization.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href="https://github.com/dgiry/secprior" target="_blank" rel="noopener"
+           class="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]">
+          View on GitHub
+        </a>
+        <a href="#quick-start"
+           class="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+          Get Started
+        </a>
+        <a href="index.html"
+           class="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+          Live Demo
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────────── -->
+  <footer class="border-t border-white/10">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-8 lg:px-8 text-sm text-slate-500">
+      <span>🛡️ SecPrior — MIT license</span>
+      <div class="flex gap-6">
+        <a href="https://github.com/dgiry/secprior" target="_blank" rel="noopener" class="hover:text-slate-300 transition">GitHub</a>
+        <a href="https://github.com/dgiry/secprior#roadmap" target="_blank" rel="noopener" class="hover:text-slate-300 transition">Roadmap</a>
+        <a href="https://github.com/dgiry/secprior/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-slate-300 transition">License</a>
+        <a href="index.html" class="hover:text-slate-300 transition">Live Demo</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
