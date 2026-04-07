@@ -434,6 +434,10 @@ const App = (() => {
   }
 
   // ─── Historique recherches récentes ──────────────────────────────────────
+  function _escAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   function _updateRecentSearches() {
     const panel = document.getElementById("recent-searches-panel");
     if (!panel) return;
@@ -448,21 +452,20 @@ const App = (() => {
     const header = `
       <div class="recent-searches-header">
         <span class="recent-searches-label">Recent</span>
-        <button class="recent-searches-clear"
-                onclick="App.clearRecentSearchHistory()"
-                title="Clear search history">✕</button>
+        <button type="button" class="recent-searches-clear" title="Clear search history">✕</button>
       </div>
     `;
+    // Use data-query attributes to avoid innerHTML quote-escaping issues with onclick
     const buttons = searches.map((q) => {
       const display = q.length > 50 ? q.slice(0, 47) + "…" : q;
       return `<div class="recent-search-item">
-                <button class="recent-search-btn"
-                        onclick="App.applyRecentSearch(${JSON.stringify(q)})"
-                        title="${q}">
+                <button type="button" class="recent-search-btn"
+                        data-query="${_escAttr(q)}"
+                        title="${_escAttr(q)}">
                   ${display}
                 </button>
-                <button class="recent-search-remove"
-                        onclick="App.removeRecentSearch(${JSON.stringify(q)})"
+                <button type="button" class="recent-search-remove"
+                        data-query="${_escAttr(q)}"
                         title="Remove from history">✕</button>
               </div>`;
     }).join("");
@@ -778,6 +781,16 @@ const App = (() => {
 
     // ── Initialiser le panel recherches récentes ────────────────────────────
     _updateRecentSearches();
+
+    // Event delegation — survives innerHTML re-renders, avoids onclick quoting issues
+    document.getElementById("recent-searches-panel")?.addEventListener("click", e => {
+      const removeBtn = e.target.closest(".recent-search-remove");
+      if (removeBtn) { removeRecentSearch(removeBtn.dataset.query); return; }
+      const clearBtn  = e.target.closest(".recent-searches-clear");
+      if (clearBtn)  { clearRecentSearchHistory(); return; }
+      const applyBtn  = e.target.closest(".recent-search-btn");
+      if (applyBtn)  { applyRecentSearch(applyBtn.dataset.query); }
+    });
 
     document.getElementById("filter-criticality")?.addEventListener("change", e => {
       state.criticality = e.target.value;
