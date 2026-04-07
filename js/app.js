@@ -347,10 +347,13 @@ const App = (() => {
     _updateContextBar();                      // bandeau contextuel sous la statusbar
     _updateAttackFilterBadge();               // badge tactic ATT&CK actif
 
-    // Sauvegarder la recherche si elle a changé (éviter les doublons)
-    if (state.query !== state.lastSavedQuery) {
-      Storage.addRecentSearch(state.query);
-      state.lastSavedQuery = state.query;
+    // Sauvegarder uniquement les recherches texte libres (pas les raccourcis chip)
+    if (state.query && state.query !== state.lastSavedQuery) {
+      const chipQueries = new Set([...document.querySelectorAll('.search-chip')].map(c => c.dataset.query));
+      if (!chipQueries.has(state.query)) {
+        Storage.addRecentSearch(state.query);
+        state.lastSavedQuery = state.query;
+      }
     }
     _updateRecentSearches();                  // mettre à jour l'historique UI
     _updateRefreshButtonStatus();             // mettre à jour l'indicateur de fraîcheur
