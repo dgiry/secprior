@@ -91,11 +91,10 @@ const App = (() => {
       UI.updateTimestamp();
       _updateRefreshButtonStatus();  // Update freshness indicator on button
 
-      // Ops panel update (live mode) with signal quality metrics
+      // Ops panel update (live mode) — infra metrics first (before panel updates)
       try {
         const mode = 'live';
         const feedCount = (typeof FeedManager !== 'undefined') ? FeedManager.getActiveCount() : '—';
-        const envStats = (typeof IncidentPanel !== 'undefined') ? IncidentPanel.getEnvironmentContextStats() : null;
         // ── Freshness tracking ────────────────────────────────────────────────
         const now = Date.now();
         state.lastFreshFetchAt = now;  // Track when we last fetched live data
@@ -110,8 +109,7 @@ const App = (() => {
           lastRefreshAt: now,
           lastFreshFetchAt: state.lastFreshFetchAt,
           articleChange,
-          feedHealth,
-          environmentContextStats: envStats
+          feedHealth
         });
         // Persister le timestamp de la dernière fetch live (pour restauration session)
         try {
@@ -124,6 +122,13 @@ const App = (() => {
       VendorPanel.update(articles);
       CVEPanel.update(articles, _buildCveNvdMap());
       IncidentPanel.update(articles);
+      // Signal quality — doit être lu APRÈS IncidentPanel.update() pour que
+      // _lastIncidents reflète les articles du cycle courant (et non le cycle précédent)
+      try {
+        if (typeof IncidentPanel !== 'undefined') {
+          OpsPanel.update({ environmentContextStats: IncidentPanel.getEnvironmentContextStats() });
+        }
+      } catch {}
       VisibilityPanel.update(articles);
       if (typeof ProfilePanel  !== 'undefined') ProfilePanel.update(articles);
       if (typeof ExecView      !== 'undefined') ExecView.update(articles);
