@@ -2840,9 +2840,10 @@ body.modal-open { overflow: hidden; }
 #pdf-report { display: none; }
 
 @media print {
-  /* Cacher TOUT sauf le rapport */
-  body > *:not(#pdf-report) { display: none !important; }
-  #pdf-report { display: block !important; }
+  /* Cacher TOUT sauf le rapport — uniquement quand PDFReport.generate() déclenche l'impression.
+     Sans cette classe (ex : Ctrl+P direct), le contenu normal s'imprime et #pdf-report reste caché. */
+  body.printing-report > *:not(#pdf-report) { display: none !important; }
+  body.printing-report #pdf-report { display: block !important; }
 
   /* Reset print */
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

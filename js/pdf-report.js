@@ -31,6 +31,14 @@ const PDFReport = (() => {
     const container = document.getElementById("pdf-report");
     if (!container) return;
     container.innerHTML = _buildHTML(used, _weekLabel());
+
+    // Flag body so @media print only hides the app when WE trigger the print
+    // (protects against Ctrl+P showing a blank page when #pdf-report is empty)
+    document.body.classList.add('printing-report');
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-report');
+      container.innerHTML = ''; // clean up so Ctrl+P later stays blank-safe
+    }, { once: true });
     window.print();
   }
 
