@@ -149,12 +149,18 @@
         title="Search supports: plain text, source:, vendor:, cve:, status:, priority:, kev, trending, -keyword"
       >
       <div class="search-chips" id="search-chips">
-        <button type="button" class="search-chip" data-query="kev">🔑 KEV</button>
-        <button type="button" class="search-chip" data-query="priority:critical_now">🔴 Critical</button>
-        <button type="button" class="search-chip" data-query="watchlist">👁 Watchlist</button>
-        <button type="button" class="search-chip" data-query="zero-day">⚡ 0-Day</button>
-        <button type="button" class="search-chip" data-query="trending">📡 Trending</button>
-        <button type="button" class="search-chip" data-query="ioc">🔬 IOCs</button>
+        <button type="button" class="search-chip" data-query="kev"
+                title="CISA Known Exploited Vulnerabilities — actively exploited in the wild">🔑 KEV</button>
+        <button type="button" class="search-chip" data-query="priority:critical_now"
+                title="Critical Now — highest priority score, patch immediately">🔴 Critical</button>
+        <button type="button" class="search-chip" data-query="watchlist"
+                title="Watchlist hits — articles matching your active monitored terms">👁 Watchlist</button>
+        <button type="button" class="search-chip" data-query="zero-day"
+                title="Zero-day vulnerabilities — exploited before a patch is available">⚡ 0-Day</button>
+        <button type="button" class="search-chip" data-query="trending"
+                title="Trending — covered by 3+ independent sources simultaneously">📡 Trending</button>
+        <button type="button" class="search-chip" data-query="ioc"
+                title="Has IOCs — articles with extracted Indicators of Compromise">🔬 IOCs</button>
       </div>
       <div id="recent-searches-panel" class="recent-searches-panel" style="display:none"></div>
     </div>

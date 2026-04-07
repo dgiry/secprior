@@ -118,6 +118,13 @@ a:hover { text-decoration: underline; }
   color: var(--accent);
   background: rgba(88,166,255,.15);
 }
+/* Result count badge on active chip — driven by data-count attribute set in _syncSearchChips() */
+.search-chip[data-count]::after {
+  content: ' · ' attr(data-count);
+  font-size: .58rem;
+  font-weight: 700;
+  opacity: .75;
+}
 /* Dim chips only when the search INPUT itself is focused (not when a chip button is focused) */
 #search-input:focus ~ .search-chips {
   opacity: .3;

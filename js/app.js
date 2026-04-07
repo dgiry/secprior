@@ -339,6 +339,7 @@ const App = (() => {
     UI.renderCards(filtered);
     UI.renderKPIBar(filtered);
     UI.renderScopeBar();
+    _syncSearchChips(state.query, filtered.length); // update chip count badge after render
     _navIdx = -1; // Reset j/k navigation on every render
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
@@ -562,9 +563,18 @@ const App = (() => {
   }
 
   // ─── Search chip active-state sync ─────────────────────────────────────────
-  function _syncSearchChips(query) {
+  function _syncSearchChips(query, count) {
     const chips = document.querySelectorAll(".search-chip");
-    chips.forEach(c => c.classList.toggle("active", c.dataset.query === query));
+    chips.forEach(c => {
+      const isActive = query !== "" && c.dataset.query === query;
+      c.classList.toggle("active", isActive);
+      // Show result count on the active chip via data-count → CSS ::after
+      if (isActive && count !== undefined) {
+        c.dataset.count = count;
+      } else {
+        delete c.dataset.count;
+      }
+    });
   }
 
   // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
