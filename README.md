@@ -1,12 +1,12 @@
-# 🛡️ ThreatLens
+# 🛡️ SecPrior
 
-**Open-source SecOps threat prioritization — self-hosted, no data sharing, MIT license.**
+**Open-source threat prioritization for SecOps teams.**
 
-> Turn fragmented cyber threat feeds into actionable daily priorities for your SecOps team.
+> SecPrior correlates cyber news, CVEs, incidents, and exposure context to help security teams focus on what matters first.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior)
-[![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://cyberveille-pro.vercel.app)
+[![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://secprior.vercel.app)
 
 ---
 

@@ -1,4 +1,4 @@
-// keyboard-shortcuts.js — Keyboard shortcut cheatsheet for ThreatLens
+// keyboard-shortcuts.js — Keyboard shortcut cheatsheet for SecPrior
 //
 // Opens on "?" keypress (handled in app.js) or via Tools menu.
 // Lists all global keyboard shortcuts. No localStorage needed —

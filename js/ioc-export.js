@@ -1,4 +1,4 @@
-// ioc-export.js — IOC Bulk Export for ThreatLens
+// ioc-export.js — IOC Bulk Export for SecPrior
 //
 // Aggregates all IOCs extracted by ioc-extractor.js across the current feed,
 // with full article context (source, date, CVEs, EPSS, KEV flag).
@@ -130,7 +130,7 @@ const IOCExport = (() => {
   function _toJSON(entries, meta) {
     return JSON.stringify({
       meta: {
-        tool:       'ThreatLens',
+        tool:       'SecPrior',
         exportedAt: new Date().toISOString(),
         scope:      meta.scopeLabel,
         articleCount: meta.articleCount,
@@ -154,7 +154,7 @@ const IOCExport = (() => {
   function _toTXT(entries, meta) {
     const ts   = new Date().toLocaleString('en-US');
     const head = [
-      `# IOC Bulk Export — ThreatLens`,
+      `# IOC Bulk Export — SecPrior`,
       `# Scope    : ${meta.scopeLabel} · ${meta.articleCount} articles`,
       `# Total    : ${entries.length} unique indicator${entries.length !== 1 ? 's' : ''}`,
       `# Exported : ${ts}`,

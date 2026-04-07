@@ -89,7 +89,7 @@ const Onboarding = (() => {
     overlay.className = 'ob-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', 'ThreatLens — Choose your workspace');
+    overlay.setAttribute('aria-label', 'SecPrior — Choose your workspace');
 
     const personaCards = _PICKER_PERSONAS.map(p => `
       <button class="ob-persona-card" data-persona-id="${p.id}" title="${p.desc}">
@@ -104,7 +104,7 @@ const Onboarding = (() => {
     overlay.innerHTML = `
       <div class="ob-picker">
         <div class="ob-picker-header">
-          <div class="ob-picker-brand">🛡 ThreatLens</div>
+          <div class="ob-picker-brand">🛡 SecPrior</div>
           <div class="ob-picker-tagline">Context-aware SecOps prioritization</div>
           <div class="ob-picker-title">Choose your workspace</div>
           <div class="ob-picker-sub">Sets up your filters and view — you can change it anytime</div>

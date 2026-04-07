@@ -475,7 +475,7 @@ const UI = (() => {
     if (dateVal === 'lastvisit') {
       icon  = '🆕';
       title = 'No new articles since your last visit';
-      hint  = 'All caught up! Nothing was published since you last opened ThreatLens.';
+      hint  = 'All caught up! Nothing was published since you last opened SecPrior.';
       cta   = _resetBtn('filter-date', 'See all articles');
     } else if (showFavs) {
       icon  = '⭐';

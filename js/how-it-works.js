@@ -1,7 +1,7 @@
 // how-it-works.js — Lightweight "How it works" storytelling layer
 //
 // Appears on first visit (localStorage-tracked), then accessible from Tools menu.
-// Helps new users understand ThreatLens value proposition, prioritization logic,
+// Helps new users understand SecPrior value proposition, prioritization logic,
 // and typical workflows in under 1 minute.
 
 const HowItWorks = (() => {

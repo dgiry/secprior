@@ -233,7 +233,7 @@ const SettingsModal = (() => {
       const res = await fetch(url, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "cyberveille_test", message: "✅ ThreatLens — Test webhook successful!", timestamp: new Date().toISOString() }),
+        body: JSON.stringify({ event: "cyberveille_test", message: "✅ SecPrior — Test webhook successful!", timestamp: new Date().toISOString() }),
         signal: AbortSignal.timeout(8000)
       });
       if (res.ok) UI.showToast("✅ Webhook test sent successfully!", "success");
@@ -255,7 +255,7 @@ const SettingsModal = (() => {
     if (!s.emailjsService || !s.emailjsTemplate || !s.emailjsPublicKey) {
       UI.showToast("Fill in Service ID, Template ID and public key", "error"); return;
     }
-    const fakeArticle = [{ id: "test-article", title: "Test ThreatLens — test email", sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Test email." }];
+    const fakeArticle = [{ id: "test-article", title: "Test SecPrior — test email", sourceName: "SecPrior", criticality: "high", link: "https://example.com", pubDate: new Date(), description: "Test email." }];
     const testBtn = document.querySelectorAll(".btn-test")[1];
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = "⏳ Sending…"; }
     const saved = AlertManager.loadSettings();
@@ -310,7 +310,7 @@ const SettingsModal = (() => {
   async function _runTest(channel, overrides, btnLabel, btnSelector) {
     const btn = document.querySelector(btnSelector);
     if (btn) { btn.disabled = true; btn.textContent = "⏳ Sending…"; }
-    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test ThreatLens via ${channel}`, sourceName: "ThreatLens", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Test email via ${channel}.` }];
+    const fakeArticles = [{ id: `test-${channel}`, title: `✅ Test SecPrior via ${channel}`, sourceName: "SecPrior", criticality: "high", link: "https://example.com", pubDate: new Date(), description: `Test email via ${channel}.` }];
     const saved = AlertManager.loadSettings();
     AlertManager.saveSettings({ ...saved, ...overrides, channel, enabled: true, lastSentAt: 0, cooldownMs: 0 });
     try {
@@ -1006,10 +1006,10 @@ const SettingsModal = (() => {
     const payload = type === 'teams'
       ? { "@type":    "MessageCard",
           "@context": "http://schema.org/extensions",
-          "summary":  "ThreatLens Test",
+          "summary":  "SecPrior Test",
           "themeColor": "0078d4",
-          "text": "✅ <b>ThreatLens</b> — Share webhook test successful!" }
-      : { text: "✅ ThreatLens — Share webhook test successful!" };
+          "text": "✅ <b>SecPrior</b> — Share webhook test successful!" }
+      : { text: "✅ SecPrior — Share webhook test successful!" };
 
     try {
       const res = await fetch(url, {

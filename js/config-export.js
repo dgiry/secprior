@@ -1,4 +1,4 @@
-// config-export.js — Export / Import de configuration ThreatLens
+// config-export.js — Export / Import de configuration SecPrior
 //
 // Permet de transporter la configuration utilisateur entre navigateurs ou machines.
 //
@@ -90,7 +90,7 @@ const ConfigExport = (() => {
       schema:       SCHEMA,
       version:      VERSION,
       exportedAt:   new Date().toISOString(),
-      app:          'ThreatLens',
+      app:          'SecPrior',
       safeExport:   !includeSensitive,   // flag lisible à l'import
       profiles:        _read(KEYS.profiles)      ?? null,
       savedFilters:    _read(KEYS.savedFilters)  ?? [],
@@ -127,7 +127,7 @@ const ConfigExport = (() => {
     if (!data || typeof data !== 'object')
       return 'Invalid or empty JSON file.';
     if (data.schema !== SCHEMA)
-      return "This file is not a ThreatLens configuration.";
+      return "This file is not a SecPrior configuration.";
     if (typeof data.version !== 'number')
       return 'Missing schema version.';
     if (data.version > VERSION)
@@ -399,7 +399,7 @@ const ConfigExport = (() => {
           <div class="cex-section">
             <div class="cex-section-title">📥 Import</div>
             <p class="cex-desc">
-              Load a file exported from ThreatLens.<br>
+              Load a file exported from SecPrior.<br>
               Then choose between <strong>Merge</strong> (adds without overwriting)
               or <strong>Replace</strong> (overwrites completely).
             </p>

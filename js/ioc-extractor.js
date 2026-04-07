@@ -245,7 +245,7 @@ const IOCExtractor = (() => {
 
   // ── Enrichissement d'un article ───────────────────────────────────────────
   //
-  // @param {object} article   - article ThreatLens enrichi
+  // @param {object} article   - article SecPrior enrichi
   // @param {string} fullText  - corps complet de l'article (optionnel).
   //                             Fourni par /api/article-body pour le deep scan.
   //                             Si absent, seuls title + description sont analysés.

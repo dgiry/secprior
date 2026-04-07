@@ -1,4 +1,4 @@
-// persona-presets.js v7 — Vues métier persona ThreatLens
+// persona-presets.js v7 — Vues métier persona SecPrior
 //
 // Injecte une barre compacte de vues persona en dessous de la barre Risque Réel.
 // Chaque vue active un ensemble cohérent de filtres et ouvre le bon panneau.

@@ -1,4 +1,4 @@
-// pdf-report.js — Rapport PDF SecOps ThreatLens
+// pdf-report.js — Rapport PDF SecOps SecPrior
 //
 // Zéro dépendance : génère un rapport HTML dans un div caché,
 // puis utilise window.print() avec des styles @media print dédiés.
@@ -67,7 +67,7 @@ const PDFReport = (() => {
   function _buildHeader(articles, weekLabel) {
     return `
       <div class="rpt-header">
-        <div class="rpt-logo">🛡️ ThreatLens</div>
+        <div class="rpt-logo">🛡️ SecPrior</div>
         <div class="rpt-subtitle">Context-aware SecOps prioritization</div>
         <div class="rpt-title">Cybersecurity Threat Intelligence Report</div>
         <div class="rpt-period">${weekLabel}</div>
@@ -427,7 +427,7 @@ const PDFReport = (() => {
   function _buildFooter() {
     return `
       <div class="rpt-footer">
-        <div>ThreatLens — Confidential report</div>
+        <div>SecPrior — Confidential report</div>
         <div>Sources: ${typeof CONFIG !== 'undefined' ? CONFIG.FEEDS.length : "?"} RSS feeds · Pipeline: Collect → Enrich → Deduplicate → Score → Contextualize</div>
         <div>${new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })}</div>
       </div>`;

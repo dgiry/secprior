@@ -1,4 +1,4 @@
-// article-modal.js — Modal de détail article ThreatLens
+// article-modal.js — Modal de détail article SecPrior
 //
 // Clic sur une carte → overlay pleine page avec :
 //   • Score composite + CVSS (NVD) + jauge EPSS + KEV
@@ -884,7 +884,7 @@ const ArticleModal = (() => {
 
   async function _copyIOCs(article) {
     const lines = [
-      `# ThreatLens — IOCs`,
+      `# SecPrior — IOCs`,
       `# Titre   : ${article.title}`,
       `# Source  : ${article.sourceName}`,
       `# Date    : ${article.pubDate.toLocaleDateString('en-US')}`,
