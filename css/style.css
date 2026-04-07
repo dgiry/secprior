@@ -1082,6 +1082,13 @@ a:hover { text-decoration: underline; }
   display: flex; flex-wrap: wrap; gap: .3rem;
   margin-top: .1rem;
 }
+/* Secondary-context badges in card-tags — signal chips above are the primary read;
+   tags are supporting detail. Subtle de-emphasis keeps density scannable. */
+.card-tags .badge {
+  font-size: .65rem;
+  font-weight: 600;
+  opacity: .82;
+}
 
 /* ── Watchlist modal ─────────────────────────────────────────────────────── */
 .watchlist-items {

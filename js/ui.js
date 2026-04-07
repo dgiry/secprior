@@ -150,9 +150,9 @@ const UI = (() => {
       : "";
 
     const trendingBadge = article.isTrending
-      ? `<span class="badge badge-trending" title="${article.trendingCount} sources cover this topic">🔥 Trending×${article.trendingCount}</span>`
+      ? `<span class="badge badge-trending" title="Trending — covered simultaneously by ${article.trendingCount} independent sources, signaling widespread attention">🔥 Trending×${article.trendingCount}</span>`
       : (article.sourceCount > 1
-          ? `<span class="badge badge-sources" title="${article.sourceCount} sources cover this topic">×${article.sourceCount} sources</span>`
+          ? `<span class="badge badge-sources" title="Reported by ${article.sourceCount} independent sources — increases signal confidence">×${article.sourceCount} sources</span>`
           : "");
 
     const _wlMatch = (article.watchlistMatches?.length > 0) ||
@@ -172,8 +172,22 @@ const UI = (() => {
     ).join("");
 
     // ── Barre de score composite ─────────────────────────────────────────────
+    // Tooltip enrichi : décomposition des contributeurs au score (KEV, EPSS, CVSS…)
+    const _scoreBarTitle = (() => {
+      const bd = article.scoreBreakdown || {};
+      const parts = [
+        bd.kev     > 0 ? `KEV +${bd.kev}`        : null,
+        bd.epss    > 0 ? `EPSS +${bd.epss}`      : null,
+        bd.cvss    > 0 ? `CVSS +${bd.cvss}`      : null,
+        bd.sources > 0 ? `Sources +${bd.sources}` : null,
+        bd.ioc     > 0 ? `IOC +${bd.ioc}`        : null,
+      ].filter(Boolean);
+      return parts.length
+        ? `Score ${article.score}/100  ·  ${parts.join(' · ')}`
+        : `Composite score: ${article.score}/100`;
+    })();
     const scoreBar = article.score !== undefined
-      ? `<div class="score-bar-wrap" title="Composite score: ${article.score}/100">
+      ? `<div class="score-bar-wrap" title="${_scoreBarTitle}">
            <div class="score-bar ${scoreBarClass(article.score)}" style="width:${article.score}%"></div>
            <span class="score-label">${article.score}</span>
          </div>`
@@ -268,9 +282,9 @@ const UI = (() => {
 
       // ⑦ Multi-source / Trending
       if (sig.trending)
-        chips.push(`<span class="sig-chip sig-chip-sources" title="${sig.sources} concurrent sources">📡 ${sig.sources} src</span>`);
+        chips.push(`<span class="sig-chip sig-chip-sources" title="Trending — covered by ${sig.sources} independent sources simultaneously">📡 ${sig.sources} src</span>`);
       else if (sig.sources > 1)
-        chips.push(`<span class="sig-chip sig-chip-sources sig-chip-sources-dim" title="${sig.sources} sources">📡 ${sig.sources} src</span>`);
+        chips.push(`<span class="sig-chip sig-chip-sources sig-chip-sources-dim" title="Reported by ${sig.sources} independent sources — higher confidence signal">📡 ${sig.sources} src</span>`);
 
       // ⑧ IOCs — indicateurs concrets
       if (sig.iocCount > 0)
