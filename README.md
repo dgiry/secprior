@@ -5,7 +5,7 @@
 > Turn fragmented cyber threat feeds into actionable daily priorities for your SecOps team.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/cyberveille-pro)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior)
 [![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://cyberveille-pro.vercel.app)
 
 ---
@@ -92,14 +92,14 @@ Configurable remediation deadlines per priority level (Critical = 1 day, Investi
 
 ### Option A — One-click deploy (recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/cyberveille-pro)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior)
 
 No configuration required for the demo mode. Add environment variables for live feeds and alerts.
 
 ### Option B — Local development
 
 ```bash
-git clone https://github.com/dgiry/cyberveille-pro.git
+git clone https://github.com/dgiry/secprior.git
 cd cyberveille-pro
 npm install        # dev dependencies only (Jest for tests)
 npm run dev        # serves at http://localhost:3001
