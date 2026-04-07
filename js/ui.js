@@ -22,7 +22,9 @@ const UI = (() => {
       priorityFilter:  null,
       actorFilter:     null,
       onlyKEV:         false,
-      onlyTrending:    false
+      onlyTrending:    false,
+      onlyWatchlist:   false,
+      onlyIOC:         false
     };
 
     const terms = query.trim().split(/\s+/);
@@ -73,6 +75,12 @@ const UI = (() => {
       } else if (term.toLowerCase() === 'trending') {
         // Shorthand: trending
         result.onlyTrending = true;
+      } else if (term.toLowerCase() === 'watchlist') {
+        // Shorthand: watchlist-matched articles
+        result.onlyWatchlist = true;
+      } else if (term.toLowerCase() === 'ioc') {
+        // Shorthand: articles with real IOCs
+        result.onlyIOC = true;
       } else {
         // Plain text term
         result.plainTerms.push(term.toLowerCase());
@@ -323,7 +331,7 @@ const UI = (() => {
     const isRead     = (typeof Storage !== 'undefined') ? Storage.isRead(article.id)     : false;
     const isReviewed = (typeof Storage !== 'undefined') ? Storage.isReviewed(article.id) : false;
     return `
-      <article class="card crit-${article.criticality}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}${isReviewed ? " card-reviewed" : ""}" data-id="${article.id}"
+      <article class="card crit-${article.criticality} priority-${article.priorityLevel || 'low'}${article._isNew ? " card-new" : ""}${isRead ? " card-read" : ""}${isReviewed ? " card-reviewed" : ""}" data-id="${article.id}"
                title="Click to see full details">
         <header class="card-header">
           <span class="badge ${m.cssClass}">${m.icon} ${m.label}</span>
@@ -657,6 +665,16 @@ const UI = (() => {
 
         // 8. trending shorthand (trending articles only)
         if (parsed.onlyTrending && !a.isTrending) {
+          return false;
+        }
+
+        // 8b. watchlist shorthand — same check as riskFilter 'watchlist' (line 722)
+        if (parsed.onlyWatchlist && !(a.watchlistMatches?.length > 0)) {
+          return false;
+        }
+
+        // 8c. ioc shorthand — uses IOCExtractor.hasRealIOCs (same as riskFilter 'ioc', line 730)
+        if (parsed.onlyIOC && !(typeof IOCExtractor !== 'undefined' && IOCExtractor.hasRealIOCs(a))) {
           return false;
         }
 
@@ -1030,6 +1048,63 @@ const UI = (() => {
     });
   })();
 
+  // ─── KPI Summary Bar ──────────────────────────────────────────────────────
+  //
+  // Compact bar showing 4 operational KPIs computed from the currently
+  // displayed (filtered) article set. Hides when no articles are visible.
+
+  function renderKPIBar(articles) {
+    const bar = document.getElementById('kpi-bar');
+    if (!bar) return;
+
+    if (!articles || articles.length === 0) {
+      bar.style.display = 'none';
+      return;
+    }
+
+    let critCount  = 0;
+    let kevCount   = 0;
+    let wlCount    = 0;
+    let slaOverdue = 0;
+
+    const sla  = _getSLADays();
+    const now  = Date.now();
+
+    for (const a of articles) {
+      if (a.priorityLevel === 'critical_now') critCount++;
+      if (a.isKEV) kevCount++;
+      if (a.watchlistMatches?.length > 0) wlCount++;
+
+      // SLA overdue — same logic as _slaBadgeHTML
+      const days = sla[a.priorityLevel];
+      if (days && a.pubDate) {
+        const status = (typeof EntityStatus !== 'undefined')
+          ? EntityStatus.getStatus('article', a.id) : 'new';
+        if (status !== 'mitigated' && status !== 'ignored') {
+          const deadline = a.pubDate.getTime() + days * 86_400_000;
+          if (now > deadline) slaOverdue++;
+        }
+      }
+    }
+
+    const _cell = (icon, label, value, mod) => {
+      const css = mod ? ` kpi-${mod}` : '';
+      return `<div class="kpi-cell${css}">
+        <span class="kpi-value">${icon} ${value}</span>
+        <span class="kpi-label">${label}</span>
+      </div>`;
+    };
+
+    bar.innerHTML = [
+      _cell('🔴', 'Critical',  critCount,  critCount  > 0 ? 'alert' : ''),
+      _cell('🔑', 'KEV',       kevCount,   kevCount   > 0 ? 'warn'  : ''),
+      _cell('👁',  'Watchlist', wlCount,    ''),
+      _cell('⏱',  'SLA overdue', slaOverdue, slaOverdue > 0 ? 'alert' : ''),
+    ].join('');
+
+    bar.style.display = 'flex';
+  }
+
   return {
     renderCards,
     applyFilters,
@@ -1045,6 +1120,7 @@ const UI = (() => {
     toggleReviewed,
     cycleStatus,
     initSourceFilter,
-    timeAgo
+    timeAgo,
+    renderKPIBar
   };
 })();

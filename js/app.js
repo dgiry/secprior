@@ -337,6 +337,7 @@ const App = (() => {
       riskFilters:   RiskFilter.getFilters()   // { active: Set, epssThreshold }
     });
     UI.renderCards(filtered);
+    UI.renderKPIBar(filtered);
     _navIdx = -1; // Reset j/k navigation on every render
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar
@@ -556,6 +557,12 @@ const App = (() => {
     return state._attackFilter;
   }
 
+  // ─── Search chip active-state sync ─────────────────────────────────────────
+  function _syncSearchChips(query) {
+    const chips = document.querySelectorAll(".search-chip");
+    chips.forEach(c => c.classList.toggle("active", c.dataset.query === query));
+  }
+
   // ─── Dropdown groups navbar (Analytics, Tools) ────────────────────────────
   function _closeNavDropdowns() {
     document.querySelectorAll(".nav-menu-popover").forEach(p => { p.style.display = "none"; });
@@ -744,8 +751,28 @@ const App = (() => {
     let searchTimeout;
     document.getElementById("search-input")?.addEventListener("input", e => {
       state.query = e.target.value.trim();
+      // Sync chip active state with typed query
+      _syncSearchChips(state.query);
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => render(), 150);
+    });
+
+    // ── Search quick-filter chips — click toggles search query ────────────
+    document.getElementById("search-chips")?.addEventListener("click", e => {
+      const chip = e.target.closest(".search-chip");
+      if (!chip) return;
+      const query   = chip.dataset.query;
+      const input   = document.getElementById("search-input");
+      const isActive = chip.classList.contains("active");
+
+      // Toggle: clear if already active, set if not
+      const newQuery = isActive ? "" : query;
+      if (input) input.value = newQuery;
+      state.query = newQuery;
+
+      // Update chip active states
+      _syncSearchChips(newQuery);
+      render();
     });
 
     // ── Initialiser le panel recherches récentes ────────────────────────────
@@ -802,6 +829,7 @@ const App = (() => {
       // Sync DOM inputs
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
       set('search-input',        '');
+      _syncSearchChips('');
       set('filter-date',         'all');
       set('filter-priority-level','all');
       set('filter-criticality',  'all');

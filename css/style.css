@@ -90,27 +90,37 @@ a:hover { text-decoration: underline; }
   position: relative;
 }
 
-.search-hint {
-  font-size: .65rem;
-  color: var(--text2);
-  opacity: 0.45;
-  margin-top: .2rem;
-  margin-left: .4rem;
-  white-space: nowrap;
+/* ── Search quick-filter chips ──────────────────────────────────────────── */
+.search-chips {
+  display: flex; flex-wrap: wrap; gap: .3rem;
+  margin-top: .3rem;
   transition: opacity .15s ease;
+}
+.search-chip {
+  display: inline-flex; align-items: center;
+  font-size: .62rem; font-weight: 600;
+  padding: .15rem .5rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2, var(--bg2));
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .12s ease;
+  white-space: nowrap;
+}
+.search-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(88,166,255,.08);
+}
+.search-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(88,166,255,.15);
+}
+.search-input-wrapper:focus-within .search-chips {
+  opacity: .3;
   pointer-events: none;
-}
-
-.search-hint code {
-  background: rgba(255, 255, 255, .05);
-  padding: 0 .3rem;
-  border-radius: 2px;
-  font-family: var(--font-mono, "Courier New", monospace);
-  font-size: .6rem;
-}
-
-.search-input-wrapper:focus-within .search-hint {
-  opacity: 0;
 }
 
 /* ── Recent searches panel ─────────────────────────────────────────────────── */
@@ -385,6 +395,36 @@ a:hover { text-decoration: underline; }
 .sb-health-warn .sb-health-dot { background: #f0883e; }
 .sb-health-error .sb-health-dot { background: #f85149; }
 
+/* ── KPI summary bar ───────────────────────────────────────────────────── */
+.kpi-bar {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.kpi-cell {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .55rem;
+  border-radius: 6px;
+  background: var(--surface2, var(--bg2));
+  border: 1px solid var(--border);
+  font-size: .72rem;
+  white-space: nowrap;
+}
+.kpi-value { font-weight: 700; color: var(--text); }
+.kpi-label { color: var(--text2); font-weight: 400; }
+.kpi-alert {
+  border-color: rgba(248,81,73,.4);
+  background: rgba(248,81,73,.08);
+}
+.kpi-alert .kpi-value { color: var(--err, #f85149); }
+.kpi-warn {
+  border-color: rgba(240,136,62,.4);
+  background: rgba(240,136,62,.08);
+}
+.kpi-warn .kpi-value { color: var(--warn, #f0883e); }
+
 /* ── New since last visit — bouton navbar ────────────────────────────────── */
 .btn-nsv {
   color: #2dce89;
@@ -546,6 +586,21 @@ a:hover { text-decoration: underline; }
 .crit-high   { border-left-color: var(--err);  }
 .crit-medium { border-left-color: var(--warn); }
 .crit-low    { border-left-color: var(--ok);   }
+
+/* Priority-level visual differentiation — stronger than criticality alone */
+.priority-critical_now {
+  border-left-width: 5px;
+  background: linear-gradient(90deg, rgba(248,81,73,.05) 0%, transparent 35%);
+  box-shadow: inset 4px 0 8px -4px rgba(248,81,73,.2);
+}
+.priority-investigate {
+  border-left-width: 4px;
+  background: linear-gradient(90deg, rgba(240,136,62,.03) 0%, transparent 25%);
+}
+.priority-low {
+  opacity: .75;
+}
+.priority-low:hover { opacity: 1; }
 
 .card-header {
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;

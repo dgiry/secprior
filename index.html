@@ -148,7 +148,14 @@
         autocomplete="off"
         title="Search supports: plain text, source:, vendor:, cve:, status:, priority:, kev, trending, -keyword"
       >
-      <div class="search-hint">💡 Try: <code>source:cisa</code> <code>vendor:microsoft</code> <code>kev</code> <code>-phishing</code></div>
+      <div class="search-chips" id="search-chips">
+        <button class="search-chip" data-query="kev">🔑 KEV</button>
+        <button class="search-chip" data-query="priority:critical_now">🔴 Critical</button>
+        <button class="search-chip" data-query="watchlist">👁 Watchlist</button>
+        <button class="search-chip" data-query="zero-day">⚡ 0-Day</button>
+        <button class="search-chip" data-query="trending">📡 Trending</button>
+        <button class="search-chip" data-query="ioc">🔬 IOCs</button>
+      </div>
       <div id="recent-searches-panel" class="recent-searches-panel" style="display:none"></div>
     </div>
 
@@ -491,6 +498,9 @@
     </span>
     <button class="nsv-ctx-back" onclick="App.exitNewSinceVisit()">← Back to all</button>
   </div>
+
+  <!-- ── KPI summary bar (populated by ui.js renderKPIBar) ─────────────────── -->
+  <div id="kpi-bar" class="kpi-bar"></div>
 
   <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
   <main class="main">
