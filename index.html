@@ -22,11 +22,29 @@
 </head>
 <body>
 
+  <!-- ── Open source top bar ─────────────────────────────────────────────── -->
+  <div class="oss-bar" id="oss-bar">
+    <span class="oss-bar-text">
+      <span class="oss-badge">Open Source</span>
+      Self-hosted SecOps threat prioritization — MIT license · no data sharing · deploy in minutes
+    </span>
+    <div class="oss-bar-actions">
+      <a href="https://github.com/dgiry/cyberveille-pro" target="_blank" rel="noopener"
+         class="oss-btn oss-btn-github" title="Star on GitHub">⭐ GitHub</a>
+      <a href="https://vercel.com/new/clone?repository-url=https://github.com/dgiry/cyberveille-pro"
+         target="_blank" rel="noopener"
+         class="oss-btn oss-btn-deploy" title="One-click deploy to Vercel">▲ Deploy to Vercel</a>
+    </div>
+    <button class="oss-dismiss" title="Dismiss"
+            onclick="document.getElementById('oss-bar').style.display='none';try{sessionStorage.setItem('cv_oss_bar','0')}catch{}">✕</button>
+  </div>
+  <script>try{if(sessionStorage.getItem('cv_oss_bar')==='0')document.getElementById('oss-bar').style.display='none';}catch{}</script>
+
   <!-- ── Navigation / Barre de filtres ───────────────────────────────────── -->
   <nav class="navbar">
     <div class="navbar-brand">
       <span class="navbar-brand-name">🛡️ Threat<span>Lens</span></span>
-      <span class="navbar-brand-sub">Context-aware SecOps prioritization</span>
+      <span class="navbar-brand-sub">Open source · Self-hosted · Context-aware SecOps prioritization</span>
     </div>
 
     <!-- ── G1 : Chemin principal — profil · top prio · incidents · CVEs ─── -->
@@ -460,8 +478,12 @@
 
   <!-- ── Bandeau mode démo (masqué si flux live OK) ───────────────────────── -->
   <div id="demo-bar" style="display:none">
-    ⚠️ <strong>DEMO MODE</strong> — Live RSS feeds are not accessible from this environment.
-    Deploy the app on a public server to receive real-time alerts.
+    🔬 <strong>Sample data</strong> — Deploy your own instance for live threat feeds and real-time alerts.
+    <a href="https://github.com/dgiry/cyberveille-pro" target="_blank" rel="noopener"
+       class="demo-bar-link">⭐ Star on GitHub</a>
+    <a href="https://vercel.com/new/clone?repository-url=https://github.com/dgiry/cyberveille-pro"
+       target="_blank" rel="noopener"
+       class="demo-bar-link demo-bar-link-deploy">▲ Deploy to Vercel</a>
   </div>
 
   <!-- ── Barre de statut ──────────────────────────────────────────────────── -->

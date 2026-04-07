@@ -37,15 +37,64 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ── Demo bar ───────────────────────────────────────────────────────────── */
+/* ── Open source top bar ────────────────────────────────────────────────── */
+.oss-bar {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  background: #0d1117;
+  border-bottom: 1px solid #30363d;
+  padding: .35rem 1rem;
+  font-size: .73rem; color: #8b949e;
+}
+.oss-bar-text { display: flex; align-items: center; gap: .5rem; flex: 1; }
+.oss-badge {
+  display: inline-flex; align-items: center;
+  background: rgba(63,185,80,.12); color: #3fb950;
+  border: 1px solid rgba(63,185,80,.3);
+  border-radius: 10px; padding: .1rem .5rem;
+  font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+  white-space: nowrap;
+}
+.oss-bar-actions { display: flex; align-items: center; gap: .4rem; }
+.oss-btn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .6rem; border-radius: 6px;
+  font-size: .72rem; font-weight: 600; text-decoration: none;
+  white-space: nowrap; transition: opacity .15s;
+}
+.oss-btn:hover { opacity: .8; }
+.oss-btn-github {
+  background: #21262d; color: #e6edf3;
+  border: 1px solid #30363d;
+}
+.oss-btn-deploy {
+  background: #000; color: #fff;
+  border: 1px solid #333;
+}
+.oss-dismiss {
+  background: none; border: none; color: #484f58; cursor: pointer;
+  font-size: .8rem; padding: .1rem .3rem; margin-left: .25rem;
+  border-radius: 4px;
+}
+.oss-dismiss:hover { color: #8b949e; }
+
+/* ── Demo mode bar ──────────────────────────────────────────────────────── */
 #demo-bar {
-  background: #2d1b00;
-  border-bottom: 1px solid #f0883e;
+  background: #0d1b2e;
+  border-bottom: 1px solid #1f4068;
   padding: .4rem 1rem;
   font-size: .78rem;
-  color: #f0883e;
-  align-items: center;
-  gap: .5rem;
+  color: #79c0ff;
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
 }
+.demo-bar-link {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .15rem .5rem; border-radius: 5px;
+  font-size: .72rem; font-weight: 600; text-decoration: none;
+  white-space: nowrap; transition: opacity .15s;
+  background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+}
+.demo-bar-link:hover { opacity: .8; }
+.demo-bar-link-deploy { background: #000; color: #fff; border-color: #333; }
 
 /* ── Nav bar ────────────────────────────────────────────────────────────── */
 .navbar {
