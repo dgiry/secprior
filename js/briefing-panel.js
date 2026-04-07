@@ -51,7 +51,7 @@ const BriefingPanel = (() => {
 
     try {
       if (!CONFIG.USE_API) {
-        _renderError("Le panneau Briefing est disponible uniquement en mode Vercel (USE_API = true).");
+        _renderError("The Briefing panel is available in Vercel mode only (USE_API = true).");
         return;
       }
       const res = await fetch("/api/briefing-preview", {
@@ -99,7 +99,7 @@ const BriefingPanel = (() => {
       const parts = [
         gen && `Generated at ${gen}`,
         s.feeds  && `${s.feeds.ok}/${s.feeds.total} sources`,
-        s.articles && `${s.articles.raw} articles bruts`,
+        s.articles && `${s.articles.raw} raw articles`,
         s.enrichment?.kevHits  > 0 && `${s.enrichment.kevHits} KEV`,
         s.enrichment?.epssHits > 0 && `${s.enrichment.epssHits} EPSS`,
         s.elapsedMs != null && `${s.elapsedMs} ms`
@@ -192,7 +192,7 @@ const BriefingPanel = (() => {
 
     return `
 <div class="bp-rest">
-  <h4 class="bp-rest-h4">📋 Autres alertes (${rest.length})</h4>
+  <h4 class="bp-rest-h4">📋 Other alerts (${rest.length})</h4>
   <table class="bp-rest-table"><tbody>${rows}</tbody></table>
 </div>`;
   }

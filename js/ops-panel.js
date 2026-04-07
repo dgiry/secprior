@@ -28,16 +28,16 @@ const OpsPanel = (() => {
     _box.innerHTML = `
       <div class="ops-hd" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
         <span class="ops-title" style="font-weight:600">🧩 Ops / Debug</span>
-        <button id="ops-close" class="ops-close" title="Fermer" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:2px 8px;font-size:.8rem;cursor:pointer">✕</button>
+        <button id="ops-close" class="ops-close" title="Close" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:2px 8px;font-size:.8rem;cursor:pointer">✕</button>
       </div>
       <div class="ops-body" id="ops-body" style="display:flex;flex-direction:column;gap:6px">
         <!-- Source / Feeds / Articles -->
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Mode source</span><span class="ops-v" id="ops-source-mode" style="font-variant-numeric:tabular-nums">—</span></div>
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Flux actifs</span><span class="ops-v" id="ops-feed-count" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Source mode</span><span class="ops-v" id="ops-source-mode" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Active feeds</span><span class="ops-v" id="ops-feed-count" style="font-variant-numeric:tabular-nums">—</span></div>
         <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Articles</span><span class="ops-v" id="ops-article-count" style="font-variant-numeric:tabular-nums">—</span></div>
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernier refresh</span><span class="ops-v" id="ops-last-refresh" style="font-variant-numeric:tabular-nums">—</span></div>
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Dernière fetch live</span><span class="ops-v" id="ops-last-fresh-fetch" style="font-variant-numeric:tabular-nums">—</span></div>
-        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Changement articles</span><span class="ops-v" id="ops-article-change" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Last refresh</span><span class="ops-v" id="ops-last-refresh" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Last live fetch</span><span class="ops-v" id="ops-last-fresh-fetch" style="font-variant-numeric:tabular-nums">—</span></div>
+        <div class="ops-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="ops-k" style="opacity:.8">Article delta</span><span class="ops-v" id="ops-article-change" style="font-variant-numeric:tabular-nums">—</span></div>
 
         <!-- Séparateur -->
         <div style="border-top:1px solid #30363d;margin:4px 0"></div>

@@ -89,14 +89,14 @@ const SettingsModal = (() => {
       if (lastSyncEl) {
         if (tv1.lastSyncAt) {
           const d = new Date(tv1.lastSyncAt);
-          const dateStr = d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'démo';
-          const addedPart = tv1.lastSyncAdded > 0 ? ` · ${tv1.lastSyncAdded} ajouté(s)` : '';
-          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} désactivé(s)` : '';
+          const dateStr = d.toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
+          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'demo';
+          const addedPart = tv1.lastSyncAdded > 0 ? ` · ${tv1.lastSyncAdded} added` : '';
+          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} disabled` : '';
           const resultIcon  = tv1.lastSyncResult === 'success' ? '✅'
             : tv1.lastSyncResult === 'demo' ? '🔵'
             : '⚠';
-          lastSyncEl.textContent = `${resultIcon} Dernière sync : ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
+          lastSyncEl.textContent = `${resultIcon} Last sync: ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
         } else {
           lastSyncEl.textContent = '';
         }
@@ -653,7 +653,7 @@ const SettingsModal = (() => {
 
     if (countEl && isDigest) {
       const n = AlertManager.getDigestCount();
-      countEl.textContent = n > 0 ? ` (${n} en attente)` : "";
+      countEl.textContent = n > 0 ? ` (${n} pending)` : "";
     }
     // Hint contextuel selon le mode
     if (hourHint) {
@@ -1121,19 +1121,19 @@ const SettingsModal = (() => {
         const tv1 = TV1Sync.loadConfig();
         if (tv1.lastSyncAt) {
           const d = new Date(tv1.lastSyncAt);
-          const dateStr = d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'démo';
-          const addedPart    = tv1.lastSyncAdded    > 0 ? ` · ${tv1.lastSyncAdded} ajouté(s)` : '';
-          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} désactivé(s)` : '';
+          const dateStr = d.toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
+          const srcLabel = tv1.lastSyncSource === 'tv1_live' ? 'live' : 'demo';
+          const addedPart    = tv1.lastSyncAdded    > 0 ? ` · ${tv1.lastSyncAdded} added` : '';
+          const disabledPart = tv1.lastSyncDisabled > 0 ? ` · ${tv1.lastSyncDisabled} disabled` : '';
           const resultIcon   = tv1.lastSyncResult === 'success' ? '✅' : tv1.lastSyncResult === 'demo' ? '🔵' : '⚠';
-          lastSyncEl.textContent = `${resultIcon} Dernière sync : ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
+          lastSyncEl.textContent = `${resultIcon} Last sync: ${dateStr} (${srcLabel}${addedPart}${disabledPart})`;
         }
       }
       let msg = stats.added > 0
-        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} ajouté(s) depuis TV1`
-        : `ℹ Tous les items TV1 déjà présents`;
-      if (stats.skipped)   msg += ` · ${stats.skipped} déjà présent(s)`;
-      if (stats.disabled)  msg += ` · ${stats.disabled} désactivé(s) (obsolètes)`;
+        ? `🔵 ${stats.added} item${stats.added !== 1 ? 's' : ''} imported from TV1`
+        : `ℹ All TV1 items already present`;
+      if (stats.skipped)   msg += ` · ${stats.skipped} already present`;
+      if (stats.disabled)  msg += ` · ${stats.disabled} disabled (obsolete)`;
       UI.showToast(msg, stats.added > 0 ? 'success' : 'info');
     });
 

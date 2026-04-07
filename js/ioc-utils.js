@@ -167,7 +167,7 @@ const IOCUtils = (() => {
           <button class="ioc-copy-group"
                   data-ioc-label="${_esc(label)}"
                   data-ioc-vals="${packedVals}"
-                  title="Copier tous les ${_esc(label)}">📋 Tout copier</button>
+                  title="Copy all ${_esc(label)}">📋 Copy all</button>
         </div>
         <div class="ioc-list">
           ${values.map(v => `
@@ -176,7 +176,7 @@ const IOCUtils = (() => {
               <button class="ioc-copy-one"
                       data-ioc-type="${_esc(label)}"
                       data-ioc-val="${_esc(v)}"
-                      title="Copier ${_esc(v)}">📋</button>
+                      title="Copy ${_esc(v)}">📋</button>
             </span>`).join('')}
         </div>
       </div>`;
@@ -209,18 +209,18 @@ const IOCUtils = (() => {
     return `
       <div class="ioc-block" data-iid="${safeIid}">
         <div class="ioc-block-head">
-          <span class="ioc-block-title">🔗 IOCs détectés</span>
-          <span class="ioc-block-count">${t} indicateur${t > 1 ? 's' : ''}</span>
+          <span class="ioc-block-title">🔗 Detected IOCs</span>
+          <span class="ioc-block-count">${t} indicator${t > 1 ? 's' : ''}</span>
           <div class="ioc-block-actions">
             <button class="ioc-copy-all"
                     data-ioc-vals="${_esc(allVals.join('||'))}"
-                    title="Copier tous les IOCs dans le presse-papier">📋 Tout copier</button>
+                    title="Copy all IOCs to clipboard">📋 Copy all</button>
             <button class="ioc-export-json" data-iid="${safeIid}" title="Export JSON">⬇ JSON</button>
             <button class="ioc-export-txt"  data-iid="${safeIid}" title="Export TXT">⬇ TXT</button>
           </div>
         </div>
         ${_typeSection('🌐', 'IP',      iocs.ips,                      null)}
-        ${_typeSection('🏠', 'Domaine', iocs.domains,                  null)}
+        ${_typeSection('🏠', 'Domain',  iocs.domains,                  null)}
         ${_typeSection('🔗', 'URL',     iocs.urls,                     urlDisplayFn)}
         ${_typeSection('#',  'Hash',    iocs.hashes.map(h => h.value), hashDisplayFn)}
       </div>`;

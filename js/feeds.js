@@ -43,12 +43,19 @@ function extractLink(item) {
  * Nettoie le HTML d'une description RSS (balises, CDATA)
  */
 function stripHTML(str) {
-  return (str || "")
+  const stripped = (str || "")
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 300);
+    .trim();
+  // Decode HTML entities (&nbsp; &amp; &lt; &gt; &quot; etc.)
+  // using a temporary textarea — safe in browser context, no XSS risk
+  // (we're reading .value, not .innerHTML)
+  try {
+    const ta = document.createElement('textarea');
+    ta.innerHTML = stripped;
+    return ta.value.trim().slice(0, 300);
+  } catch { return stripped.slice(0, 300); }
 }
 
 /**

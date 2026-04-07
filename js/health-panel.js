@@ -315,7 +315,7 @@ const HealthPanel = (() => {
       const subjDisplay = rawSubj.slice(0, 72) + (rawSubj.length > 72 ? "…" : "");
       const safeSubj    = rawSubj.replace(/"/g, "&quot;");
       const subjEl = rawSubj
-        ? `<span class="hp-bh-subj" title="Cliquer pour copier" data-subj="${safeSubj}"
+        ? `<span class="hp-bh-subj" title="Click to copy" data-subj="${safeSubj}"
              onclick="navigator.clipboard.writeText(this.dataset.subj).then(()=>{const e=this;e.classList.add('hp-bh-copied');setTimeout(()=>e.classList.remove('hp-bh-copied'),1500)})"
             >${subjDisplay} <span class="hp-bh-copy-icon">⎘</span></span>`
         : `<span class="hp-bh-subj hp-null">—</span>`;
@@ -339,7 +339,7 @@ const HealthPanel = (() => {
       }).join("");
 
       const moreRow = hiddenCount > 0
-        ? `<div class="hp-bh-more">+ ${hiddenCount} autre${hiddenCount > 1 ? "s" : ""}</div>`
+        ? `<div class="hp-bh-more">+ ${hiddenCount} more</div>`
         : "";
 
       const isFirst = i === 0;
@@ -347,7 +347,7 @@ const HealthPanel = (() => {
 <div class="hp-bh-card${isFirst ? " hp-bh-card-last" : ""}">
   <div class="hp-bh-head">
     <span class="hp-bh-ts">${ts}</span>${slotBadge}
-    <span class="hp-bh-count"><strong>${totalCount}</strong> alerte${totalCount > 1 ? "s" : ""}</span>
+    <span class="hp-bh-count"><strong>${totalCount}</strong> alert${totalCount > 1 ? "s" : ""}</span>
     ${subjEl}
   </div>
   ${artRows}${moreRow}
@@ -401,7 +401,7 @@ ${_renderSummary(d)}
 <div class="hp-section">
   <div class="hp-section-head">🕐 Last run</div>
   <div class="hp-row"><span class="hp-lbl">Executed on</span><span>${_ts(lr.lastRunAt)}</span></div>
-  <div class="hp-row"><span class="hp-lbl">Slot (Montreal)</span><span class="hp-code">${lr.slot || "—"}</span></div>
+  <div class="hp-row"><span class="hp-lbl">Slot (Montreal time)</span><span class="hp-code">${lr.slot || "—"}</span></div>
   <div class="hp-row"><span class="hp-lbl">Result</span><span>${_resultBadge(lr.lastResult)}</span></div>
   ${lr.lastReason ? `<div class="hp-row"><span class="hp-lbl">Reason</span><span class="hp-reason-txt">${lr.lastReason}</span></div>` : ""}
   <div class="hp-row"><span class="hp-lbl">Last sent</span><span>${_ts(lr.lastSentAt)}</span></div>
@@ -426,7 +426,7 @@ ${_renderSummary(d)}
   <div class="hp-row"><span class="hp-lbl">Schedule</span><span class="hp-code">${cr.schedule || "—"}</span></div>
   <div class="hp-row"><span class="hp-lbl">Send time</span><span class="hp-code">${dg.hour || "—"}</span></div>
   <div class="hp-row"><span class="hp-lbl">Mode</span><span>${dg.mode || "—"}</span></div>
-  ${dg.weekday != null ? `<div class="hp-row"><span class="hp-lbl">Jour (0=dim)</span><span>${dg.weekday}</span></div>` : ""}
+  ${dg.weekday != null ? `<div class="hp-row"><span class="hp-lbl">Day (0=Sun)</span><span>${dg.weekday}</span></div>` : ""}
   <div class="hp-row"><span class="hp-lbl">Timezone</span><span class="hp-code">${dg.tz || "—"}</span></div>
   <div class="hp-row"><span class="hp-lbl">Montreal time</span><span class="hp-code">${dg.nowMontreal || "—"}</span></div>
 </div>
