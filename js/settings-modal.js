@@ -413,9 +413,9 @@ const SettingsModal = (() => {
     const hostname  = (() => { try { return new URL(f.url).hostname; } catch { return (f.url || "").slice(0, 40); } })();
 
     const deleteBtn = f.isDefault ? "" :
-      `<button class="fm-btn fm-btn-danger" title="Delete this feed" onclick="SettingsModal.deleteFeed('${f.id}')">🗑</button>`;
+      `<button type="button" class="fm-btn fm-btn-danger" title="Delete this feed" onclick="SettingsModal.deleteFeed('${f.id}')">🗑</button>`;
     const editBtn   = f.isDefault ? "" :
-      `<button class="fm-btn" title="Edit this feed" onclick="SettingsModal.editFeedToggle('${f.id}')">✏️</button>`;
+      `<button type="button" class="fm-btn" title="Edit this feed" onclick="SettingsModal.editFeedToggle('${f.id}')">✏️</button>`;
 
     const errorRow = (f.lastStatus === "error") ?
       `<div class="fm-error-row">❌ ${_esc(f.lastErrorMessage || "Unknown error")}</div>` : "";
@@ -434,8 +434,8 @@ const SettingsModal = (() => {
         </div>
         <div class="fm-edit-errors" id="fm-ee-${f.id}" style="display:none"></div>
         <div class="fm-edit-actions">
-          <button class="btn btn-primary" onclick="SettingsModal.saveEditFeed('${f.id}')">💾 Save</button>
-          <button class="btn" onclick="SettingsModal.editFeedToggle('${f.id}')">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="SettingsModal.saveEditFeed('${f.id}')">💾 Save</button>
+          <button type="button" class="btn" onclick="SettingsModal.editFeedToggle('${f.id}')">Cancel</button>
         </div>
       </div>`;
 
@@ -459,7 +459,7 @@ const SettingsModal = (() => {
             </div>
           </div>
           <div class="fm-feed-actions">
-            <button class="fm-btn fm-btn-test" title="Test this feed now" onclick="SettingsModal.testFeedUI('${f.id}')">🧪</button>
+            <button type="button" class="fm-btn fm-btn-test" title="Test this feed now" onclick="SettingsModal.testFeedUI('${f.id}')">🧪</button>
             ${editBtn}
             ${deleteBtn}
             <label class="fm-toggle-wrap" title="${f.enabled ? "Disable" : "Enable"}">
