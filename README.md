@@ -10,7 +10,7 @@
 
 ---
 
-## Why ThreatLens?
+## Why SecPrior?
 
 SecOps teams today face a familiar problem:
 
@@ -19,7 +19,7 @@ SecOps teams today face a familiar problem:
 - **No context** — you know something is critical, but not *why*, and not *for your environment*
 - **Manual triage** — analysts spend hours sorting signals instead of acting on them
 
-ThreatLens solves this by running every article through a 7-step intelligence pipeline that scores, deduplicates, correlates and contextualizes threats — then surfaces only what matters, with the evidence to act.
+SecPrior solves this by running every article through a 7-step intelligence pipeline that scores, deduplicates, correlates and contextualizes threats — then surfaces only what matters, with the evidence to act.
 
 ---
 
@@ -100,7 +100,7 @@ No configuration required for the demo mode. Add environment variables for live 
 
 ```bash
 git clone https://github.com/dgiry/secprior.git
-cd cyberveille-pro
+cd secprior
 npm install        # dev dependencies only (Jest for tests)
 npm run dev        # serves at http://localhost:3001
 ```
@@ -150,7 +150,7 @@ Dashboard — cards, KPIs, incidents, CVEs, vendors, briefings
 
 ## Privacy & Security
 
-- **No telemetry** — ThreatLens sends no data anywhere except the APIs you configure
+- **No telemetry** — SecPrior sends no data anywhere except the APIs you configure
 - **Self-hosted** — your watchlist, profiles and notes never leave your instance
 - **Client-side first** — the intelligence pipeline runs in the browser; the server only proxies public APIs to bypass CORS
 - **No tracking** — no analytics, no cookies beyond LocalStorage for your own settings
@@ -190,4 +190,4 @@ MIT — free to use, modify and self-host. See [LICENSE](LICENSE).
 
 ---
 
-*Built for the security community. If ThreatLens is useful to your team, a ⭐ on GitHub helps others find it.*
+*Built for the security community. If SecPrior is useful to your team, a ⭐ on GitHub helps others find it.*
