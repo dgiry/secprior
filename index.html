@@ -149,12 +149,12 @@
         title="Search supports: plain text, source:, vendor:, cve:, status:, priority:, kev, trending, -keyword"
       >
       <div class="search-chips" id="search-chips">
-        <button class="search-chip" data-query="kev">🔑 KEV</button>
-        <button class="search-chip" data-query="priority:critical_now">🔴 Critical</button>
-        <button class="search-chip" data-query="watchlist">👁 Watchlist</button>
-        <button class="search-chip" data-query="zero-day">⚡ 0-Day</button>
-        <button class="search-chip" data-query="trending">📡 Trending</button>
-        <button class="search-chip" data-query="ioc">🔬 IOCs</button>
+        <button type="button" class="search-chip" data-query="kev">🔑 KEV</button>
+        <button type="button" class="search-chip" data-query="priority:critical_now">🔴 Critical</button>
+        <button type="button" class="search-chip" data-query="watchlist">👁 Watchlist</button>
+        <button type="button" class="search-chip" data-query="zero-day">⚡ 0-Day</button>
+        <button type="button" class="search-chip" data-query="trending">📡 Trending</button>
+        <button type="button" class="search-chip" data-query="ioc">🔬 IOCs</button>
       </div>
       <div id="recent-searches-panel" class="recent-searches-panel" style="display:none"></div>
     </div>
@@ -502,6 +502,9 @@
   <!-- ── KPI summary bar (populated by ui.js renderKPIBar) ─────────────────── -->
   <div id="kpi-bar" class="kpi-bar"></div>
 
+  <!-- ── Watchlist scope bar (populated by ui.js renderScopeBar) ───────────── -->
+  <div id="scope-bar" class="scope-bar" style="display:none"></div>
+
   <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
   <main class="main">
     <div id="feed-grid">
@@ -584,6 +587,8 @@
         </button>
         <button class="settings-tab" data-tab="integrations"
                 onclick="SettingsModal.switchTab('integrations')">🔗 Integrations</button>
+        <button class="settings-tab" data-tab="policy"
+                onclick="SettingsModal.switchTab('policy')">📋 Policy</button>
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════════ -->
@@ -1117,6 +1122,41 @@
         </div>
 
       </div><!-- /settings-tab-integrations -->
+
+      <!-- ── Policy tab ─────────────────────────────────────────────────────── -->
+      <div id="settings-tab-policy" class="settings-tab-pane" style="display:none">
+        <div class="settings-group">
+          <label class="settings-label">⏱ SLA Policy — Remediation deadlines</label>
+          <p class="settings-hint">Max response time per priority level. Drives SLA badges on cards and the KPI bar overdue counter.</p>
+          <div class="sla-fields">
+            <div class="sla-field">
+              <span class="sla-label">🔴 Critical</span>
+              <div class="sla-input-row">
+                <input type="number" id="sla-critical" class="settings-input sla-input"
+                       min="1" max="90" placeholder="1">
+                <span class="sla-unit">days</span>
+              </div>
+            </div>
+            <div class="sla-field">
+              <span class="sla-label">🟠 Investigate</span>
+              <div class="sla-input-row">
+                <input type="number" id="sla-investigate" class="settings-input sla-input"
+                       min="1" max="90" placeholder="7">
+                <span class="sla-unit">days</span>
+              </div>
+            </div>
+            <div class="sla-field">
+              <span class="sla-label">🟡 Watch</span>
+              <div class="sla-input-row">
+                <input type="number" id="sla-watch" class="settings-input sla-input"
+                       min="1" max="90" placeholder="30">
+                <span class="sla-unit">days</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn-sm" onclick="SettingsModal.saveSLA()">💾 Save SLA Policy</button>
+        </div>
+      </div><!-- /settings-tab-policy -->
 
     </div><!-- /modal-box -->
   </div><!-- /modal-settings -->

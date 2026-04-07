@@ -134,6 +134,19 @@ const SettingsModal = (() => {
     _bindModeSelect();
     _adaptToMode();
     _renderAlertHistory("all");
+
+    // ── Onglet Policy — SLA fields ──────────────────────────────────────────
+    const _slaDef = { critical_now: 1, investigate: 7, watch: 30 };
+    const _sla = (() => {
+      try { return { ..._slaDef, ...(JSON.parse(localStorage.getItem('cv_sla_days') || 'null') || {}) }; }
+      catch { return _slaDef; }
+    })();
+    const _elC = document.getElementById('sla-critical');
+    const _elI = document.getElementById('sla-investigate');
+    const _elW = document.getElementById('sla-watch');
+    if (_elC) _elC.value = _sla.critical_now;
+    if (_elI) _elI.value = _sla.investigate;
+    if (_elW) _elW.value = _sla.watch;
   }
 
   // ── Adaptation de l'UI selon le mode prod/dev ─────────────────────────────
@@ -1237,6 +1250,17 @@ const SettingsModal = (() => {
     }
   }
 
+  // ── SLA Policy ──────────────────────────────────────────────────────────────
+
+  function saveSLA() {
+    const def         = { critical_now: 1, investigate: 7, watch: 30 };
+    const critical    = Math.max(1, parseInt(document.getElementById('sla-critical')?.value,    10) || def.critical_now);
+    const investigate = Math.max(1, parseInt(document.getElementById('sla-investigate')?.value, 10) || def.investigate);
+    const watch       = Math.max(1, parseInt(document.getElementById('sla-watch')?.value,       10) || def.watch);
+    localStorage.setItem('cv_sla_days', JSON.stringify({ critical_now: critical, investigate, watch }));
+    _toast('⏱ SLA policy saved');
+  }
+
   // ── API publique ────────────────────────────────────────────────────────────
 
   return {
@@ -1252,6 +1276,8 @@ const SettingsModal = (() => {
     addFeed, resetCustomFeeds, restoreDefaultFeeds, applyAndRefresh,
     // Integrations
     saveIntegrations, testOTX, testURLhaus, testThreatFox, testShareWebhook,
+    // Policy
+    saveSLA,
     // TV1 Watchlist Sync
     syncTV1Watchlist,
     // TV1 VP toggle/test removed — per-CVE signal unsupported by TV1 API

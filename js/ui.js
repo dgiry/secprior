@@ -544,7 +544,8 @@ const UI = (() => {
   }
 
   function _slaBadgeHTML(article) {
-    const slaDays = _getSLADays()[article.priorityLevel];
+    const all     = _getSLADays();
+    const slaDays = all[article.priorityLevel];
     if (!slaDays) return ''; // low priority → no SLA
 
     // No badge once the analyst has closed the case
@@ -553,11 +554,11 @@ const UI = (() => {
       if (st === 'mitigated' || st === 'ignored') return '';
     }
 
-    const deadline    = new Date(article.pubDate.getTime() + slaDays * 86400000);
-    const msLeft      = deadline.getTime() - Date.now();
-    const daysLeft    = Math.ceil(msLeft / 86400000);
-    const dlStr       = deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const slaLabel    = `${slaDays}d SLA`;
+    const deadline  = new Date(article.pubDate.getTime() + slaDays * 86400000);
+    const msLeft    = deadline.getTime() - Date.now();
+    const daysLeft  = Math.ceil(msLeft / 86400000);
+    const dlStr     = deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const policy    = `Policy: C=${all.critical_now}d · I=${all.investigate}d · W=${all.watch}d`;
 
     // "watch" (30d): only show badge in last 7 days to avoid noise
     if (article.priorityLevel === 'watch' && daysLeft > 7) return '';
@@ -565,18 +566,18 @@ const UI = (() => {
     if (daysLeft < 0) {
       const over = Math.abs(daysLeft);
       return `<span class="card-sla sla-overdue"
-        title="SLA exceeded by ${over}d — patch window was ${slaDays}d">🔴 SLA overdue${over > 1 ? ' +' + over + 'd' : ''}</span>`;
+        title="SLA exceeded by ${over}d · ${policy}">🔴 SLA overdue${over > 1 ? ' +' + over + 'd' : ''}</span>`;
     }
     if (daysLeft === 0) {
       return `<span class="card-sla sla-today"
-        title="Patch deadline: today (${dlStr}) — ${slaLabel}">🔴 Due today</span>`;
+        title="Patch deadline: today (${dlStr}) · ${policy}">🔴 Due today</span>`;
     }
     if (daysLeft <= 2) {
       return `<span class="card-sla sla-urgent"
-        title="Patch deadline: ${dlStr} — ${slaLabel}">⚠ ${daysLeft}d left</span>`;
+        title="Patch deadline: ${dlStr} · ${policy}">⚠ ${daysLeft}d left</span>`;
     }
     return `<span class="card-sla sla-ok"
-      title="Patch deadline: ${dlStr} — ${slaLabel}">⏱ ${daysLeft}d</span>`;
+      title="Patch deadline: ${dlStr} · ${policy}">⏱ ${daysLeft}d</span>`;
   }
 
   // ─── Filtrage ──────────────────────────────────────────────────────────────
@@ -1105,6 +1106,29 @@ const UI = (() => {
     bar.style.display = 'flex';
   }
 
+  // ─── Watchlist Scope Bar ───────────────────────────────────────────────────
+
+  function renderScopeBar() {
+    const bar = document.getElementById('scope-bar');
+    if (!bar) return;
+
+    if (typeof Contextualizer === 'undefined') { bar.style.display = 'none'; return; }
+
+    const active = Contextualizer.getWatchlist().filter(i => i.enabled !== false);
+    if (active.length === 0) { bar.style.display = 'none'; return; }
+
+    const MAX     = 6;
+    const visible = active.slice(0, MAX);
+    const extra   = active.length - MAX;
+    const _e      = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const terms = visible.map(i => `<span class="scope-term">${_e(i.label)}</span>`).join('');
+    const more  = extra > 0 ? ` <span class="scope-more">(+${extra})</span>` : '';
+
+    bar.innerHTML = `<span class="scope-eye">👁</span><span class="scope-prefix">Scope:</span>${terms}${more}`;
+    bar.style.display = '';
+  }
+
   return {
     renderCards,
     applyFilters,
@@ -1121,6 +1145,7 @@ const UI = (() => {
     cycleStatus,
     initSourceFilter,
     timeAgo,
-    renderKPIBar
+    renderKPIBar,
+    renderScopeBar
   };
 })();

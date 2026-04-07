@@ -338,6 +338,7 @@ const App = (() => {
     });
     UI.renderCards(filtered);
     UI.renderKPIBar(filtered);
+    UI.renderScopeBar();
     _navIdx = -1; // Reset j/k navigation on every render
     RiskFilter.setCount(filtered.length);     // mise à jour compteur dans la barre
     _updateUnreadCount(filtered);             // compteur non-lu dans la navbar

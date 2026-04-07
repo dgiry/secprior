@@ -118,7 +118,8 @@ a:hover { text-decoration: underline; }
   color: var(--accent);
   background: rgba(88,166,255,.15);
 }
-.search-input-wrapper:focus-within .search-chips {
+/* Dim chips only when the search INPUT itself is focused (not when a chip button is focused) */
+#search-input:focus ~ .search-chips {
   opacity: .3;
   pointer-events: none;
 }
@@ -424,6 +425,37 @@ a:hover { text-decoration: underline; }
   background: rgba(240,136,62,.08);
 }
 .kpi-warn .kpi-value { color: var(--warn, #f0883e); }
+
+/* ── SLA Policy fields (Settings → Policy tab) ──────────────────────────── */
+.sla-fields    { display: flex; flex-direction: column; gap: .6rem; margin: .75rem 0 1rem; }
+.sla-field     { display: flex; align-items: center; gap: .75rem; }
+.sla-label     { width: 7rem; font-size: .8rem; font-weight: 600; color: var(--text1); flex-shrink: 0; }
+.sla-input-row { display: flex; align-items: center; gap: .4rem; }
+.sla-input     { width: 4.5rem; text-align: center; }
+.sla-unit      { font-size: .78rem; color: var(--text2); }
+
+/* ── Watchlist Scope Bar ─────────────────────────────────────────────────── */
+.scope-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .3rem .45rem;
+  padding: .22rem 1rem;
+  font-size: .68rem;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  min-height: 0;
+}
+.scope-eye    { opacity: .7; margin-right: .1rem; }
+.scope-prefix { font-weight: 600; color: var(--text2); margin-right: .15rem; }
+.scope-term {
+  padding: .1rem .45rem;
+  border-radius: 8px;
+  background: var(--surface2, rgba(139,148,158,.1));
+  color: var(--text2);
+  white-space: nowrap;
+}
+.scope-more   { color: var(--text2); opacity: .65; }
 
 /* ── New since last visit — bouton navbar ────────────────────────────────── */
 .btn-nsv {
