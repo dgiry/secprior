@@ -1192,12 +1192,21 @@
           <li><strong>Recency</strong> — Fresh data, auto-updated every 10 minutes</li>
         </ul>
 
+        <h3>📊 KPI Bar &amp; Chips</h3>
+        <ul>
+          <li>The <strong>KPI bar</strong> shows live counts: Critical · KEV · Watchlist hits · SLA overdue</li>
+          <li><strong>Quick-filter chips</strong> (KEV, Critical, Watchlist, IOC, 0-Day, Trending) instantly filter the feed — the chip shows a result count badge</li>
+          <li>The <strong>👁 Scope bar</strong> shows your active watchlist terms at a glance; it appears only when terms are configured</li>
+          <li>Use the <strong>search bar</strong> for free text; recent searches are saved and can be cleared per entry</li>
+        </ul>
+
         <h3>📋 Your Morning Routine</h3>
         <ol>
-          <li>Check <strong>Top Priorities</strong> — critical threats in the last 24 hours</li>
-          <li>Review <strong>Incidents</strong> — grouped by CVE for pattern context</li>
-          <li>Search or use <strong>Watchlist</strong> — filter to your environment</li>
-          <li>Open <strong>Exec view</strong> — if briefing CISOs or stakeholders</li>
+          <li>Glance at the <strong>KPI bar</strong> — spot Critical / KEV / SLA overdue at a glance</li>
+          <li>Click a <strong>chip</strong> (KEV, Critical…) to instantly scope the feed</li>
+          <li>Review <strong>Incidents</strong> — threats grouped by CVE for pattern context</li>
+          <li>Check the <strong>👁 Scope bar</strong> — confirms your watchlist terms are active</li>
+          <li>Open <strong>Exec View</strong> — if briefing CISOs or stakeholders</li>
         </ol>
 
         <h3>🔬 IOC Enrichment</h3>
@@ -1208,11 +1217,18 @@
           <li>Priority articles are auto-enriched in the background</li>
         </ul>
 
-        <h3>💾 Data &amp; Freshness</h3>
+        <h3>⏱ SLA Policy</h3>
         <p>
-          Enriched articles are cached for 30 minutes. The pipeline auto-refreshes
-          every 10 minutes — or press <kbd>R</kbd> for an instant forced refresh.
+          Each priority level has a remediation deadline: Critical = 1 day · Investigate = 7 days · Watch = 30 days.
+          Customize in <strong>Settings → 📋 Policy</strong>. SLA badges on cards turn red when overdue; the KPI bar counts overdue items.
         </p>
+
+        <h3>💾 Data, Freshness &amp; Export</h3>
+        <ul>
+          <li>Enriched articles are cached for 30 minutes; pipeline auto-refreshes every 10 minutes</li>
+          <li>Press <kbd>R</kbd> for an instant forced refresh</li>
+          <li>Use <strong>📄 PDF Report</strong> (top bar) to generate and print a threat briefing for the current view</li>
+        </ul>
       </div>
 
       <div class="modal-footer">
