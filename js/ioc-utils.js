@@ -170,14 +170,19 @@ const IOCUtils = (() => {
                   title="Copy all ${_esc(label)}">📋 Copy all</button>
         </div>
         <div class="ioc-list">
-          ${values.map(v => `
+          ${values.map(v => {
+            const pivotUrl = 'https://dgiry.github.io/ioc-pivot?ioc=' + encodeURIComponent(v);
+            return `
             <span class="ioc-item">
               <code class="ioc-val" title="${_esc(v)}">${_esc(displayFn ? displayFn(v) : v)}</code>
+              <a href="${pivotUrl}" target="_blank" rel="noopener"
+                 class="pipeline-link" title="Pivot in IOC Pivot Hub">🔭</a>
               <button class="ioc-copy-one"
                       data-ioc-type="${_esc(label)}"
                       data-ioc-val="${_esc(v)}"
                       title="Copy ${_esc(v)}">📋</button>
-            </span>`).join('')}
+            </span>`;
+          }).join('')}
         </div>
       </div>`;
   }
