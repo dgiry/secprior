@@ -6,7 +6,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior)
-[![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://secprior.vercel.app)
+[![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://dgiry.github.io/secprior)
 
 ---
 
