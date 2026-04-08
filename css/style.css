@@ -1834,6 +1834,41 @@ body.modal-open { overflow: hidden; }
 .art-modal-ioc-btn  { font-size: .82rem; }
 .art-modal-open-btn { margin-left: auto; font-size: .82rem; }
 
+/* ── Pipeline bridges ── */
+.art-modal-pipeline {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .6rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: rgba(88,166,255,.03);
+}
+.pipeline-bridge-label {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-muted); margin-right: .25rem;
+}
+.pipeline-bridge-btn {
+  font-size: .72rem; font-weight: 700;
+  padding: 3px 10px; border-radius: 6px; text-decoration: none;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: var(--text-secondary);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.pipeline-bridge-btn:hover {
+  background: rgba(88,166,255,.08);
+  border-color: rgba(88,166,255,.3);
+  color: #58a6ff;
+}
+.pipeline-link {
+  font-size: .68rem; font-weight: 700; text-decoration: none;
+  padding: 1px 7px; border-radius: 4px;
+  background: rgba(88,166,255,.06);
+  border: 1px solid rgba(88,166,255,.2);
+  color: #58a6ff;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.pipeline-link:hover { background: rgba(88,166,255,.14); }
+
 /* ── Responsive modal ── */
 @media (max-width: 720px) {
   .art-modal-body { grid-template-columns: 1fr; }

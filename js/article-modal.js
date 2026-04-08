@@ -240,6 +240,16 @@ const ArticleModal = (() => {
            class="btn btn-primary art-modal-open-btn">
           ↗ Open article
         </a>
+      </div>
+      <!-- ── Pipeline bridges ── -->
+      <div class="art-modal-pipeline">
+        <span class="pipeline-bridge-label">▸ Act with the SecOps Suite</span>
+        <a href="https://dgiry.github.io/alert-explainer?alert=${encodeURIComponent((article.title || '').slice(0, 200))}"
+           target="_blank" rel="noopener" class="pipeline-bridge-btn">🚨 Alert Explainer</a>
+        <a href="https://dgiry.github.io/sigma-generator?incident=${encodeURIComponent((article.title || '').slice(0, 200))}"
+           target="_blank" rel="noopener" class="pipeline-bridge-btn">✍️ SIGMA Generator</a>
+        <a href="https://dgiry.github.io/playbook-builder?incident=${encodeURIComponent((article.title || '').slice(0, 200))}"
+           target="_blank" rel="noopener" class="pipeline-bridge-btn">📖 Playbook Builder</a>
       </div>`;
   }
 
@@ -373,6 +383,7 @@ const ArticleModal = (() => {
     return `<div class="art-cve-list">
       ${cves.map(cve => {
         const isEnriched = nvd?.cveId === cve;
+        const enrichUrl  = `https://dgiry.github.io/cve-enricher?cve=${encodeURIComponent(cve)}`;
         return `
           <div class="art-cve-row">
             <a href="https://nvd.nist.gov/vuln/detail/${cve}"
@@ -385,6 +396,8 @@ const ArticleModal = (() => {
                  </span>
                  ${nvd.cwe ? `<span class="badge badge-cwe">${nvd.cwe}</span>` : ''}`
               : ''}
+            <a href="${enrichUrl}" target="_blank" rel="noopener"
+               class="pipeline-link" title="Enrich in CVE Enricher">🔬 Enrich</a>
           </div>`;
       }).join('')}
     </div>`;
@@ -432,11 +445,14 @@ const ArticleModal = (() => {
       const repBadge     = _reputationBadge(value, reputation);
       const uhBadge      = _urlhausBadge(value, urlhausMatches);
       const tfBadge      = _threatFoxBadge(value, tfResults);
+      const pivotUrl     = `https://dgiry.github.io/ioc-pivot?ioc=${encodeURIComponent(value)}`;
       return `
         <div class="art-ioc-row">
           <span class="art-ioc-type art-ioc-${cssType}">${icon} ${type}</span>
           <code class="art-ioc-val" title="${_esc(value)}">${_esc(shortDisplay)}</code>
           ${repBadge}${uhBadge}${tfBadge}
+          <a href="${pivotUrl}" target="_blank" rel="noopener"
+             class="pipeline-link" title="Pivot in IOC Pivot Hub">🔭 Pivot</a>
           <button class="art-ioc-copy-btn"
                   onclick="IOCExtractor.copyIOC('${type}','${copyEsc}')"
                   title="Copy">📋</button>
