@@ -1467,11 +1467,29 @@ const QuickActions = (() => {
   // Sprint 24 — 4 actions primaires visibles + dropdown "···" (2 secondaires)
   // Primaires : Exécutif · Ticket · Partager · ✦ AI Brief  (usage fréquent, visible tout de suite)
   // Secondaires : Analyste · Export JSON                    (usage moins fréquent, dans le dropdown)
-  function _incidentButtonsHTML(incidentId, incidentTitle) {
-    const iid      = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
-    const titleEnc = encodeURIComponent((incidentTitle || '').slice(0, 300));
-    const sigmaUrl   = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc + '&platform=trend';
-    const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + titleEnc;
+  function _incidentButtonsHTML(incidentId, incidentTitle, incident) {
+    const iid = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
+
+    // Build enriched context for SIGMA Generator — behaviors, not just CVE IDs
+    const parts = [incidentTitle || ''];
+    if (incident) {
+      if (incident.vendors?.length)
+        parts.push('Vendor: ' + incident.vendors.slice(0, 3).join(', '));
+      if (incident.cves?.length)
+        parts.push('CVEs: ' + incident.cves.slice(0, 3).join(', '));
+      if (incident.attackTags?.length)
+        parts.push('Tactics: ' + [...new Set(incident.attackTags.map(t => t.tactic || t.label))].slice(0, 4).join(', '));
+      if (incident.priorityReasons?.length)
+        parts.push('Signals: ' + incident.priorityReasons.slice(0, 3).join('; '));
+      if (incident.summary)
+        parts.push(incident.summary.slice(0, 200));
+    }
+    const richContext = parts.filter(Boolean).join('\n').slice(0, 400);
+    const titleEnc    = encodeURIComponent(richContext);
+    const plainEnc    = encodeURIComponent((incidentTitle || '').slice(0, 300));
+
+    const sigmaUrl    = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc + '&platform=trend';
+    const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + plainEnc;
     return `
       <div class="qa-incident-actions">
         <button class="qa-btn qa-btn-sm qa-exec-inc" data-iid="${incidentId}"

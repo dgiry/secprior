@@ -991,7 +991,7 @@ const IncidentPanel = (() => {
         <td colspan="7">
           <div class="ip-detail-inner">
             ${_detailHeaderHTML(i)}
-            ${typeof QuickActions !== "undefined" ? QuickActions.incidentButtonsHTML(i.incidentId, i.title) : ""}
+            ${typeof QuickActions !== "undefined" ? QuickActions.incidentButtonsHTML(i.incidentId, i.title, i) : ""}
             ${typeof Recommender !== "undefined" ? Recommender.renderHTML(i, 'incident') : ""}
             ${typeof EntityStatus !== "undefined" ? EntityStatus.statusBlockHTML("incident", i.incidentId) : ""}
             ${iocSection}
