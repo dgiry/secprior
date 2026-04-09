@@ -3390,7 +3390,6 @@ body.modal-open { overflow: hidden; }
   border-top: 1px solid var(--border);
   padding-top: .85rem;
 }
-}
 
 /* ── KPI digest (2e rangée Stats) ────────────────────────────────────────── */
 .kpi-section-label {
@@ -4767,7 +4766,7 @@ body.modal-open { overflow: hidden; }
 #cex-import-zone { margin-top: .75rem; }
 
 /* Preview fichier importé */
-.cex-preview { }
+.cex-preview { display: block; }
 .cex-preview-meta {
   font-size: .74rem; color: var(--text2); margin-bottom: .55rem;
 }
