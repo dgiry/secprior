@@ -4,6 +4,8 @@
 
 > SecPrior correlates cyber news, CVEs, incidents, and exposure context to help security teams focus on what matters first.
 
+[![CI](https://github.com/dgiry/secprior/actions/workflows/ci.yml/badge.svg)](https://github.com/dgiry/secprior/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/dgiry/secprior/actions/workflows/codeql.yml/badge.svg)](https://github.com/dgiry/secprior/actions/workflows/codeql.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgiry/secprior)
 [![Live Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://dgiry.github.io/secprior)
