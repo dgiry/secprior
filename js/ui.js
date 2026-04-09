@@ -376,6 +376,20 @@ const UI = (() => {
         ${extraBadges ? `<div class="card-tags">${extraBadges}</div>` : ""}
         ${iocBadges   ? `<div class="card-iocs">${iocBadges}</div>`   : ""}
         <div class="card-nvd" id="nvd-${article.id}"></div>
+        <div class="card-pipeline">${(() => {
+          const ctx = [
+            article.title || '',
+            article.cves?.length  ? 'CVEs: ' + article.cves.slice(0, 3).join(', ')        : '',
+            article.attackTags?.length ? 'Tactics: ' + [...new Set(article.attackTags.map(t => t.tactic || t.label || t))].slice(0, 4).join(', ') : '',
+            article.description   ? article.description.slice(0, 150)                     : '',
+          ].filter(Boolean).join('\n').slice(0, 400);
+          const enc = encodeURIComponent(ctx);
+          return [
+            `<a href="https://dgiry.github.io/alert-explainer?alert=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Explain in Alert Explainer">🚨 Explain</a>`,
+            `<a href="https://dgiry.github.io/sigma-generator?alert=${enc}&platform=trend" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Generate SIGMA rule">✍️ SIGMA</a>`,
+            `<a href="https://dgiry.github.io/playbook-builder?incident=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Build IR playbook">📖 Playbook</a>`,
+          ].join('');
+        })()}</div>
       </article>`.trim();
   }
 

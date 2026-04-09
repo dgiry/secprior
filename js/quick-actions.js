@@ -1489,7 +1489,7 @@ const QuickActions = (() => {
     const plainEnc    = encodeURIComponent((incidentTitle || '').slice(0, 300));
 
     const sigmaUrl    = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc + '&platform=trend';
-    const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + plainEnc;
+    const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + titleEnc;
     const alertCtx    = encodeURIComponent(
       ((incident?.summary || incidentTitle || '') + (incident?.cves?.length ? '\nCVEs: ' + incident.cves.slice(0,3).join(', ') : '')).slice(0, 300)
     );

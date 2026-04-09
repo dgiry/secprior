@@ -727,6 +727,9 @@ a:hover { text-decoration: underline; }
 /* ── NVD / CVSS badges ──────────────────────────────────────────────────── */
 .card-nvd { min-height: 0; }
 
+/* ── Pipeline bridges strip (card list view) ────────────────────────────── */
+.card-pipeline { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+
 .nvd-row {
   display: flex; align-items: center; gap: .4rem;
   flex-wrap: wrap; margin-top: .1rem;
