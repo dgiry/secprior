@@ -1467,8 +1467,11 @@ const QuickActions = (() => {
   // Sprint 24 — 4 actions primaires visibles + dropdown "···" (2 secondaires)
   // Primaires : Exécutif · Ticket · Partager · ✦ AI Brief  (usage fréquent, visible tout de suite)
   // Secondaires : Analyste · Export JSON                    (usage moins fréquent, dans le dropdown)
-  function _incidentButtonsHTML(incidentId) {
-    const iid = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
+  function _incidentButtonsHTML(incidentId, incidentTitle) {
+    const iid      = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
+    const titleEnc = encodeURIComponent((incidentTitle || '').slice(0, 300));
+    const sigmaUrl   = 'https://dgiry.github.io/sigma-generator?incident=' + titleEnc;
+    const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + titleEnc;
     return `
       <div class="qa-incident-actions">
         <button class="qa-btn qa-btn-sm qa-exec-inc" data-iid="${incidentId}"
@@ -1489,7 +1492,7 @@ const QuickActions = (() => {
         </button>
         <div class="qa-actions-menu qa-inc-more" data-iid="${incidentId}">
           <button class="qa-btn qa-btn-sm qa-actions-trigger qa-inc-more-trigger"
-                  title="More actions — analyst summary, JSON export">
+                  title="More actions — analyst summary, JSON export, pipeline tools">
             ···
           </button>
           <div class="qa-actions-popover qa-inc-more-popover" style="display:none" role="menu">
@@ -1501,6 +1504,17 @@ const QuickActions = (() => {
                     title="Export enriched JSON payload (webhook / integration)">
               📤 Export JSON
             </button>
+            <div class="qa-actions-sep" role="separator"></div>
+            <a href="${sigmaUrl}" target="_blank" rel="noopener"
+               class="qa-actions-item" style="text-decoration:none"
+               title="Generate a SIGMA detection rule for this incident">
+              ✍️ SIGMA Generator
+            </a>
+            <a href="${playbookUrl}" target="_blank" rel="noopener"
+               class="qa-actions-item" style="text-decoration:none"
+               title="Build an IR playbook draft for this incident">
+              📖 Playbook Builder
+            </a>
           </div>
         </div>
       </div>`;
