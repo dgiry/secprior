@@ -63,7 +63,7 @@ jobs:
 
   # ── 3. Live smoke test (main branch only) ─────────────────────────────────
   smoke:
-    name: Smoke test — dgiry.github.io/secprior
+    name: Smoke test — secprior.vercel.app
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [lint, test]
@@ -75,7 +75,7 @@ jobs:
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --max-time 15 \
-            https://dgiry.github.io/secprior/)
+            https://secprior.vercel.app/)
           echo "HTTP status: $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "❌ Deployment check failed — got HTTP $STATUS"
