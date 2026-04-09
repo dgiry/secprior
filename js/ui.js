@@ -388,6 +388,7 @@ const UI = (() => {
             `<a href="https://dgiry.github.io/alert-explainer?alert=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Explain in Alert Explainer">🚨 Explain</a>`,
             `<a href="https://dgiry.github.io/sigma-generator?alert=${enc}&platform=trend" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Generate SIGMA rule">✍️ SIGMA</a>`,
             `<a href="https://dgiry.github.io/playbook-builder?incident=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Build IR playbook">📖 Playbook</a>`,
+            `<a href="https://dgiry.github.io/threat-actor-profiler?context=${encodeURIComponent(ctx.slice(0,300))}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Profile the threat actor">🕵️ Profile</a>`,
           ].join('');
         })()}</div>
       </article>`.trim();

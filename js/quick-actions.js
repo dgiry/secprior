@@ -1542,6 +1542,11 @@ const QuickActions = (() => {
                title="Build an IR playbook draft for this incident">
               📖 Playbook Builder
             </a>
+            <a href="https://dgiry.github.io/threat-actor-profiler?context=${encodeURIComponent(richContext.slice(0,300))}" target="_blank" rel="noopener"
+               class="qa-actions-item" style="text-decoration:none"
+               title="Profile the threat actor behind this incident">
+              🕵️ Threat Actor Profiler
+            </a>
           </div>
         </div>
       </div>`;
