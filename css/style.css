@@ -1859,15 +1859,20 @@ body.modal-open { overflow: hidden; }
   color: #58a6ff;
 }
 .pipeline-link {
-  font-size: .68rem; font-weight: 700; text-decoration: none;
-  padding: 1px 7px; border-radius: 4px;
-  background: rgba(88,166,255,.06);
-  border: 1px solid rgba(88,166,255,.2);
-  color: #58a6ff;
-  transition: background .15s;
+  font-size: .72rem; font-weight: 800; text-decoration: none;
+  padding: 2px 8px; border-radius: 5px;
+  background: rgba(88,166,255,.15);
+  border: 1px solid rgba(88,166,255,.45);
+  color: #79b8ff;
+  transition: background .15s, border-color .15s, box-shadow .15s;
   white-space: nowrap;
+  display: inline-flex; align-items: center;
 }
-.pipeline-link:hover { background: rgba(88,166,255,.14); }
+.pipeline-link:hover {
+  background: rgba(88,166,255,.28);
+  border-color: rgba(88,166,255,.7);
+  box-shadow: 0 0 6px rgba(88,166,255,.25);
+}
 
 /* ── Responsive modal ── */
 @media (max-width: 720px) {
