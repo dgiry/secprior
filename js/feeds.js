@@ -69,7 +69,7 @@ function parseXML(xmlDoc, feed) {
   }
 
   // Ignore articles older than MAX_ARTICLE_AGE_DAYS (keeps feeds fresh, avoids 2023-era noise)
-  const MAX_ARTICLE_AGE_MS = 180 * 86_400_000; // 180 days
+  const MAX_ARTICLE_AGE_MS = 30 * 86_400_000; // 30 days — keeps feeds fresh, CERT-FR publishes old advisories
   const cutoff = Date.now() - MAX_ARTICLE_AGE_MS;
 
   return items.map(item => {
