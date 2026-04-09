@@ -339,3 +339,9 @@ function getPriorityMeta(level) {
     default:             return { icon: "⚪", label: "Signal faible",       css: "low"          };
   }
 }
+
+// Node.js / Jest: allow require('../js/scorer.js') in unit tests.
+if (typeof module !== 'undefined') module.exports = {
+  scoreComposite, digestPriorityScore, classifyScore,
+  getCriticalityMeta, scoreBarClass, scoreItem, computePriority, getPriorityMeta
+};

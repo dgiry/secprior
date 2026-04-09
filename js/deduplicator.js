@@ -700,3 +700,6 @@ const Deduplicator = (() => {
     CONFIG
   };
 })();
+
+// Node.js / Jest: allow require('../js/deduplicator.js') in unit tests.
+if (typeof module !== 'undefined') module.exports = Deduplicator;

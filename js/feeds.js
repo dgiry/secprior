@@ -311,3 +311,8 @@ async function fetchAllFeeds(forceRefresh = false) {
 
   return unique;
 }
+
+// Node.js / Jest: allow require('../js/feeds.js') in unit tests.
+if (typeof module !== 'undefined') module.exports = {
+  makeId, getXMLText, extractLink, stripHTML, parseXML
+};
