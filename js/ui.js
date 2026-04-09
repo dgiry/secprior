@@ -384,11 +384,35 @@ const UI = (() => {
             article.description   ? article.description.slice(0, 150)                     : '',
           ].filter(Boolean).join('\n').slice(0, 400);
           const enc = encodeURIComponent(ctx);
+          // Try to detect a known threat actor in the article text → pass ?actor= so TAP auto-profiles
+          const _TAP_ACTORS = [
+            'APT10','APT27','APT28','APT29','APT30','APT31','APT32','APT33','APT34','APT35','APT38','APT40','APT41','APT43',
+            'Mustang Panda','RedDelta','Winnti','Hafnium','Earth Preta',
+            'Volt Typhoon','Salt Typhoon','Flax Typhoon','Silk Typhoon','Brass Typhoon','Storm-0558',
+            'Sandworm','Gamaredon','Turla','Cozy Bear','Fancy Bear',
+            'Midnight Blizzard','Forest Blizzard','Seashell Blizzard','Star Blizzard','ColdRiver','Berserk Bear',
+            'OilRig','MuddyWater','Charming Kitten','Tortoiseshell','Moses Staff','APT39',
+            'Lazarus','Kimsuky','ScarCruft','APT37','Andariel','BlueNoroff','Konni',
+            'LockBit','BlackCat','ALPHV','Cl0p','RansomHub','Akira','Play','Black Basta','Royal',
+            'Medusa','Rhysida','Hunters International','Qilin','BianLian','8Base','Cactus',
+            'INC Ransom','Dark Angels','Fog','Lynx','Conti','REvil','DarkSide',
+            'FIN7','FIN8','Carbanak','TA505','TA558','TA4903',
+            'Scattered Spider','Muddled Libra','Octo Tempest','UNC3944',
+            'Lapsus$','ShinyHunters','IntelBroker','USDoD','Killnet','Anonymous Sudan',
+          ];
+          const ctxUp = ctx.toUpperCase();
+          const detectedActor = _TAP_ACTORS.find(a => ctxUp.includes(a.toUpperCase()));
+          const tapParams = detectedActor
+            ? `actor=${encodeURIComponent(detectedActor)}&context=${encodeURIComponent(ctx.slice(0,300))}`
+            : `context=${encodeURIComponent(ctx.slice(0,300))}`;
+          const tapTitle = detectedActor
+            ? `Profile ${detectedActor} (auto-detected)`
+            : 'Profile the threat actor';
           return [
             `<a href="https://dgiry.github.io/alert-explainer?alert=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Explain in Alert Explainer">🚨 Explain</a>`,
             `<a href="https://dgiry.github.io/sigma-generator?alert=${enc}&platform=trend" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Generate SIGMA rule">✍️ SIGMA</a>`,
             `<a href="https://dgiry.github.io/playbook-builder?incident=${enc}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Build IR playbook">📖 Playbook</a>`,
-            `<a href="https://dgiry.github.io/threat-actor-profiler?context=${encodeURIComponent(ctx.slice(0,300))}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="Profile the threat actor">🕵️ Profile</a>`,
+            `<a href="https://dgiry.github.io/threat-actor-profiler?${tapParams}" target="_blank" rel="noopener" class="pipeline-link" onclick="event.stopPropagation()" title="${tapTitle}">🕵️ Profile</a>`,
           ].join('');
         })()}</div>
       </article>`.trim();
