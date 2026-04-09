@@ -1,0 +1,60 @@
+{
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "globals": {
+    "CONFIG":          "readonly",
+    "Storage":         "readonly",
+    "Pipeline":        "readonly",
+    "Deduplicator":    "readonly",
+    "Scorer":          "readonly",
+    "Contextualizer":  "readonly",
+    "Enricher":        "readonly",
+    "UI":              "readonly",
+    "RiskFilter":      "readonly",
+    "SettingsModal":   "readonly",
+    "HealthPanel":     "readonly",
+    "BriefingPanel":   "readonly",
+    "ProfilePanel":    "readonly",
+    "MorningBrief":    "readonly",
+    "NVD":             "readonly",
+    "IOCExtractor":    "readonly",
+    "IOCAutoEnricher": "readonly",
+    "EntityStatus":    "readonly",
+    "QuickActions":    "readonly",
+    "WatchlistModal":  "readonly",
+    "SavedFilters":    "readonly",
+    "PersonaPresets":  "readonly",
+    "ProfileManager":  "readonly",
+    "ProfileSwitcher": "readonly",
+    "Recommender":     "readonly",
+    "Stats":           "readonly",
+    "Onboarding":      "readonly",
+    "PDFReport":       "readonly",
+    "TV1Sync":         "readonly",
+    "URLHausIOC":      "readonly",
+    "FeedManager":     "readonly",
+    "ConfigExport":    "readonly"
+  },
+  "rules": {
+    "no-console":           "off",
+    "no-undef":             "off",
+    "no-unused-vars":       ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-duplicate-case":    "error",
+    "no-dupe-keys":         "error",
+    "no-unreachable":       "error",
+    "no-constant-condition": ["warn", { "checkLoops": false }],
+    "no-var":               "warn",
+    "eqeqeq":               ["warn", "smart"],
+    "prefer-const":         "warn",
+    "no-redeclare":         "error",
+    "no-self-assign":       "error",
+    "no-template-curly-in-string": "warn"
+  }
+}

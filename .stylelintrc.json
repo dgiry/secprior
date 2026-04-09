@@ -1,0 +1,19 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-no-invalid-hex":                true,
+    "declaration-block-no-duplicate-properties": true,
+    "no-duplicate-selectors":             true,
+    "selector-id-pattern":                null,
+    "selector-class-pattern":             null,
+    "custom-property-pattern":            null,
+    "alpha-value-notation":               null,
+    "color-function-notation":            null,
+    "import-notation":                    null,
+    "media-feature-range-notation":       null,
+    "declaration-empty-line-before":      null,
+    "rule-empty-line-before":             null,
+    "comment-empty-line-before":          null,
+    "value-keyword-case":                 null
+  }
+}

@@ -146,7 +146,7 @@ describe('_priorityAction', () => {
 describe('generate()', () => {
   test('output contains all mandatory header sections', () => {
     const out = MB.generate([], 7);
-    expect(out).toContain('ThreatLens — Morning Brief');
+    expect(out).toContain('SecPrior — Morning Brief');
     expect(out).toContain('THREAT POSTURE:');
     expect(out).toContain('⚡  Priority action:');
     expect(out).toContain('ACTIONABILITY');
