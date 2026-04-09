@@ -68,6 +68,10 @@ function parseXML(xmlDoc, feed) {
     items = Array.from(xmlDoc.querySelectorAll("entry"));
   }
 
+  // Ignore articles older than MAX_ARTICLE_AGE_DAYS (keeps feeds fresh, avoids 2023-era noise)
+  const MAX_ARTICLE_AGE_MS = 180 * 86_400_000; // 180 days
+  const cutoff = Date.now() - MAX_ARTICLE_AGE_MS;
+
   return items.map(item => {
     const title = getXMLText(item, "title");
     const rawDesc = getXMLText(item, "description", "summary", "content");
@@ -75,6 +79,7 @@ function parseXML(xmlDoc, feed) {
     const link = extractLink(item) || getXMLText(item, "link", "guid");
     const pubDateStr = getXMLText(item, "pubDate", "published", "updated", "dc\\:date");
     const pubDate = new Date(pubDateStr);
+    const resolvedDate = isNaN(pubDate.getTime()) ? new Date() : pubDate;
 
     const id = makeId(link);
     const criticality = scoreItem(title, desc);
@@ -84,14 +89,14 @@ function parseXML(xmlDoc, feed) {
       title: title || "Sans titre",
       description: desc,
       link,
-      pubDate: isNaN(pubDate.getTime()) ? new Date() : pubDate,
+      pubDate: resolvedDate,
       source: feed.id,
       sourceName: feed.name,
       sourceIcon: feed.icon,
       criticality,
       starred: Storage.isFavorite(id)
     };
-  }).filter(a => a.title && a.link);
+  }).filter(a => a.title && a.link && a.pubDate.getTime() >= cutoff);
 }
 
 // Proxies CORS publics tentés en séquence (mode statique / Hostinger)

@@ -22,7 +22,7 @@ const App = (() => {
     query: "",
     criticality: "all",
     source: "all",
-    date: "all",
+    date: "30d",
     priorityLevel: "all", // all | critical_now | investigate | watch | low
     sortBy: "default",    // default (date) | priority (priorityScore desc)
     statusFilter: "all",  // all | new | acknowledged | investigating | mitigated | ignored
@@ -862,7 +862,7 @@ const App = (() => {
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
       set('search-input',        '');
       _syncSearchChips('');
-      set('filter-date',         'all');
+      set('filter-date',         '30d');
       set('filter-priority-level','all');
       set('filter-criticality',  'all');
       set('filter-source',       'all');
