@@ -246,7 +246,7 @@ const ArticleModal = (() => {
         <span class="pipeline-bridge-label">▸ Act with the SecOps Suite</span>
         <a href="https://dgiry.github.io/alert-explainer?alert=${encodeURIComponent((article.title || '').slice(0, 200))}"
            target="_blank" rel="noopener" class="pipeline-bridge-btn">🚨 Alert Explainer</a>
-        <a href="https://dgiry.github.io/sigma-generator?alert=${encodeURIComponent((article.title || '').slice(0, 200))}"
+        <a href="https://dgiry.github.io/sigma-generator?alert=${encodeURIComponent((article.title || '').slice(0, 200))}&platform=trend"
            target="_blank" rel="noopener" class="pipeline-bridge-btn">✍️ SIGMA Generator</a>
         <a href="https://dgiry.github.io/playbook-builder?incident=${encodeURIComponent((article.title || '').slice(0, 200))}"
            target="_blank" rel="noopener" class="pipeline-bridge-btn">📖 Playbook Builder</a>

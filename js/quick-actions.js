@@ -1470,7 +1470,7 @@ const QuickActions = (() => {
   function _incidentButtonsHTML(incidentId, incidentTitle) {
     const iid      = String(incidentId).replace(/[^a-z0-9\-_]/gi, '-');
     const titleEnc = encodeURIComponent((incidentTitle || '').slice(0, 300));
-    const sigmaUrl   = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc;
+    const sigmaUrl   = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc + '&platform=trend';
     const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + titleEnc;
     return `
       <div class="qa-incident-actions">
