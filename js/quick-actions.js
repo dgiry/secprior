@@ -1490,6 +1490,10 @@ const QuickActions = (() => {
 
     const sigmaUrl    = 'https://dgiry.github.io/sigma-generator?alert=' + titleEnc + '&platform=trend';
     const playbookUrl = 'https://dgiry.github.io/playbook-builder?incident=' + plainEnc;
+    const alertCtx    = encodeURIComponent(
+      ((incident?.summary || incidentTitle || '') + (incident?.cves?.length ? '\nCVEs: ' + incident.cves.slice(0,3).join(', ') : '')).slice(0, 300)
+    );
+    const alertUrl    = 'https://dgiry.github.io/alert-explainer?alert=' + alertCtx;
     return `
       <div class="qa-incident-actions">
         <button class="qa-btn qa-btn-sm qa-exec-inc" data-iid="${incidentId}"
@@ -1523,6 +1527,11 @@ const QuickActions = (() => {
               📤 Export JSON
             </button>
             <div class="qa-actions-sep" role="separator"></div>
+            <a href="${alertUrl}" target="_blank" rel="noopener"
+               class="qa-actions-item" style="text-decoration:none"
+               title="Explain this incident in Alert Explainer">
+              🚨 Alert Explainer
+            </a>
             <a href="${sigmaUrl}" target="_blank" rel="noopener"
                class="qa-actions-item" style="text-decoration:none"
                title="Generate a SIGMA detection rule for this incident">
